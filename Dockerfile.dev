@@ -1,5 +1,5 @@
 # Dockerfile.dev - 開發環境容器
-FROM golang:1.21-alpine
+FROM docker.io/golang:1.22-alpine
 
 # 安裝開發工具和依賴
 RUN apk add --no-cache \
@@ -15,9 +15,9 @@ RUN apk add --no-cache \
     npm
 
 # 安裝 Go 開發工具
-RUN go install github.com/cosmtrek/air@latest && \
+RUN go install github.com/cosmtrek/air@v1.49.0 && \
     go install github.com/swaggo/swag/cmd/swag@latest && \
-    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+    go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
 
 WORKDIR /app
 
