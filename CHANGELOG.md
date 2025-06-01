@@ -36,6 +36,15 @@
 - 設計雙層認證機制
 - 規劃用戶管理流程
 
+## [2025-06-02] Added: Podman 容器化開發環境
+- 新增 Podman 開發環境配置 (Dockerfile.dev)
+- 新增開發腳本 (scripts/dev-start.sh, dev-shell.sh, dev-stop.sh)
+- 新增前後端初始化腳本 (scripts/init-backend.sh, init-frontend.sh)
+- 新增 Makefile 簡化開發命令
+- 新增 Podman 開發指南文檔 (docs/PODMAN_DEVELOPMENT.md)
+- 更新 docker-compose.dev.yml 支援 Podman
+- 更新 README.md 優先推薦容器化開發流程
+
 ---
 
 ## 變更類型說明

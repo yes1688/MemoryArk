@@ -1,0 +1,31 @@
+# Podman Compose 開發環境配置
+# 使用: podman-compose up -d
+
+version: '3.8'
+
+services:
+  memoryark-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: memoryark-dev
+    ports:
+      - "7001:7001"  # 後端 API
+      - "5173:5173"  # 前端開發服務器
+    volumes:
+      - .:/app:Z     # Podman SELinux 兼容
+      - memoryark-go-modules:/go/pkg/mod
+      - memoryark-node-modules:/app/frontend/node_modules
+    environment:
+      - GO111MODULE=on
+      - GOPROXY=https://goproxy.cn,direct
+      - container=podman
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    security_opt:
+      - label=disable  # Podman SELinux 處理
+
+volumes:
+  memoryark-go-modules:
+  memoryark-node-modules:
