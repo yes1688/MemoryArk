@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useFileStore } from '@/stores/files'
+import { useFilesStore } from '@/stores/files'
 import FileUploader from '@/components/FileUploader.vue'
 
 const router = useRouter()
-const fileStore = useFileStore()
+const fileStore = useFilesStore()
 
 const uploadForm = ref({
   category: '',
@@ -49,20 +49,20 @@ const handleUpload = async () => {
 
   isUploading.value = true
 
-  const result = await fileStore.uploadFile(selectedFile.value, {
-    category: uploadForm.value.category,
-    description: uploadForm.value.description,
-    tags: uploadForm.value.tags
-  })
+  try {
+    const result = await fileStore.uploadFile(selectedFile.value, null)
 
-  if (result) {
-    uploadSuccess.value = true
-    setTimeout(() => {
-      router.push('/')
-    }, 2000)
+    if (result) {
+      uploadSuccess.value = true
+      setTimeout(() => {
+        router.push('/')
+      }, 2000)
+    }
+  } catch (error) {
+    console.error('上傳失敗:', error)
+  } finally {
+    isUploading.value = false
   }
-
-  isUploading.value = false
 }
 
 const resetForm = () => {

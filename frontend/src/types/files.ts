@@ -1,33 +1,92 @@
 export interface FileInfo {
   id: number
-  filename: string
-  originalName: string
+  name: string
+  originalName?: string
   size: number
-  mimeType: string
-  category: string
+  mimeType?: string
+  isDirectory: boolean
+  parentId?: number
+  path: string
   description?: string
   tags?: string
   uploaderId: number
-  uploaderName: string
+  uploaderName?: string
   downloadCount: number
+  isDeleted: boolean
+  deletedAt?: string
+  deletedBy?: number
   createdAt: string
   updatedAt: string
-  url: string
+  url?: string
   thumbnailUrl?: string
+  // 子項目（資料夾內容）
+  children?: FileInfo[]
 }
 
 export interface UploadResult {
   id: number
-  filename: string
+  name: string
   originalName: string
   size: number
   url: string
+  path: string
+  isDirectory: boolean
 }
 
-export interface FileCategory {
-  id: string
+export interface FileShare {
+  id: number
+  fileId: number
+  shareToken: string
+  expiresAt?: string
+  password?: string
+  downloadLimit?: number
+  downloadCount: number
+  createdBy: number
+  createdAt: string
+}
+
+export interface FolderCreateRequest {
   name: string
-  icon: string
-  allowedTypes: string[]
-  maxSize: number
+  parentId?: number
+}
+
+export interface BreadcrumbItem {
+  id: number | null
+  name: string
+  path: string
+}
+
+export interface FileMoveRequest {
+  parentId?: number
+}
+
+export interface FileRenameRequest {
+  name: string
+}
+
+export interface FileShareRequest {
+  expiresIn?: number // 過期時間（秒）
+  password?: string
+  downloadLimit?: number
+}
+
+export interface FileUploadRequest {
+  parentId?: number
+  description?: string
+  tags?: string
+}
+
+export interface FileListParams {
+  parentId?: number
+  includeDeleted?: boolean
+  search?: string
+  page?: number
+  limit?: number
+}
+
+export interface FileListResponse {
+  files: FileInfo[]
+  total: number
+  page: number
+  totalPages: number
 }

@@ -1,72 +1,90 @@
 import { apiRequest } from './index'
-import type { User, RegistrationRequest } from '@/types/auth'
+import type { User, UserRegistrationRequest } from '@/types/auth'
+
+export interface UserListResponse {
+  users: User[]
+  total: number
+  page: number
+  totalPages: number
+}
+
+export interface RegistrationListResponse {
+  requests: UserRegistrationRequest[]
+  total: number
+  page: number
+  totalPages: number
+}
+
+export interface SystemStats {
+  totalUsers: number
+  activeUsers: number
+  pendingRegistrations: number
+  totalFiles: number
+  totalSize: number
+  storageUsed: string
+}
+
+export interface ActivityLog {
+  id: number
+  userId: number
+  userName: string
+  action: string
+  target: string
+  details?: string
+  ipAddress?: string
+  userAgent?: string
+  createdAt: string
+}
+
+export interface ActivityLogResponse {
+  logs: ActivityLog[]
+  total: number
+  page: number
+  totalPages: number
+}
 
 export const adminApi = {
   // 用戶管理
-  getAllUsers: (params?: {
+  getUsers: (params?: {
     search?: string
     role?: string
     status?: string
     page?: number
     limit?: number
   }) =>
-    apiRequest.get<{
-      users: User[]
-      total: number
-      page: number
-      totalPages: number
-    }>('/admin/users', params),
+    apiRequest.get<UserListResponse>('/admin/users', params),
 
-  getUser: (userId: number) =>
-    apiRequest.get<User>(`/admin/users/${userId}`),
+  updateUserRole: (userId: number, role: string) =>
+    apiRequest.put(`/admin/users/${userId}/role`, { role }),
 
-  deleteUser: (userId: number) =>
-    apiRequest.delete(`/admin/users/${userId}`),
+  updateUserStatus: (userId: number, status: string) =>
+    apiRequest.put(`/admin/users/${userId}/status`, { status }),
 
   // 註冊申請管理
-  getRegistrationRequests: (params?: {
+  getRegistrations: (params?: {
     status?: 'pending' | 'approved' | 'rejected'
     page?: number
     limit?: number
   }) =>
-    apiRequest.get<{
-      requests: RegistrationRequest[]
-      total: number
-      page: number
-      totalPages: number
-    }>('/admin/registration-requests', params),
+    apiRequest.get<RegistrationListResponse>('/admin/registrations', params),
 
-  approveRegistration: (requestId: number) =>
-    apiRequest.post(`/admin/registration-requests/${requestId}/approve`),
+  approveRegistration: (requestId: number, comment?: string) =>
+    apiRequest.put(`/admin/registrations/${requestId}/approve`, { comment }),
 
-  rejectRegistration: (requestId: number, reason?: string) =>
-    apiRequest.post(`/admin/registration-requests/${requestId}/reject`, { reason }),
+  rejectRegistration: (requestId: number, comment?: string) =>
+    apiRequest.put(`/admin/registrations/${requestId}/reject`, { comment }),
 
-  // 檔案管理
-  getAllFiles: (params?: {
-    category?: string
-    search?: string
-    uploader?: string
-    page?: number
-    limit?: number
-  }) =>
-    apiRequest.get('/admin/files', params),
-
-  deleteFileAdmin: (fileId: number, permanent?: boolean) =>
-    apiRequest.delete(`/admin/files/${fileId}`, { permanent }),
-
-  // 系統統計
+  // 系統管理
   getSystemStats: () =>
-    apiRequest.get('/admin/stats'),
+    apiRequest.get<SystemStats>('/admin/stats'),
 
-  // 活動日誌
   getActivityLogs: (params?: {
+    userId?: number
     action?: string
-    user?: string
     startDate?: string
     endDate?: string
     page?: number
     limit?: number
   }) =>
-    apiRequest.get('/admin/activity-logs', params),
+    apiRequest.get<ActivityLogResponse>('/admin/logs', params),
 }

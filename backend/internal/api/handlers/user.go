@@ -124,7 +124,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		user.Name = req.Name
 	}
 	if req.Avatar != "" {
-		user.Avatar = req.Avatar
+		user.AvatarURL = req.Avatar
 	}
 	
 	if err := h.db.Save(&user).Error; err != nil {

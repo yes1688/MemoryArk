@@ -1,36 +1,109 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi } from '@/api/auth'
-import type { User, LoginCredentials, RegisterData } from '@/types/auth'
+import type { User, RegisterData, AuthStatus } from '@/types/auth'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
-  const token = ref<string | null>(localStorage.getItem('auth_token'))
+  const authStatus = ref<AuthStatus | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const initialized = ref(false)
 
-  const isAuthenticated = computed(() => !!token.value && !!user.value)
+  // 計算屬性
+  const isAuthenticated = computed(() => 
+    authStatus.value?.authenticated === true && 
+    !!user.value && 
+    user.value.status === 'approved'
+  )
+  
+  const hasCloudflareAccess = computed(() => 
+    authStatus.value?.authenticated === true
+  )
+  
+  const needsRegistration = computed(() => 
+    authStatus.value?.needsRegistration === true
+  )
+  
+  const pendingApproval = computed(() => 
+    authStatus.value?.pendingApproval === true
+  )
 
-  // 登入
-  const login = async (credentials: LoginCredentials) => {
+  // 檢查認證狀態
+  const checkAuthStatus = async () => {
     try {
       isLoading.value = true
       error.value = null
       
-      const response = await authApi.login(credentials)
+      const response = await authApi.getAuthStatus()
       
       if (response.success) {
-        token.value = response.data.token
-        user.value = response.data.user
-        localStorage.setItem('auth_token', response.data.token)
-        return true
+        authStatus.value = response.data
+        if (response.data.user) {
+          user.value = response.data.user
+        }
+        initialized.value = true
+        return response.data
       } else {
-        error.value = response.message || '登入失敗'
-        return false
+        authStatus.value = { authenticated: false }
+        user.value = null
+        initialized.value = true
+        return null
       }
-    } catch (err) {
-      error.value = '網路連線錯誤'
-      return false
+    } catch (err: any) {
+      // 處理不同的錯誤狀態
+      if (err.response?.status === 401) {
+        authStatus.value = { authenticated: false }
+      } else if (err.response?.status === 403) {
+        const errorData = err.response.data
+        authStatus.value = {
+          authenticated: true,
+          needsRegistration: errorData.error === 'USER_NOT_REGISTERED',
+          pendingApproval: errorData.error === 'USER_NOT_APPROVED'
+        }
+      } else {
+        error.value = '網路連線錯誤'
+        authStatus.value = { authenticated: false }
+      }
+      user.value = null
+      initialized.value = true
+      return null
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // 獲取當前用戶信息
+  const getCurrentUser = async () => {
+    try {
+      isLoading.value = true
+      error.value = null
+      
+      const response = await authApi.getCurrentUser()
+      
+      if (response.success) {
+        user.value = response.data
+        return response.data
+      } else {
+        error.value = response.message || '獲取用戶信息失敗'
+        return null
+      }
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        authStatus.value = { authenticated: false }
+        user.value = null
+      } else if (err.response?.status === 403) {
+        const errorData = err.response.data
+        authStatus.value = {
+          authenticated: true,
+          needsRegistration: errorData.error === 'USER_NOT_REGISTERED',
+          pendingApproval: errorData.error === 'USER_NOT_APPROVED'
+        }
+        user.value = null
+      } else {
+        error.value = '網路連線錯誤'
+      }
+      return null
     } finally {
       isLoading.value = false
     }
@@ -45,59 +118,53 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authApi.register(data)
       
       if (response.success) {
+        // 註冊成功後重新檢查狀態
+        await checkAuthStatus()
         return true
       } else {
         error.value = response.message || '註冊失敗'
         return false
       }
-    } catch (err) {
-      error.value = '網路連線錯誤'
+    } catch (err: any) {
+      if (err.response?.data?.message) {
+        error.value = err.response.data.message
+      } else {
+        error.value = '網路連線錯誤'
+      }
       return false
     } finally {
       isLoading.value = false
     }
   }
 
-  // 登出
-  const logout = () => {
+  // 清除認證狀態（用於登出或錯誤重置）
+  const clearAuth = () => {
     user.value = null
-    token.value = null
-    localStorage.removeItem('auth_token')
+    authStatus.value = { authenticated: false }
+    error.value = null
+    initialized.value = false
   }
 
-  // 檢查登入狀態
-  const checkAuth = async () => {
-    if (!token.value) return false
-
-    try {
-      const response = await authApi.me()
-      if (response.success) {
-        user.value = response.data
-        return true
-      } else {
-        logout()
-        return false
-      }
-    } catch (err) {
-      logout()
-      return false
-    }
-  }
-
-  // 初始化時檢查登入狀態
-  if (token.value) {
-    checkAuth()
+  // 重新整理認證狀態
+  const refreshAuth = async () => {
+    initialized.value = false
+    return await checkAuthStatus()
   }
 
   return {
     user,
-    token,
+    authStatus,
     isLoading,
     error,
+    initialized,
     isAuthenticated,
-    login,
+    hasCloudflareAccess,
+    needsRegistration,
+    pendingApproval,
+    checkAuthStatus,
+    getCurrentUser,
     register,
-    logout,
-    checkAuth
+    clearAuth,
+    refreshAuth
   }
 })

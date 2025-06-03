@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useFileStore } from '@/stores/files'
+import { useFilesStore } from '@/stores/files'
 import { useAuthStore } from '@/stores/auth'
 import FileCard from '@/components/FileCard.vue'
 import FileFilters from '@/components/FileFilters.vue'
 
-const fileStore = useFileStore()
+const fileStore = useFilesStore()
 const authStore = useAuthStore()
 
 const searchQuery = ref('')

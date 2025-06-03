@@ -1,20 +1,16 @@
 import { apiRequest } from './index'
-import type { User, LoginCredentials, RegisterData } from '@/types/auth'
+import type { User, RegisterData, AuthStatus } from '@/types/auth'
 
 export const authApi = {
-  // 登入
-  login: (credentials: LoginCredentials) =>
-    apiRequest.post<{ token: string; user: User }>('/auth/login', credentials),
-
-  // 註冊
-  register: (data: RegisterData) =>
-    apiRequest.post('/auth/register', data),
+  // 檢查認證狀態
+  getAuthStatus: () =>
+    apiRequest.get<AuthStatus>('/auth/status'),
 
   // 獲取當前用戶信息
-  me: () =>
+  getCurrentUser: () =>
     apiRequest.get<User>('/auth/me'),
 
-  // 登出
-  logout: () =>
-    apiRequest.post('/auth/logout'),
+  // 註冊申請（需要通過 Cloudflare Access 後才能註冊）
+  register: (data: RegisterData) =>
+    apiRequest.post('/auth/register', data),
 }

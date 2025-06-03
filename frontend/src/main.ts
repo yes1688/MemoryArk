@@ -1,5 +1,8 @@
 import './assets/main.css'
 
+// 修復 Cloudflare Tunnel 的 HMR WebSocket 連接問題
+import './hmr-fix'
+
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 

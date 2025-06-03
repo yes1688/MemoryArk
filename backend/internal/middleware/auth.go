@@ -2,51 +2,98 @@ package middleware
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
-	"memoryark/internal/auth"
+	"gorm.io/gorm"
 	"memoryark/internal/config"
+	"memoryark/internal/models"
 )
 
-// AuthMiddleware JWT 認證中間件
-func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
+// CloudflareAccessMiddleware Cloudflare Access 認證中間件
+func CloudflareAccessMiddleware(cfg *config.Config, db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
+		// 檢查 Cloudflare Access 標頭
+		cfAccessEmail := c.GetHeader("CF-Access-Authenticated-User-Email")
+		if cfAccessEmail == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Authorization header required",
+				"success": false,
+				"error": "CF_ACCESS_HEADER_MISSING",
+				"message": "Cloudflare Access authentication required",
 			})
 			c.Abort()
 			return
 		}
 
-		// 檢查 Bearer 前綴
-		tokenParts := strings.Split(authHeader, " ")
-		if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid authorization format",
-			})
+		// 查找用戶
+		var user models.User
+		if err := db.Where("email = ?", cfAccessEmail).First(&user).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				// 用戶不存在，需要註冊
+				c.JSON(http.StatusForbidden, gin.H{
+					"success": false,
+					"error": "USER_NOT_REGISTERED",
+					"message": "User needs to complete registration process",
+				})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"success": false,
+					"error": "DATABASE_ERROR",
+					"message": "Failed to query user",
+				})
+			}
 			c.Abort()
 			return
 		}
 
-		// 驗證令牌
-		claims, err := auth.ValidateToken(tokenParts[1], cfg.Auth.JWTSecret)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid token",
+		// 檢查用戶狀態
+		if user.Status != "approved" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"error": "USER_NOT_APPROVED",
+				"message": "User registration is pending approval",
 			})
 			c.Abort()
 			return
 		}
 
 		// 將用戶信息存儲到上下文
-		c.Set("user_id", claims.UserID)
-		c.Set("user_email", claims.Email)
-		c.Set("user_role", claims.Role)
+		c.Set("user_id", user.ID)
+		c.Set("user_email", user.Email)
+		c.Set("user_role", user.Role)
+		c.Set("user", user)
 		
 		c.Next()
+	}
+}
+
+// RequireRole 角色檢查中間件
+func RequireRole(roles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userRole, exists := c.Get("user_role")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"error": "UNAUTHORIZED",
+				"message": "User not authenticated",
+			})
+			c.Abort()
+			return
+		}
+
+		role := userRole.(string)
+		for _, requiredRole := range roles {
+			if role == requiredRole {
+				c.Next()
+				return
+			}
+		}
+
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"error": "INSUFFICIENT_PERMISSIONS",
+			"message": "User does not have required permissions",
+		})
+		c.Abort()
 	}
 }
 

@@ -5,15 +5,15 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/login',
-      name: 'login',
-      component: () => import('@/views/LoginView.vue'),
-      meta: { requiresGuest: true }
-    },
-    {
       path: '/',
       name: 'home',
       component: () => import('@/views/HomeView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/files',
+      name: 'files',
+      component: () => import('@/views/FilesView.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -32,30 +32,59 @@ const router = createRouter({
       path: '/register',
       name: 'register',
       component: () => import('@/views/RegisterView.vue'),
-      meta: { requiresGuest: true }
+      meta: { requiresCloudflareAuth: true }
+    },
+    {
+      path: '/pending-approval',
+      name: 'pending-approval',
+      component: () => import('@/views/PendingApprovalView.vue'),
+      meta: { requiresCloudflareAuth: true }
+    },
+    {
+      path: '/access-denied',
+      name: 'access-denied',
+      component: () => import('@/views/AccessDeniedView.vue')
+    },
+    {
+      path: '/cloudflare-auth',
+      name: 'cloudflare-auth',
+      component: () => import('@/views/CloudflareAuthView.vue')
     }
   ]
 })
 
 // 路由守衛
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   
-  // 檢查是否需要認證
+  // 初始化認證狀態
+  if (!authStore.initialized) {
+    await authStore.checkAuthStatus()
+  }
+  
+  // 檢查是否需要 Cloudflare 認證
+  if (to.meta.requiresCloudflareAuth && !authStore.hasCloudflareAccess) {
+    next('/cloudflare-auth')
+    return
+  }
+  
+  // 檢查是否需要完整認證（Cloudflare + 內部審核）
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next('/login')
+    if (!authStore.hasCloudflareAccess) {
+      next('/cloudflare-auth')
+    } else if (authStore.needsRegistration) {
+      next('/register')
+    } else if (authStore.pendingApproval) {
+      next('/pending-approval')
+    } else {
+      next('/access-denied')
+    }
     return
   }
   
   // 檢查是否需要管理員權限
   if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
-    next('/')
-    return
-  }
-  
-  // 檢查是否需要訪客狀態（已登入用戶不能訪問登入頁面）
-  if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    next('/')
+    next('/access-denied')
     return
   }
   

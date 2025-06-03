@@ -1,0 +1,36 @@
+# Cloudflare Tunnel 配置文件
+# 文件位置: /home/davidliou/MyProject/MemoryArk2/cloudflare-tunnel-config.yml
+
+tunnel: your-tunnel-id-here
+credentials-file: /path/to/your/tunnel/credentials.json
+
+# 入口配置
+ingress:
+  # 前端開發服務器 (適用於開發環境)
+  - hostname: dev.your-domain.com
+    service: http://localhost:5173
+    originRequest:
+      httpHostHeader: dev.your-domain.com
+      
+  # 後端 API (開發環境)
+  - hostname: api-dev.your-domain.com  
+    service: http://localhost:8080
+    originRequest:
+      httpHostHeader: api-dev.your-domain.com
+      
+  # 生產環境 (當容器化部署時)
+  - hostname: your-domain.com
+    service: http://localhost:7001
+    originRequest:
+      httpHostHeader: your-domain.com
+      
+  # 預設路由 (必須為最後一項)
+  - service: http_status:404
+
+# 進階配置
+warp-routing:
+  enabled: true
+  
+# 日誌設定
+loglevel: info
+logfile: /var/log/cloudflared.log

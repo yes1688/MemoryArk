@@ -3,6 +3,8 @@ package config
 import (
 	"os"
 	"strconv"
+	
+	"github.com/joho/godotenv"
 )
 
 // Config 應用配置結構
@@ -50,6 +52,9 @@ type CloudflareConfig struct {
 
 // Load 載入配置
 func Load() (*Config, error) {
+	// 載入 .env 文件（如果存在）
+	_ = godotenv.Load()
+	
 	config := &Config{
 		Server: ServerConfig{
 			Port: getEnv("PORT", "7001"),

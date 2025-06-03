@@ -7,9 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	
-	"memoryark/internal/auth"
 	"memoryark/internal/config"
 	"memoryark/internal/models"
+	"memoryark/internal/auth"
 )
 
 // AuthHandler 認證處理器
@@ -26,16 +26,15 @@ func NewAuthHandler(db *gorm.DB, cfg *config.Config) *AuthHandler {
 	}
 }
 
-// RegisterRequest 註冊請求結構
+// RegisterRequest 註冊請求結構 - 按照規格書定義
 type RegisterRequest struct {
-	Email  string `json:"email" binding:"required,email"`
-	Name   string `json:"name" binding:"required"`
-	Reason string `json:"reason"`
+	Name  string `json:"name" binding:"required"`
+	Phone string `json:"phone" binding:"required"`
 }
 
 // LoginRequest 登錄請求結構
 type LoginRequest struct {
-	Email string `json:"email" binding:"required,email"`
+	Email string `json:"email" binding:"required"`
 }
 
 // RefreshTokenRequest 刷新令牌請求結構
@@ -43,52 +42,163 @@ type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
-// Register 用戶註冊申請
+// AuthStatusResponse 認證狀態回應結構
+type AuthStatusResponse struct {
+	IsAuthenticated bool   `json:"is_authenticated"`
+	Status         string `json:"status"` // not_registered, pending, approved, rejected, suspended
+	User           *models.User `json:"user,omitempty"`
+}
+
+// GetAuthStatus 檢查當前用戶狀態 - 根據規格書定義
+func (h *AuthHandler) GetAuthStatus(c *gin.Context) {
+	// 從 Cloudflare Access 標頭獲取用戶郵箱
+	email := c.GetHeader("Cf-Access-Authenticated-User-Email")
+	if email == "" {
+		c.JSON(http.StatusOK, AuthStatusResponse{
+			IsAuthenticated: false,
+			Status:         "not_authenticated",
+		})
+		return
+	}
+
+	// 檢查用戶是否已在系統中註冊
+	var user models.User
+	result := h.db.Where("email = ?", email).First(&user)
+	
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusOK, AuthStatusResponse{
+				IsAuthenticated: true,
+				Status:         "not_registered",
+			})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "DATABASE_ERROR",
+				"message": "資料庫查詢失敗",
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, AuthStatusResponse{
+		IsAuthenticated: true,
+		Status:         user.Status,
+		User:           &user,
+	})
+}
+
+// GetCurrentUser 獲取當前用戶資訊
+func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "UNAUTHORIZED",
+				"message": "未授權訪問",
+			},
+		})
+		return
+	}
+
+	var user models.User
+	if err := h.db.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "USER_NOT_FOUND",
+				"message": "用戶不存在",
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": user,
+	})
+}
+
+// Register 用戶註冊申請 - 按照規格書實現
 func (h *AuthHandler) Register(c *gin.Context) {
+	// 從 Cloudflare Access 標頭獲取用戶郵箱
+	email := c.GetHeader("Cf-Access-Authenticated-User-Email")
+	if email == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "NO_CLOUDFLARE_AUTH",
+				"message": "未通過 Cloudflare 認證",
+			},
+		})
+		return
+	}
+
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request format",
+			"success": false,
+			"error": gin.H{
+				"code": "INVALID_REQUEST",
+				"message": "請求格式不正確",
+				"details": err.Error(),
+			},
 		})
 		return
 	}
-	
-	// 檢查是否已經註冊
-	var existingUser models.User
-	if err := h.db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
-		c.JSON(http.StatusConflict, gin.H{
-			"error": "User already exists",
-		})
-		return
-	}
-	
-	// 檢查是否已有待審核的申請
+
+	// 檢查是否已經有註冊申請
 	var existingRequest models.UserRegistrationRequest
-	if err := h.db.Where("email = ? AND status = ?", req.Email, "pending").First(&existingRequest).Error; err == nil {
+	if err := h.db.Where("email = ?", email).First(&existingRequest).Error; err == nil {
 		c.JSON(http.StatusConflict, gin.H{
-			"error": "Registration request already pending",
+			"success": false,
+			"error": gin.H{
+				"code": "REGISTRATION_EXISTS",
+				"message": "註冊申請已存在",
+			},
 		})
 		return
 	}
-	
+
+	// 檢查是否已經是註冊用戶
+	var existingUser models.User
+	if err := h.db.Where("email = ?", email).First(&existingUser).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "USER_EXISTS",
+				"message": "用戶已存在",
+			},
+		})
+		return
+	}
+
 	// 創建註冊申請
 	registrationRequest := models.UserRegistrationRequest{
-		Email:  req.Email,
-		Name:   req.Name,
-		Reason: req.Reason,
+		Email: email,
+		Name:  req.Name,
+		Phone: req.Phone,
 		Status: "pending",
 	}
-	
+
 	if err := h.db.Create(&registrationRequest).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create registration request",
+			"success": false,
+			"error": gin.H{
+				"code": "DATABASE_ERROR",
+				"message": "註冊申請提交失敗",
+			},
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusCreated, gin.H{
-		"message": "Registration request submitted successfully",
-		"id":      registrationRequest.ID,
+		"success": true,
+		"message": "註冊申請已提交，請等待管理員審核",
+		"data": registrationRequest,
 	})
 }
 

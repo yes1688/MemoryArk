@@ -2,29 +2,34 @@ export interface User {
   id: number
   email: string
   name: string
+  phone?: string
   role: 'admin' | 'user'
   status: 'pending' | 'approved' | 'rejected'
   cloudflareId?: string
+  approvedBy?: number
+  approvedAt?: string
   createdAt: string
   updatedAt: string
 }
 
-export interface LoginCredentials {
-  email: string
-  password: string
+export interface AuthStatus {
+  authenticated: boolean
+  user?: User
+  needsRegistration?: boolean
+  pendingApproval?: boolean
 }
 
 export interface RegisterData {
-  email: string
-  password: string
   name: string
+  phone?: string
   reason?: string
 }
 
-export interface RegistrationRequest {
+export interface UserRegistrationRequest {
   id: number
   email: string
   name: string
+  phone?: string
   reason?: string
   status: 'pending' | 'approved' | 'rejected'
   reviewComment?: string

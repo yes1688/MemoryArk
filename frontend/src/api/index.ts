@@ -13,13 +13,11 @@ export const apiClient = axios.create({
   },
 })
 
-// 請求攔截器 - 添加認證 token
+// 請求攔截器 - 不再需要手動添加 token，Cloudflare Access 會自動處理
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
+    // Cloudflare Access 會自動注入 CF-Access-Authenticated-User-Email 等標頭
+    // 前端不需要手動管理 token
     return config
   },
   (error) => {
@@ -33,10 +31,22 @@ apiClient.interceptors.response.use(
     return response
   },
   (error) => {
+    const errorData = error.response?.data
+    
     if (error.response?.status === 401) {
-      // Token 過期或無效，清除本地存儲並重定向到登入頁面
-      localStorage.removeItem('auth_token')
-      window.location.href = '/login'
+      // Cloudflare Access 認證失敗，重定向到 Cloudflare 登入
+      window.location.href = '/cloudflare-auth'
+    } else if (error.response?.status === 403) {
+      if (errorData?.error === 'USER_NOT_REGISTERED') {
+        // 用戶需要註冊
+        window.location.href = '/register'
+      } else if (errorData?.error === 'USER_NOT_APPROVED') {
+        // 用戶等待審核
+        window.location.href = '/pending-approval'
+      } else if (errorData?.error === 'INSUFFICIENT_PERMISSIONS') {
+        // 權限不足
+        window.location.href = '/access-denied'
+      }
     }
     return Promise.reject(error)
   }

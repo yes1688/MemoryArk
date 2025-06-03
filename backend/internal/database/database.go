@@ -44,7 +44,6 @@ func autoMigrate(db *gorm.DB) error {
 		&models.User{},
 		&models.UserRegistrationRequest{},
 		&models.File{},
-		&models.MediaTask{},
 		&models.ActivityLog{},
 	)
 }
