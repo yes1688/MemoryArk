@@ -11,7 +11,7 @@ export interface FileInfo {
   tags?: string
   uploaderId: number
   uploaderName?: string
-  downloadCount: number
+  downloadCount?: number
   isDeleted: boolean
   deletedAt?: string
   deletedBy?: number
@@ -21,6 +21,15 @@ export interface FileInfo {
   thumbnailUrl?: string
   // 子項目（資料夾內容）
   children?: FileInfo[]
+  
+  // 教會特色欄位
+  categoryId?: number
+  contentType?: string
+  speaker?: string
+  sermonTitle?: string
+  bibleReference?: string
+  likeCount?: number
+  isLiked?: boolean
 }
 
 export interface UploadResult {

@@ -1,20 +1,58 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
-import { ref, computed } from 'vue'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { ThemeProvider, KeyboardNav, ResponsiveContainer } from '@/components/ui'
 
 const authStore = useAuthStore()
+const route = useRoute()
 const isSidebarOpen = ref(true)
+const transitionName = ref('slide-left')
 
 const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value
 }
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
+
+// 路由動畫方向判斷
+const routeDepthMap = {
+  '/': 1,
+  '/upload': 2,
+  '/shared': 2,
+  '/sabbath': 2,
+  '/admin': 3,
+  '/files': 2
+}
+
+watch(() => route.path, (newPath, oldPath) => {
+  if (!oldPath) return
+  
+  const newDepth = routeDepthMap[newPath] || 2
+  const oldDepth = routeDepthMap[oldPath] || 2
+  
+  transitionName.value = newDepth > oldDepth ? 'slide-left' : 'slide-right'
+})
+
+// 過渡事件處理
+const beforeLeave = (el: Element) => {
+  const element = el as HTMLElement
+  element.style.position = 'absolute'
+  element.style.width = '100%'
+  element.style.height = '100%'
+}
+
+const onEnter = (el: Element) => {
+  const element = el as HTMLElement
+  element.style.position = 'relative'
+}
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <ThemeProvider>
+    <KeyboardNav show-skip-link>
+      <ResponsiveContainer>
+        <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <!-- 未登入狀態 -->
     <div v-if="!isAuthenticated" class="flex items-center justify-center min-h-screen">
       <RouterView />
@@ -24,8 +62,11 @@ const isAuthenticated = computed(() => authStore.isAuthenticated)
     <div v-else class="flex h-screen">
       <!-- 側邊欄 -->
       <aside
+        id="main-navigation"
+        role="navigation"
+        aria-label="主要導航"
         :class="[
-          'bg-white shadow-lg transition-all duration-300 ease-in-out',
+          'bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 ease-in-out',
           isSidebarOpen ? 'w-64' : 'w-16'
         ]"
       >
@@ -99,15 +140,164 @@ const isAuthenticated = computed(() => authStore.isAuthenticated)
       </aside>
 
       <!-- 主要內容區域 -->
-      <main class="flex-1 overflow-hidden">
-        <RouterView />
+      <main 
+        id="main-content"
+        role="main"
+        class="flex-1 overflow-hidden"
+      >
+        <RouterView v-slot="{ Component, route }">
+          <Transition
+            :name="transitionName"
+            mode="out-in"
+            @before-leave="beforeLeave"
+            @enter="onEnter"
+          >
+            <component 
+              :is="Component" 
+              :key="route.path"
+              class="page-component h-full"
+            />
+          </Transition>
+        </RouterView>
       </main>
     </div>
-  </div>
+        </div>
+      </ResponsiveContainer>
+    </KeyboardNav>
+  </ThemeProvider>
 </template>
 
 <style scoped>
 .router-link-active {
   @apply bg-blue-50 text-blue-600;
+}
+
+/* 頁面過渡動畫 */
+.page-component {
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* 滑動過渡 */
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.slide-left-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.slide-left-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.slide-right-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.slide-right-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+/* 側邊欄動畫增強 */
+aside {
+  transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+nav a {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+nav a:hover {
+  @apply transform translate-x-1;
+}
+
+/* 側邊欄收縮時的圖標居中 */
+aside:not(.w-64) nav a {
+  @apply justify-center px-4;
+}
+
+aside:not(.w-64) nav a span {
+  @apply hidden;
+}
+
+/* 用戶頭像動畫 */
+.w-8.h-8.bg-blue-500 {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+.w-8.h-8.bg-blue-500:hover {
+  @apply transform scale-110;
+}
+
+/* 載入動畫 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-component {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+/* 側邊欄按鈕動畫 */
+button {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+button:hover {
+  @apply transform scale-105;
+}
+
+button:active {
+  @apply transform scale-95;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+  aside {
+    @apply fixed inset-y-0 left-0 z-50;
+    transform: translateX(0);
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  aside:not(.w-64) {
+    transform: translateX(-100%);
+  }
+  
+  .slide-left-enter-from,
+  .slide-right-enter-from {
+    transform: translateX(0);
+  }
+  
+  .slide-left-leave-to,
+  .slide-right-leave-to {
+    transform: translateX(0);
+  }
+}
+
+/* 深色模式準備 */
+.dark aside {
+  @apply bg-gray-800 border-gray-700;
+}
+
+.dark nav a {
+  @apply text-gray-300 hover:bg-gray-700 hover:text-white;
+}
+
+.dark .router-link-active {
+  @apply bg-gray-700 text-white;
 }
 </style>

@@ -1,0 +1,441 @@
+// MemoryArk 2.0 動畫系統
+// Windows 11 風格的動畫和過渡效果
+
+:root {
+  // 時間曲線
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-win11: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  
+  // 持續時間
+  --duration-fast: 150ms;
+  --duration-base: 300ms;
+  --duration-slow: 500ms;
+  --duration-slower: 800ms;
+  
+  // 延遲
+  --delay-short: 50ms;
+  --delay-base: 100ms;
+  --delay-long: 200ms;
+  --delay-stagger: 50ms;
+}
+
+// 可重用的動畫類
+.transition-all {
+  transition: all var(--duration-base) var(--ease-in-out);
+}
+
+.transition-colors {
+  transition: color var(--duration-fast) var(--ease-in-out),
+              background-color var(--duration-fast) var(--ease-in-out),
+              border-color var(--duration-fast) var(--ease-in-out);
+}
+
+.transition-transform {
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.transition-opacity {
+  transition: opacity var(--duration-base) var(--ease-in-out);
+}
+
+.transition-shadow {
+  transition: box-shadow var(--duration-base) var(--ease-win11);
+}
+
+// Windows 11 風格的動畫效果
+.win11-entrance {
+  animation: win11-entrance var(--duration-slow) var(--ease-out);
+}
+
+@keyframes win11-entrance {
+  0% {
+    opacity: 0;
+    transform: scale(0.98) translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.win11-scale-in {
+  animation: win11-scale-in var(--duration-base) var(--ease-bounce);
+}
+
+@keyframes win11-scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.win11-slide-up {
+  animation: win11-slide-up var(--duration-base) var(--ease-out);
+}
+
+@keyframes win11-slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// 懸停效果
+.hover-lift {
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.hover-scale {
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+.hover-glow {
+  transition: box-shadow var(--duration-base) var(--ease-out);
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+}
+
+// 載入動畫
+.loading-pulse {
+  animation: pulse var(--duration-slower) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.loading-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-bounce {
+  animation: bounce var(--duration-slower) infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
+}
+
+// 閃爍效果 (骨架屏)
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #f8f8f8 50%,
+    #f0f0f0 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.dark .shimmer {
+  background: linear-gradient(
+    90deg,
+    #374151 25%,
+    #4b5563 50%,
+    #374151 75%
+  );
+  background-size: 200% 100%;
+}
+
+// 波紋效果
+.ripple-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(0);
+  animation: ripple-animation 0.6s ease-out;
+  pointer-events: none;
+}
+
+@keyframes ripple-animation {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+// 錯誤抖動
+.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+// 成功檢查標記
+.success-check {
+  animation: success-check 0.6s ease-in-out;
+}
+
+@keyframes success-check {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// 進度條動畫
+.progress-indeterminate {
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-indeterminate::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(59, 130, 246, 0.4),
+    transparent
+  );
+  animation: progress-slide 1.5s infinite;
+}
+
+@keyframes progress-slide {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+// 交錯動畫 (適用於列表項)
+.stagger-animation {
+  animation: stagger-fade-in var(--duration-base) var(--ease-out) both;
+}
+
+.stagger-animation:nth-child(1) { animation-delay: 0ms; }
+.stagger-animation:nth-child(2) { animation-delay: 50ms; }
+.stagger-animation:nth-child(3) { animation-delay: 100ms; }
+.stagger-animation:nth-child(4) { animation-delay: 150ms; }
+.stagger-animation:nth-child(5) { animation-delay: 200ms; }
+.stagger-animation:nth-child(6) { animation-delay: 250ms; }
+.stagger-animation:nth-child(7) { animation-delay: 300ms; }
+.stagger-animation:nth-child(8) { animation-delay: 350ms; }
+
+@keyframes stagger-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// 浮動動畫
+.float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+// 淡入淡出 (用於 Vue Transition)
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--duration-base) var(--ease-in-out);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+// 滑動 (用於 Vue Transition)
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: all var(--duration-base) var(--ease-win11);
+}
+
+.slide-left-enter-from {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.slide-left-leave-to {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+.slide-right-enter-from {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+.slide-right-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+// 縮放 (用於 Vue Transition)
+.scale-enter-active,
+.scale-leave-active {
+  transition: all var(--duration-base) var(--ease-bounce);
+}
+
+.scale-enter-from,
+.scale-leave-to {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+// 列表動畫 (用於 Vue TransitionGroup)
+.list-move,
+.list-enter-active,
+.list-leave-active {
+  transition: all var(--duration-base) var(--ease-in-out);
+}
+
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.list-leave-active {
+  position: absolute;
+}
+
+// 性能優化：減少動畫的裝置
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+// 高對比度模式支援
+@media (prefers-contrast: high) {
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      #000000 25%,
+      #333333 50%,
+      #000000 75%
+    );
+  }
+}
+
+// 深色模式動畫調整
+.dark {
+  .ripple {
+    background: rgba(59, 130, 246, 0.3);
+  }
+  
+  .hover-glow:hover {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+  }
+}
+
+// 移動端優化
+@media (max-width: 768px) {
+  :root {
+    --duration-fast: 100ms;
+    --duration-base: 200ms;
+    --duration-slow: 300ms;
+  }
+  
+  .hover-lift:hover {
+    transform: none;
+  }
+  
+  .hover-scale:hover {
+    transform: none;
+  }
+}

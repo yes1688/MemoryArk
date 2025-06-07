@@ -1,3 +1,6 @@
+/* 匯入動畫系統 */
+@import '../styles/animations.scss';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,6 +8,7 @@
 /* 自定義樣式 */
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* 滾動條樣式 */

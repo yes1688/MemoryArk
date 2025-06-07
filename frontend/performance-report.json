@@ -1,0 +1,183 @@
+{
+  "bundleSize": {
+    "totalSize": "448.23 KB",
+    "fileTypes": [
+      {
+        "extension": ".md",
+        "count": 1,
+        "totalSize": "447 B",
+        "files": [
+          {
+            "name": "README.md",
+            "size": "447 B"
+          }
+        ]
+      },
+      {
+        "extension": ".js",
+        "count": 11,
+        "totalSize": "330.61 KB",
+        "files": [
+          {
+            "name": "assets/index-z4Qe5bFX.js",
+            "size": "165.1 KB"
+          },
+          {
+            "name": "assets/FilesView-G7CLFI24.js",
+            "size": "53.24 KB"
+          },
+          {
+            "name": "assets/HomeView-DHyanFEd.js",
+            "size": "41.58 KB"
+          },
+          {
+            "name": "assets/AdminView-B79GFjPJ.js",
+            "size": "23.53 KB"
+          },
+          {
+            "name": "assets/CreateFolderModal.vue_vue_type_script_setup_true_lang-BCm-sSfw.js",
+            "size": "20.4 KB"
+          },
+          {
+            "name": "assets/UploadView-lbnYHw__.js",
+            "size": "9.15 KB"
+          },
+          {
+            "name": "assets/RegisterView-uigLDugz.js",
+            "size": "5.63 KB"
+          },
+          {
+            "name": "assets/files-l3D-2MD6.js",
+            "size": "4.98 KB"
+          },
+          {
+            "name": "assets/AccessDeniedView-CpXZ0sij.js",
+            "size": "2.53 KB"
+          },
+          {
+            "name": "assets/PendingApprovalView-Bg2MbNTr.js",
+            "size": "2.36 KB"
+          },
+          {
+            "name": "assets/CloudflareAuthView-CkVVvu0v.js",
+            "size": "2.11 KB"
+          }
+        ]
+      },
+      {
+        "extension": ".css",
+        "count": 1,
+        "totalSize": "116.37 KB",
+        "files": [
+          {
+            "name": "assets/index-CO8jSyLt.css",
+            "size": "116.37 KB"
+          }
+        ]
+      },
+      {
+        "extension": ".svg",
+        "count": 1,
+        "totalSize": "228 B",
+        "files": [
+          {
+            "name": "favicon.svg",
+            "size": "228 B"
+          }
+        ]
+      },
+      {
+        "extension": ".html",
+        "count": 1,
+        "totalSize": "495 B",
+        "files": [
+          {
+            "name": "index.html",
+            "size": "495 B"
+          }
+        ]
+      },
+      {
+        "extension": ".txt",
+        "count": 1,
+        "totalSize": "102 B",
+        "files": [
+          {
+            "name": "robots.txt",
+            "size": "102 B"
+          }
+        ]
+      }
+    ]
+  },
+  "dependencies": {
+    "production": 6,
+    "development": 23,
+    "total": 29,
+    "heavyDependencies": []
+  },
+  "codeQuality": {
+    "totalFiles": 71,
+    "totalLines": 18273,
+    "averageLinesPerFile": 257,
+    "fileTypes": {
+      ".vue": {
+        "files": 54,
+        "lines": 15566
+      },
+      ".ts": {
+        "files": 17,
+        "lines": 2707
+      }
+    },
+    "issues": [
+      "使用 any 類型: api/index.ts",
+      "包含 console.log: components/AdminFiles.vue",
+      "使用 any 類型: components/AdminFiles.vue",
+      "包含 console.log: components/AdminUsers.vue",
+      "使用 any 類型: components/ContextMenu.vue",
+      "使用 any 類型: components/CreateFolderModal.vue",
+      "使用 any 類型: components/UploadModal.vue",
+      "大檔案: components/ui/accessibility/KeyboardNav.vue (586 行)",
+      "使用 any 類型: components/ui/breadcrumb/AppBreadcrumb.vue",
+      "使用 any 類型: components/ui/button/AppButton.vue",
+      "使用 any 類型: components/ui/context-menu/AppContextMenu.vue",
+      "包含 console.log: components/ui/dashboard/QuickActions.vue",
+      "使用 any 類型: components/ui/dashboard/QuickActions.vue",
+      "包含 console.log: components/ui/dashboard/RecentFilesWidget.vue",
+      "包含 console.log: components/ui/dashboard/StorageStatsWidget.vue",
+      "包含 console.log: components/ui/favorites/AppFavoriteManager.vue",
+      "使用 any 類型: components/ui/file-preview/AppFilePreview.vue",
+      "大檔案: components/ui/history/AppAccessHistory.vue (513 行)",
+      "包含 console.log: components/ui/history/AppAccessHistory.vue",
+      "使用 any 類型: components/ui/input/AppInput.vue",
+      "大檔案: components/ui/share/AppShareLinkGenerator.vue (510 行)",
+      "使用 any 類型: components/ui/share/AppShareLinkGenerator.vue",
+      "大檔案: components/ui/theme/ThemeProvider.vue (544 行)",
+      "使用 any 類型: components/ui/theme/ThemeProvider.vue",
+      "包含 console.log: hmr-fix.ts",
+      "包含 console.log: router/index.ts",
+      "包含 console.log: stores/auth.ts",
+      "使用 any 類型: stores/auth.ts",
+      "使用 any 類型: stores/files.ts",
+      "使用 any 類型: stores/files_new.ts",
+      "使用 any 類型: stores/files_old.ts",
+      "包含 console.log: views/AdminView.vue",
+      "包含 console.log: views/CloudflareAuthView.vue",
+      "大檔案: views/FilesView.vue (1093 行)",
+      "使用 any 類型: views/FilesView.vue",
+      "包含 console.log: views/HomeView.vue",
+      "使用 any 類型: views/HomeView.vue",
+      "包含 console.log: views/SabbathDataView.vue",
+      "使用 any 類型: views/SabbathDataView.vue",
+      "包含 console.log: views/SharedFolderView.vue",
+      "使用 any 類型: views/SharedFolderView.vue"
+    ]
+  },
+  "recommendations": [
+    {
+      "type": "warning",
+      "message": "平均檔案行數過多，建議拆分大型組件"
+    }
+  ]
+}
