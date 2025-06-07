@@ -28,8 +28,7 @@ import {
   CodeBracketIcon,
   DocumentIcon,
   PresentationChartBarIcon,
-  TableCellsIcon,
-  DocumentPdfIcon
+  TableCellsIcon
 } from '@heroicons/vue/24/outline'
 
 interface Props {
@@ -60,7 +59,7 @@ const iconSizeClasses = {
   xl: 'w-10 h-10'
 }
 
-const backgroundClasses = {
+const backgroundClasses: { [key: string]: string } = {
   // 資料夾
   folder: 'bg-blue-100',
   // 圖片
@@ -103,7 +102,7 @@ const backgroundClasses = {
   default: 'bg-gray-100'
 }
 
-const colorClasses = {
+const colorClasses: { [key: string]: string } = {
   // 資料夾
   folder: 'text-blue-600',
   // 圖片
@@ -171,7 +170,7 @@ const iconComponent = computed(() => {
 
   // PDF 檔案
   if (mimeType === 'application/pdf') {
-    return DocumentPdfIcon
+    return DocumentTextIcon
   }
 
   // Office 文檔

@@ -25,12 +25,13 @@ export const useFilesStore = defineStore('files', () => {
       isLoading.value = true
       error.value = null
       
-      const response = await fileApi.getFiles(folderId)
+      const response = await fileApi.getFiles(folderId ? { parentId: folderId } : undefined)
       
       if (response.success) {
         files.value = response.data.files
-        currentFolder.value = response.data.currentFolder
-        breadcrumbs.value = response.data.breadcrumbs
+        // TODO: 需要從 API 獲取當前資料夾和麵包屑資訊
+        currentFolder.value = null
+        breadcrumbs.value = []
         return response.data
       } else {
         throw new Error(response.message || '獲取檔案列表失敗')
@@ -50,14 +51,22 @@ export const useFilesStore = defineStore('files', () => {
       error.value = null
       uploadProgress.value = 0
       
-      const response = await fileApi.uploadFile(file, folderId, (progress) => {
+      const metadata = folderId ? { parentId: folderId } : {}
+      const response = await fileApi.uploadFile(file, metadata, (progress) => {
         uploadProgress.value = progress
       })
       
       if (response.success) {
         // 重新獲取當前資料夾檔案列表
         await fetchFiles(currentFolderId.value)
-        return response.data
+        
+        // 從更新後的檔案列表中找到剛上傳的檔案
+        const uploadedFile = files.value.find(f => f.id === response.data.id)
+        if (!uploadedFile) {
+          throw new Error('找不到上傳的檔案')
+        }
+        
+        return uploadedFile
       } else {
         throw new Error(response.message || '檔案上傳失敗')
       }
@@ -73,7 +82,7 @@ export const useFilesStore = defineStore('files', () => {
   // 創建資料夾
   const createFolder = async (name: string, parentId?: number): Promise<FileInfo> => {
     try {
-      const response = await fileApi.createFolder(name, parentId)
+      const response = await fileApi.createFolder({ name, parentId })
       
       if (response.success) {
         // 重新獲取當前資料夾檔案列表
@@ -91,7 +100,7 @@ export const useFilesStore = defineStore('files', () => {
   // 重命名檔案/資料夾
   const renameFile = async (fileId: number, newName: string): Promise<void> => {
     try {
-      const response = await fileApi.renameFile(fileId, newName)
+      const response = await fileApi.renameFile(fileId, { name: newName })
       
       if (response.success) {
         // 更新本地檔案列表
@@ -111,14 +120,16 @@ export const useFilesStore = defineStore('files', () => {
   // 移動檔案/資料夾
   const moveFiles = async (fileIds: number[], targetFolderId?: number): Promise<void> => {
     try {
-      const response = await fileApi.moveFiles(fileIds, targetFolderId)
-      
-      if (response.success) {
-        // 重新獲取當前資料夾檔案列表
-        await fetchFiles(currentFolderId.value)
-      } else {
-        throw new Error(response.message || '移動失敗')
+      // API 只支援單個檔案移動，需要逐一移動
+      for (const fileId of fileIds) {
+        const response = await fileApi.moveFile(fileId, { parentId: targetFolderId })
+        if (!response.success) {
+          throw new Error(response.message || '移動失敗')
+        }
       }
+      
+      // 重新獲取當前資料夾檔案列表
+      await fetchFiles(currentFolderId.value)
     } catch (err: any) {
       error.value = err.message || '網路連線錯誤'
       throw err
@@ -144,10 +155,8 @@ export const useFilesStore = defineStore('files', () => {
       const fileIds = clipboardFiles.map(f => f.id)
 
       if (operation === 'copy') {
-        const response = await fileApi.copyFiles(fileIds, targetFolderId)
-        if (!response.success) {
-          throw new Error(response.message || '複製失敗')
-        }
+        // 目前 API 不支援檔案複製，只能跳過
+        throw new Error('暫不支援檔案複製功能')
       } else {
         await moveFiles(fileIds, targetFolderId)
         clipboard.value = null // 剪下後清空剪貼簿
@@ -164,16 +173,18 @@ export const useFilesStore = defineStore('files', () => {
   // 刪除檔案（移至垃圾桶）
   const deleteFiles = async (fileIds: number[]): Promise<void> => {
     try {
-      const response = await fileApi.deleteFiles(fileIds)
-      
-      if (response.success) {
-        // 從本地列表中移除檔案
-        files.value = files.value.filter(file => !fileIds.includes(file.id))
-        // 清除選擇
-        selectedFiles.value = []
-      } else {
-        throw new Error(response.message || '刪除失敗')
+      // API 只支援單個檔案刪除，需要逐一刪除
+      for (const fileId of fileIds) {
+        const response = await fileApi.deleteFile(fileId)
+        if (!response.success) {
+          throw new Error(response.message || '刪除失敗')
+        }
       }
+      
+      // 從本地列表中移除檔案
+      files.value = files.value.filter(file => !fileIds.includes(file.id))
+      // 清除選擇
+      selectedFiles.value = []
     } catch (err: any) {
       error.value = err.message || '網路連線錯誤'
       throw err
@@ -183,16 +194,18 @@ export const useFilesStore = defineStore('files', () => {
   // 還原檔案
   const restoreFiles = async (fileIds: number[]): Promise<void> => {
     try {
-      const response = await fileApi.restoreFiles(fileIds)
-      
-      if (response.success) {
-        // 從垃圾桶列表中移除檔案
-        files.value = files.value.filter(file => !fileIds.includes(file.id))
-        // 清除選擇
-        selectedFiles.value = []
-      } else {
-        throw new Error(response.message || '還原失敗')
+      // API 只支援單個檔案還原，需要逐一還原
+      for (const fileId of fileIds) {
+        const response = await fileApi.restoreFile(fileId)
+        if (!response.success) {
+          throw new Error(response.message || '還原失敗')
+        }
       }
+      
+      // 從垃圾桶列表中移除檔案
+      files.value = files.value.filter(file => !fileIds.includes(file.id))
+      // 清除選擇
+      selectedFiles.value = []
     } catch (err: any) {
       error.value = err.message || '網路連線錯誤'
       throw err
@@ -202,16 +215,18 @@ export const useFilesStore = defineStore('files', () => {
   // 永久刪除檔案
   const permanentDeleteFiles = async (fileIds: number[]): Promise<void> => {
     try {
-      const response = await fileApi.permanentDeleteFiles(fileIds)
-      
-      if (response.success) {
-        // 從垃圾桶列表中移除檔案
-        files.value = files.value.filter(file => !fileIds.includes(file.id))
-        // 清除選擇
-        selectedFiles.value = []
-      } else {
-        throw new Error(response.message || '永久刪除失敗')
+      // API 只支援單個檔案永久刪除，需要逐一刪除
+      for (const fileId of fileIds) {
+        const response = await fileApi.permanentDeleteFile(fileId)
+        if (!response.success) {
+          throw new Error(response.message || '永久刪除失敗')
+        }
       }
+      
+      // 從垃圾桶列表中移除檔案
+      files.value = files.value.filter(file => !fileIds.includes(file.id))
+      // 清除選擇
+      selectedFiles.value = []
     } catch (err: any) {
       error.value = err.message || '網路連線錯誤'
       throw err
@@ -224,7 +239,11 @@ export const useFilesStore = defineStore('files', () => {
     maxDownloads?: number
   }): Promise<FileShare> => {
     try {
-      const response = await fileApi.createShare(fileId, options)
+      const shareData = {
+        expiresIn: options?.maxDownloads,
+        downloadLimit: options?.maxDownloads
+      }
+      const response = await fileApi.createShareLink(fileId, shareData)
       
       if (response.success) {
         return response.data

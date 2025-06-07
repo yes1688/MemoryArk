@@ -33,7 +33,28 @@ export const useFilesStore = defineStore('files', () => {
       const response = await filesApi.getFiles(params)
       
       if (response.success) {
-        files.value = response.data.files
+        // 轉換後端回傳的資料格式到前端期望的格式
+        const transformedFiles = (response.data.files || []).map((file: any) => ({
+          id: file.id,
+          name: file.name,
+          originalName: file.original_name,
+          size: file.file_size,
+          mimeType: file.mime_type,
+          isDirectory: file.is_directory,
+          parentId: file.parent_id,
+          path: file.file_path,
+          uploaderId: file.uploaded_by,
+          uploaderName: file.uploader?.name,
+          downloadCount: file.download_count || 0,
+          isDeleted: file.is_deleted,
+          deletedAt: file.deleted_at,
+          deletedBy: file.deleted_by,
+          createdAt: file.created_at,
+          updatedAt: file.updated_at,
+          url: file.url,
+          thumbnailUrl: file.thumbnail_url
+        }))
+        files.value = transformedFiles
         // 從檔案列表中構建當前資料夾和麵包屑
         currentFolder.value = null // 暫時設為 null，後續可以從 API 回應中獲取
         breadcrumbs.value = [] // 暫時設為空，後續可以從 API 回應中獲取

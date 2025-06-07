@@ -1,8 +1,18 @@
 import axios from 'axios'
 import type { AxiosResponse } from 'axios'
 
-// API 基本配置
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:7001/api'
+// API 基本配置 - 動態根據當前域名設置
+const getApiBaseUrl = () => {
+  // 如果是透過 Cloudflare Tunnel 訪問
+  if (window.location.hostname === 'files.94work.net') {
+    return 'https://files.94work.net/api'
+  }
+  
+  // 否則使用環境變數或預設值
+  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:7001/api'
+}
+
+const API_BASE_URL = getApiBaseUrl()
 
 // 創建 axios 實例
 export const apiClient = axios.create({

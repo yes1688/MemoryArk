@@ -50,7 +50,7 @@ const handleUpload = async () => {
   isUploading.value = true
 
   try {
-    const result = await fileStore.uploadFile(selectedFile.value, null)
+    const result = await fileStore.uploadFile(selectedFile.value)
 
     if (result) {
       uploadSuccess.value = true

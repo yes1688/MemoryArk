@@ -4,9 +4,10 @@ import { adminApi } from '@/api/admin'
 
 interface RegistrationRequest {
   id: number
-  username: string
+  name: string
   email: string
-  reason: string
+  phone?: string
+  reason?: string
   status: 'pending' | 'approved' | 'rejected'
   createdAt: string
   updatedAt: string
@@ -23,6 +24,11 @@ const statusOptions = [
 ]
 
 const filteredRegistrations = computed(() => {
+  // 確保 registrations.value 是陣列
+  if (!Array.isArray(registrations.value)) {
+    return []
+  }
+  
   if (selectedStatus.value === 'all') {
     return registrations.value
   }
@@ -33,7 +39,7 @@ const loadRegistrations = async () => {
   isLoading.value = true
   try {
     const response = await adminApi.getRegistrations()
-    registrations.value = response.data.registrations
+    registrations.value = response.data.requests
   } catch (error) {
     console.error('載入註冊申請失敗:', error)
   } finally {
@@ -131,13 +137,13 @@ onMounted(() => {
                 <div class="flex-shrink-0">
                   <div class="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
                     <span class="text-gray-600 font-medium">
-                      {{ registration.username.charAt(0).toUpperCase() }}
+                      {{ registration.name.charAt(0).toUpperCase() }}
                     </span>
                   </div>
                 </div>
                 <div class="flex-1">
                   <h3 class="text-lg font-medium text-gray-900">
-                    {{ registration.username }}
+                    {{ registration.name }}
                   </h3>
                   <p class="text-sm text-gray-500">{{ registration.email }}</p>
                 </div>

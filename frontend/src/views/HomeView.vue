@@ -32,11 +32,7 @@ const handleCategoryChange = (category: string) => {
 }
 
 const loadFiles = async () => {
-  await fileStore.fetchFiles({
-    ...filters.value,
-    page: currentPage.value,
-    limit: itemsPerPage.value
-  })
+  await fileStore.fetchFiles()
 }
 
 const handlePageChange = (page: number) => {
@@ -147,7 +143,7 @@ onMounted(() => {
           v-for="file in fileStore.files"
           :key="file.id"
           :file="file"
-          @delete="fileStore.deleteFile"
+          @delete="(fileId) => fileStore.deleteFiles([fileId])"
         />
       </div>
     </div>

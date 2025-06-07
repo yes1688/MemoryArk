@@ -11,7 +11,7 @@ export default defineConfig({
     }
   },
   server: {
-    port: 5175,
+    port: 5175, // 使用實際運行的端口
     host: '0.0.0.0',
     allowedHosts: [
       'localhost',
@@ -23,8 +23,7 @@ export default defineConfig({
     ],
     watch: {
       usePolling: true
-    }
-    // 移除 hmr 配置，讓 Vite 自動處理
-    // 這樣本地開發時使用 WS，通過 HTTPS 訪問時自動使用 WSS
+    },
+    hmr: false // 完全禁用 HMR
   }
 })

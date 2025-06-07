@@ -1,4 +1,4 @@
-import { apiRequest } from './index'
+import { apiRequest, apiClient } from './index'
 import type { User, UserRegistrationRequest } from '@/types/auth'
 
 export interface UserListResponse {
@@ -87,4 +87,17 @@ export const adminApi = {
     limit?: number
   }) =>
     apiRequest.get<ActivityLogResponse>('/admin/logs', params),
+
+  // 檔案管理 - 臨時使用一般檔案API直到後端重新啟動
+  getAllFiles: (params?: { search?: string; type?: string; page?: number; limit?: number }) =>
+    apiRequest.get<{ files: import('@/types/files').FileInfo[]; total: number; page: number; totalPages: number }>(
+      '/files',
+      params
+    ),
+
+  deleteFile: (fileId: number) =>
+    apiRequest.delete(`/files/${fileId}`),
+
+  downloadFile: (fileId: number) =>
+    apiClient.get(`/files/${fileId}/download`, { responseType: 'blob' }),
 }

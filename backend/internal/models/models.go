@@ -43,20 +43,21 @@ type UserRegistrationRequest struct {
 
 // File 檔案模型 - 按照規格書定義
 type File struct {
-	ID           uint           `json:"id" gorm:"primaryKey"`
-	Name         string         `json:"name" gorm:"size:255;not null"`
-	OriginalName string         `json:"original_name" gorm:"size:255;not null"`
-	FilePath     string         `json:"file_path" gorm:"size:500;not null"`
-	FileSize     int64          `json:"file_size" gorm:"not null"`
-	MimeType     string         `json:"mime_type" gorm:"size:100"`
-	ParentID     *uint          `json:"parent_id"`
-	UploadedBy   uint           `json:"uploaded_by" gorm:"not null"`
-	IsDirectory  bool           `json:"is_directory" gorm:"default:false"`
-	IsDeleted    bool           `json:"is_deleted" gorm:"default:false"`
-	DeletedAt    *time.Time     `json:"deleted_at"`
-	DeletedBy    *uint          `json:"deleted_by"`
-	CreatedAt    time.Time      `json:"created_at"`
-	UpdatedAt    time.Time      `json:"updated_at"`
+	ID            uint           `json:"id" gorm:"primaryKey"`
+	Name          string         `json:"name" gorm:"size:255;not null"`
+	OriginalName  string         `json:"original_name" gorm:"size:255;not null"`
+	FilePath      string         `json:"file_path" gorm:"size:500;not null"`
+	FileSize      int64          `json:"file_size" gorm:"not null"`
+	MimeType      string         `json:"mime_type" gorm:"size:100"`
+	ParentID      *uint          `json:"parent_id"`
+	UploadedBy    uint           `json:"uploaded_by" gorm:"not null"`
+	DownloadCount int            `json:"download_count" gorm:"default:0"`
+	IsDirectory   bool           `json:"is_directory" gorm:"default:false"`
+	IsDeleted     bool           `json:"is_deleted" gorm:"default:false"`
+	DeletedAt     *time.Time     `json:"deleted_at"`
+	DeletedBy     *uint          `json:"deleted_by"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 	
 	// 關聯
 	Parent       *File          `json:"parent,omitempty" gorm:"foreignKey:ParentID"`

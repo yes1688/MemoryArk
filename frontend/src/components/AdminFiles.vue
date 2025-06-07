@@ -32,13 +32,13 @@ const filteredAndSortedFiles = computed(() => {
   if (searchQuery.value) {
     filtered = filtered.filter(file => 
       file.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      file.uploader.toLowerCase().includes(searchQuery.value.toLowerCase())
+      (file.uploaderName?.toLowerCase().includes(searchQuery.value.toLowerCase()) ?? false)
     )
   }
 
-  // 類型篩選
+  // 類型篩選（根據 mimeType 前綴判斷）
   if (selectedType.value !== 'all') {
-    filtered = filtered.filter(file => file.type === selectedType.value)
+    filtered = filtered.filter(file => file.mimeType?.startsWith(selectedType.value))
   }
 
   // 排序
@@ -56,12 +56,12 @@ const filteredAndSortedFiles = computed(() => {
         bValue = b.size
         break
       case 'uploadDate':
-        aValue = new Date(a.uploadDate)
-        bValue = new Date(b.uploadDate)
+        aValue = new Date(a.createdAt)
+        bValue = new Date(b.createdAt)
         break
       case 'uploader':
-        aValue = a.uploader.toLowerCase()
-        bValue = b.uploader.toLowerCase()
+        aValue = a.uploaderName?.toLowerCase() ?? ''
+        bValue = b.uploaderName?.toLowerCase() ?? ''
         break
       default:
         return 0
@@ -78,10 +78,40 @@ const filteredAndSortedFiles = computed(() => {
 const loadFiles = async () => {
   isLoading.value = true
   try {
+    console.log('🔍 正在載入檔案列表...')
     const response = await adminApi.getAllFiles()
-    files.value = response.data.files
-  } catch (error) {
-    console.error('載入檔案列表失敗:', error)
+    console.log('📋 完整 API 回應:', response)
+    console.log('📁 檔案資料:', response.data)
+    console.log('📄 檔案數量:', response.data?.files?.length)
+    if (response.data?.files?.length > 0) {
+      console.log('📄 第一個檔案完整資料:', JSON.stringify(response.data.files[0], null, 2))
+    }
+    // 轉換後端回傳的資料格式到前端期望的格式
+    const transformedFiles = (response.data.files || []).map((file: any) => ({
+      id: file.id,
+      name: file.name,
+      originalName: file.original_name,
+      size: file.file_size,
+      mimeType: file.mime_type,
+      isDirectory: file.is_directory,
+      parentId: file.parent_id,
+      path: file.file_path,
+      uploaderId: file.uploaded_by,
+      uploaderName: file.uploader?.name,
+      downloadCount: file.download_count || 0,
+      isDeleted: file.is_deleted,
+      deletedAt: file.deleted_at,
+      deletedBy: file.deleted_by,
+      createdAt: file.created_at,
+      updatedAt: file.updated_at,
+      url: file.url,
+      thumbnailUrl: file.thumbnail_url
+    }))
+    files.value = transformedFiles
+  } catch (error: any) {
+    console.error('❌ 載入檔案列表失敗:', error)
+    console.error('❌ 錯誤詳情:', error.response?.data)
+    console.error('❌ 狀態碼:', error.response?.status)
   } finally {
     isLoading.value = false
   }
@@ -117,21 +147,20 @@ const downloadFile = async (file: FileInfo) => {
 }
 
 const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes'
+  if (!bytes || bytes === 0 || isNaN(bytes)) return '0 Bytes'
   const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-const getFileIcon = (type: string): string => {
-  switch (type) {
-    case 'image': return '🖼️'
-    case 'video': return '🎥'
-    case 'audio': return '🎵'
-    case 'document': return '📄'
-    default: return '📁'
-  }
+const getFileIcon = (mimeType: string | undefined): string => {
+  if (!mimeType) return '📁'
+  if (mimeType.startsWith('image/')) return '🖼️'
+  if (mimeType.startsWith('video/')) return '🎥'
+  if (mimeType.startsWith('audio/')) return '🎵'
+  if (mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('word')) return '📄'
+  return '📎'
 }
 
 const toggleSort = (field: string) => {
@@ -143,7 +172,11 @@ const toggleSort = (field: string) => {
   }
 }
 
+// 組件載入時立即輸出調試訊息
+console.log('🚀 AdminFiles 組件已載入!')
+
 onMounted(() => {
+  console.log('🎯 AdminFiles onMounted 被觸發')
   loadFiles()
 })
 </script>
@@ -204,19 +237,19 @@ onMounted(() => {
       </div>
       <div class="bg-white p-4 rounded-lg border">
         <div class="text-2xl font-bold text-green-600">
-          {{ formatFileSize(files.reduce((sum, file) => sum + file.size, 0)) }}
+          {{ formatFileSize(files.reduce((sum, file) => sum + (file.size || 0), 0)) }}
         </div>
         <div class="text-sm text-gray-600">總檔案大小</div>
       </div>
       <div class="bg-white p-4 rounded-lg border">
         <div class="text-2xl font-bold text-purple-600">
-          {{ files.filter(f => f.type === 'image').length }}
+          {{ files.filter(f => f.mimeType?.startsWith('image/')).length }}
         </div>
         <div class="text-sm text-gray-600">圖片檔案</div>
       </div>
       <div class="bg-white p-4 rounded-lg border">
         <div class="text-2xl font-bold text-orange-600">
-          {{ files.filter(f => f.type === 'video').length }}
+          {{ files.filter(f => f.mimeType?.startsWith('video/')).length }}
         </div>
         <div class="text-sm text-gray-600">影片檔案</div>
       </div>
@@ -281,7 +314,7 @@ onMounted(() => {
             >
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
-                  <span class="text-2xl mr-3">{{ getFileIcon(file.type) }}</span>
+                  <span class="text-2xl mr-3">{{ getFileIcon(file.mimeType) }}</span>
                   <div>
                     <div class="text-sm font-medium text-gray-900 max-w-xs truncate">
                       {{ file.name }}
@@ -291,17 +324,17 @@ onMounted(() => {
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  {{ file.type }}
+                  {{ file.mimeType || '未知' }}
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ formatFileSize(file.size) }}
+                {{ formatFileSize(file.size || 0) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ file.uploader }}
+                {{ file.uploaderName || '未知' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ new Date(file.uploadDate).toLocaleString() }}
+                {{ file.createdAt ? new Date(file.createdAt).toLocaleString() : '未知' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                 <button

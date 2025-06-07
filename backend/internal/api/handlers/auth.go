@@ -44,19 +44,28 @@ type RefreshTokenRequest struct {
 
 // AuthStatusResponse 認證狀態回應結構
 type AuthStatusResponse struct {
-	IsAuthenticated bool   `json:"is_authenticated"`
-	Status         string `json:"status"` // not_registered, pending, approved, rejected, suspended
-	User           *models.User `json:"user,omitempty"`
+	Authenticated      bool         `json:"authenticated"`
+	NeedsRegistration  bool         `json:"needsRegistration,omitempty"`
+	PendingApproval    bool         `json:"pendingApproval,omitempty"`
+	User              *models.User  `json:"user,omitempty"`
 }
 
 // GetAuthStatus 檢查當前用戶狀態 - 根據規格書定義
 func (h *AuthHandler) GetAuthStatus(c *gin.Context) {
-	// 從 Cloudflare Access 標頭獲取用戶郵箱
-	email := c.GetHeader("Cf-Access-Authenticated-User-Email")
+	// 從 Cloudflare Access 標頭獲取用戶郵箱 - 嘗試多種可能的格式
+	email := c.GetHeader("CF-Access-Authenticated-User-Email")
 	if email == "" {
-		c.JSON(http.StatusOK, AuthStatusResponse{
-			IsAuthenticated: false,
-			Status:         "not_authenticated",
+		email = c.GetHeader("Cf-Access-Authenticated-User-Email")
+	}
+	if email == "" {
+		email = c.GetHeader("cf-access-authenticated-user-email")
+	}
+	if email == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data": AuthStatusResponse{
+				Authenticated: false,
+			},
 		})
 		return
 	}
@@ -67,9 +76,12 @@ func (h *AuthHandler) GetAuthStatus(c *gin.Context) {
 	
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusOK, AuthStatusResponse{
-				IsAuthenticated: true,
-				Status:         "not_registered",
+			c.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"data": AuthStatusResponse{
+					Authenticated:     true,
+					NeedsRegistration: true,
+				},
 			})
 			return
 		}
@@ -83,10 +95,19 @@ func (h *AuthHandler) GetAuthStatus(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, AuthStatusResponse{
-		IsAuthenticated: true,
-		Status:         user.Status,
-		User:           &user,
+	// 根據用戶狀態返回相應的回應
+	response := AuthStatusResponse{
+		Authenticated: true,
+		User:         &user,
+	}
+	
+	if user.Status == "pending" {
+		response.PendingApproval = true
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    response,
 	})
 }
 
@@ -124,8 +145,14 @@ func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
 
 // Register 用戶註冊申請 - 按照規格書實現
 func (h *AuthHandler) Register(c *gin.Context) {
-	// 從 Cloudflare Access 標頭獲取用戶郵箱
-	email := c.GetHeader("Cf-Access-Authenticated-User-Email")
+	// 從 Cloudflare Access 標頭獲取用戶郵箱 - 嘗試多種可能的格式
+	email := c.GetHeader("CF-Access-Authenticated-User-Email")
+	if email == "" {
+		email = c.GetHeader("Cf-Access-Authenticated-User-Email")
+	}
+	if email == "" {
+		email = c.GetHeader("cf-access-authenticated-user-email")
+	}
 	if email == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,

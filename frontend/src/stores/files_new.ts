@@ -80,7 +80,14 @@ export const useFilesStore = defineStore('files', () => {
       
       // 重新載入當前資料夾
       await loadFiles(currentFolderId.value)
-      return response.data
+      
+      // 從更新後的檔案列表中找到剛上傳的檔案
+      const uploadedFile = files.value.find(f => f.id === response.data.id)
+      if (!uploadedFile) {
+        throw new Error('找不到上傳的檔案')
+      }
+      
+      return uploadedFile
     } catch (err: any) {
       error.value = err.message || '檔案上傳失敗'
       throw err

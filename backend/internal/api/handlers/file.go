@@ -602,6 +602,13 @@ func (h *FileHandler) DownloadFile(c *gin.Context) {
 		return
 	}
 	
+	// 增加下載計數
+	file.DownloadCount++
+	if err := h.db.Save(&file).Error; err != nil {
+		// 記錄錯誤但不中斷下載
+		fmt.Printf("Failed to update download count for file %d: %v\n", file.ID, err)
+	}
+	
 	// 設定回應標頭
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", file.OriginalName))
 	c.Header("Content-Type", file.MimeType)

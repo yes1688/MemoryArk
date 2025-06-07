@@ -12,8 +12,14 @@ import (
 // CloudflareAccessMiddleware Cloudflare Access 認證中間件
 func CloudflareAccessMiddleware(cfg *config.Config, db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 檢查 Cloudflare Access 標頭
+		// 檢查 Cloudflare Access 標頭 - 嘗試多種可能的格式
 		cfAccessEmail := c.GetHeader("CF-Access-Authenticated-User-Email")
+		if cfAccessEmail == "" {
+			cfAccessEmail = c.GetHeader("Cf-Access-Authenticated-User-Email")
+		}
+		if cfAccessEmail == "" {
+			cfAccessEmail = c.GetHeader("cf-access-authenticated-user-email")
+		}
 		if cfAccessEmail == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"success": false,

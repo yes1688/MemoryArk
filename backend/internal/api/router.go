@@ -81,6 +81,11 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		// 系統管理
 		admin.GET("/stats", adminHandler.GetSystemStats)
 		admin.GET("/logs", adminHandler.GetActivityLogs)
+		
+		// 檔案管理
+		admin.GET("/files", adminHandler.GetAllFiles)
+		admin.DELETE("/files/:id", adminHandler.DeleteFile)
+		admin.GET("/files/:id/download", adminHandler.DownloadFile)
 	}
 	
 	// 靜態文件服務

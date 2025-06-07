@@ -16,6 +16,7 @@ const emit = defineEmits<Emits>()
 
 const fileIcon = computed(() => {
   const mimeType = props.file.mimeType
+  if (!mimeType) return '📎'
   if (mimeType.startsWith('image/')) return '🖼️'
   if (mimeType.startsWith('video/')) return '🎥'
   if (mimeType.startsWith('audio/')) return '🎵'
@@ -27,7 +28,7 @@ const fileIcon = computed(() => {
 })
 
 const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return '0 Bytes'
+  if (!bytes || bytes === 0 || isNaN(bytes)) return '0 Bytes'
   const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
@@ -35,7 +36,10 @@ const formatFileSize = (bytes: number) => {
 }
 
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('zh-TW', {
+  if (!dateString) return '未知日期'
+  const date = new Date(dateString)
+  if (isNaN(date.getTime())) return '無效日期'
+  return date.toLocaleDateString('zh-TW', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -73,7 +77,7 @@ const handleDelete = () => {
       <!-- 檔案類型標籤 -->
       <div class="absolute top-2 right-2">
         <span class="px-2 py-1 bg-black bg-opacity-50 text-white text-xs rounded">
-          {{ file.category }}
+          {{ file.mimeType?.split('/')[0] || '檔案' }}
         </span>
       </div>
     </div>
@@ -89,13 +93,13 @@ const handleDelete = () => {
       </p>
 
       <div class="flex items-center justify-between mt-3 text-xs text-gray-500">
-        <span>{{ formatFileSize(file.size) }}</span>
+        <span>{{ formatFileSize(file.size || 0) }}</span>
         <span>{{ formatDate(file.createdAt) }}</span>
       </div>
 
       <div class="flex items-center justify-between mt-3 text-xs text-gray-500">
-        <span>上傳者：{{ file.uploaderName }}</span>
-        <span>下載：{{ file.downloadCount }} 次</span>
+        <span>上傳者：{{ file.uploaderName || '未知' }}</span>
+        <span>下載：{{ file.downloadCount || 0 }} 次</span>
       </div>
 
       <!-- 標籤 -->

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
+import { useAuthStore } from '@/stores/auth'
 import AdminUsers from '@/components/AdminUsers.vue'
 import AdminRegistrations from '@/components/AdminRegistrations.vue'
 import AdminFiles from '@/components/AdminFiles.vue'
@@ -21,7 +22,12 @@ const switchTab = (tabId: string) => {
 }
 
 onMounted(() => {
-  // 初始化載入
+  // 檢查當前用戶權限
+  const authStore = useAuthStore()
+  console.log('🔧 AdminView mounted')
+  console.log('👤 當前用戶:', authStore.user)
+  console.log('🔑 用戶角色:', authStore.user?.role)
+  console.log('✅ 是否已認證:', authStore.isAuthenticated)
 })
 </script>
 

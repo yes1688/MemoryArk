@@ -37,8 +37,40 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
 const redirectToCloudflareAuth = () => {
   // 重新導向到 Cloudflare 認證頁面
   window.location.href = '/'
 }
+
+onMounted(async () => {
+  // 檢查認證狀態，如果已通過 Cloudflare 認證，則重定向
+  if (!authStore.initialized) {
+    await authStore.checkAuthStatus()
+  }
+  
+  console.log('🔍 CloudflareAuthView - 檢查認證狀態:')
+  console.log('  - hasCloudflareAccess:', authStore.hasCloudflareAccess)
+  console.log('  - needsRegistration:', authStore.needsRegistration)
+  console.log('  - pendingApproval:', authStore.pendingApproval)
+  
+  if (authStore.hasCloudflareAccess) {
+    if (authStore.needsRegistration) {
+      console.log('✅ 已通過 Cloudflare 認證，重定向到註冊頁面')
+      router.push('/register')
+    } else if (authStore.pendingApproval) {
+      console.log('✅ 已註冊，重定向到等待審核頁面')
+      router.push('/pending-approval')
+    } else if (authStore.isAuthenticated) {
+      console.log('✅ 已完全認證，重定向到首頁')
+      router.push('/')
+    }
+  }
+})
 </script>

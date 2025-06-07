@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -482,4 +483,186 @@ func (h *AdminHandler) GetActivityLogs(c *gin.Context) {
 			},
 		},
 	})
+}
+
+// GetAllFiles 獲取所有檔案列表（管理員專用）
+func (h *AdminHandler) GetAllFiles(c *gin.Context) {
+	fmt.Printf("🚀 GetAllFiles 被呼叫\n")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	search := c.Query("search")
+	fileType := c.Query("type")
+	
+	fmt.Printf("📋 查詢參數: page=%d, limit=%d, search=%s, type=%s\n", page, limit, search, fileType)
+	
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	
+	offset := (page - 1) * limit
+	
+	var files []models.File
+	var total int64
+	
+	query := h.db.Model(&models.File{}).Where("is_deleted = ?", false)
+	
+	// 搜尋條件
+	if search != "" {
+		query = query.Where("name LIKE ? OR original_name LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+	
+	if fileType != "" {
+		query = query.Where("mime_type LIKE ?", fileType+"%")
+	}
+	
+	// 計算總數
+	if err := query.Count(&total).Error; err != nil {
+		fmt.Printf("❌ 查詢檔案總數失敗: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "DATABASE_ERROR",
+				"message": "查詢檔案總數失敗",
+			},
+		})
+		return
+	}
+	
+	fmt.Printf("📊 找到總檔案數: %d\n", total)
+	
+	// 獲取檔案列表
+	if err := query.Preload("Uploader").Offset(offset).Limit(limit).Order("created_at DESC").Find(&files).Error; err != nil {
+		fmt.Printf("❌ 查詢檔案列表失敗: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "DATABASE_ERROR",
+				"message": "查詢檔案列表失敗",
+			},
+		})
+		return
+	}
+	
+	fmt.Printf("📋 獲取到 %d 個檔案\n", len(files))
+	
+	// 轉換為前端需要的格式
+	var fileInfos []gin.H
+	for _, file := range files {
+		fileInfo := gin.H{
+			"id":             file.ID,
+			"name":           file.Name,
+			"originalName":   file.OriginalName,
+			"size":           file.FileSize,
+			"mimeType":       file.MimeType,
+			"isDirectory":    file.IsDirectory,
+			"parentId":       file.ParentID,
+			"path":           file.FilePath,
+			"uploaderId":     file.UploadedBy,
+			"uploaderName":   file.Uploader.Name,
+			"downloadCount":  0, // TODO: 實作下載計數功能
+			"isDeleted":      file.IsDeleted,
+			"deletedAt":      file.DeletedAt,
+			"deletedBy":      file.DeletedBy,
+			"createdAt":      file.CreatedAt,
+			"updatedAt":      file.UpdatedAt,
+		}
+		// 調試日誌
+		fmt.Printf("🔍 檔案資料: ID=%d, Name=%s, Size=%d, UploaderName=%s, CreatedAt=%s\n", 
+			file.ID, file.Name, file.FileSize, file.Uploader.Name, file.CreatedAt)
+		fileInfos = append(fileInfos, fileInfo)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"files": fileInfos,
+			"total": total,
+			"page":  page,
+			"totalPages": (total + int64(limit) - 1) / int64(limit),
+		},
+	})
+}
+
+// DeleteFile 刪除檔案（管理員專用）
+func (h *AdminHandler) DeleteFile(c *gin.Context) {
+	fileID := c.Param("id")
+	adminUserID, _ := c.Get("user_id")
+
+	var file models.File
+	if err := h.db.First(&file, fileID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "FILE_NOT_FOUND",
+				"message": "檔案不存在",
+			},
+		})
+		return
+	}
+
+	// 標記為已刪除
+	now := time.Now()
+	file.IsDeleted = true
+	file.DeletedAt = &now
+	file.DeletedBy = adminUserID.(*uint)
+
+	if err := h.db.Save(&file).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "DELETE_FAILED",
+				"message": "刪除檔案失敗",
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "檔案已刪除",
+	})
+}
+
+// DownloadFile 下載檔案（管理員專用）
+func (h *AdminHandler) DownloadFile(c *gin.Context) {
+	fileID := c.Param("id")
+
+	var file models.File
+	if err := h.db.First(&file, fileID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "FILE_NOT_FOUND",
+				"message": "檔案不存在",
+			},
+		})
+		return
+	}
+
+	if file.IsDeleted {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "FILE_DELETED",
+				"message": "檔案已被刪除",
+			},
+		})
+		return
+	}
+
+	// 增加下載計數
+	file.DownloadCount++
+	if err := h.db.Save(&file).Error; err != nil {
+		// 記錄錯誤但不中斷下載
+		fmt.Printf("Failed to update download count for file %d: %v\n", file.ID, err)
+	}
+	
+	// 設置下載回應標頭
+	c.Header("Content-Description", "File Transfer")
+	c.Header("Content-Disposition", "attachment; filename=\""+file.OriginalName+"\"")
+	c.Header("Content-Type", file.MimeType)
+	c.File(file.FilePath)
 }

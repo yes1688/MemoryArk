@@ -35,16 +35,20 @@ export const useAuthStore = defineStore('auth', () => {
       isLoading.value = true
       error.value = null
       
+      console.log('🔍 檢查認證狀態...')
       const response = await authApi.getAuthStatus()
+      console.log('📡 API 回應:', response)
       
       if (response.success) {
         authStatus.value = response.data
+        console.log('✅ 認證狀態已更新:', response.data)
         if (response.data.user) {
           user.value = response.data.user
         }
         initialized.value = true
         return response.data
       } else {
+        console.log('❌ API 回應失敗')
         authStatus.value = { authenticated: false }
         user.value = null
         initialized.value = true
@@ -52,9 +56,12 @@ export const useAuthStore = defineStore('auth', () => {
       }
     } catch (err: any) {
       // 處理不同的錯誤狀態
+      console.log('🚨 API 錯誤:', err)
       if (err.response?.status === 401) {
+        console.log('🔑 401 未授權')
         authStatus.value = { authenticated: false }
       } else if (err.response?.status === 403) {
+        console.log('🚫 403 禁止存取')
         const errorData = err.response.data
         authStatus.value = {
           authenticated: true,
@@ -62,6 +69,7 @@ export const useAuthStore = defineStore('auth', () => {
           pendingApproval: errorData.error === 'USER_NOT_APPROVED'
         }
       } else {
+        console.log('💥 其他錯誤:', err.message)
         error.value = '網路連線錯誤'
         authStatus.value = { authenticated: false }
       }
@@ -151,6 +159,13 @@ export const useAuthStore = defineStore('auth', () => {
     return await checkAuthStatus()
   }
 
+  // 登出
+  const logout = async () => {
+    clearAuth()
+    // 重定向到登入頁面
+    window.location.href = '/login'
+  }
+
   return {
     user,
     authStatus,
@@ -165,6 +180,7 @@ export const useAuthStore = defineStore('auth', () => {
     getCurrentUser,
     register,
     clearAuth,
-    refreshAuth
+    refreshAuth,
+    logout
   }
 })

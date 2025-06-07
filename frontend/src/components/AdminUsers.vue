@@ -15,11 +15,16 @@ const roles = [
 ]
 
 const filteredUsers = computed(() => {
+  // 確保 users.value 是陣列
+  if (!Array.isArray(users.value)) {
+    return []
+  }
+  
   let filtered = users.value
 
   if (searchQuery.value) {
     filtered = filtered.filter(user => 
-      user.username.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      user.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.value.toLowerCase())
     )
   }
@@ -45,7 +50,7 @@ const loadUsers = async () => {
 
 const updateUserRole = async (userId: number, newRole: string) => {
   try {
-    await adminApi.updateUser(userId, { role: newRole })
+    await adminApi.updateUserRole(userId, newRole)
     await loadUsers() // 重新載入列表
   } catch (error) {
     console.error('更新用戶角色失敗:', error)
@@ -58,7 +63,8 @@ const deleteUser = async (userId: number) => {
   }
 
   try {
-    await adminApi.deleteUser(userId)
+    // TODO: 實作刪除用戶功能
+    console.log('刪除用戶功能尚未實作', userId)
     await loadUsers() // 重新載入列表
   } catch (error) {
     console.error('刪除用戶失敗:', error)
@@ -140,13 +146,13 @@ onMounted(() => {
                   <div class="flex-shrink-0 h-10 w-10">
                     <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                       <span class="text-blue-600 font-medium">
-                        {{ user.username.charAt(0).toUpperCase() }}
+                        {{ user.name.charAt(0).toUpperCase() }}
                       </span>
                     </div>
                   </div>
                   <div class="ml-4">
                     <div class="text-sm font-medium text-gray-900">
-                      {{ user.username }}
+                      {{ user.name }}
                     </div>
                     <div class="text-sm text-gray-500">
                       {{ user.email }}
