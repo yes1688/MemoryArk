@@ -24,6 +24,11 @@ func main() {
 		log.Fatal("Failed to initialize database:", err)
 	}
 	
+	// 初始化根管理員
+	if err := database.InitializeRootAdmin(db, cfg); err != nil {
+		log.Printf("Warning: Failed to initialize root admin: %v", err)
+	}
+	
 	// 啟動 API 服務器
 	router := api.SetupRouter(db, cfg)
 	

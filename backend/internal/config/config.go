@@ -14,6 +14,7 @@ type Config struct {
 	Auth      AuthConfig
 	Upload    UploadConfig
 	Cloudflare CloudflareConfig
+	Admin     AdminConfig
 }
 
 // ServerConfig 服務器配置
@@ -50,6 +51,12 @@ type CloudflareConfig struct {
 	Enabled      bool
 }
 
+// AdminConfig 管理員配置
+type AdminConfig struct {
+	RootEmail string
+	RootName  string
+}
+
 // Load 載入配置
 func Load() (*Config, error) {
 	// 載入 .env 文件（如果存在）
@@ -57,7 +64,7 @@ func Load() (*Config, error) {
 	
 	config := &Config{
 		Server: ServerConfig{
-			Port: getEnv("PORT", "7001"),
+			Port: getEnv("PORT", "8080"),
 			Mode: getEnv("GIN_MODE", "debug"),
 			Host: getEnv("HOST", "0.0.0.0"),
 		},
@@ -79,6 +86,10 @@ func Load() (*Config, error) {
 			ClientID:     getEnv("CLOUDFLARE_CLIENT_ID", ""),
 			ClientSecret: getEnv("CLOUDFLARE_CLIENT_SECRET", ""),
 			Enabled:      getEnvBool("CLOUDFLARE_ENABLED", false),
+		},
+		Admin: AdminConfig{
+			RootEmail: getEnv("ROOT_ADMIN_EMAIL", ""),
+			RootName:  getEnv("ROOT_ADMIN_NAME", "系統管理員"),
 		},
 	}
 	

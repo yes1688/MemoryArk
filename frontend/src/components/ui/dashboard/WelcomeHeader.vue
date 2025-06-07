@@ -142,7 +142,7 @@ const nextSabbath = computed(() => {
 })
 
 const sabbathLocation = computed(() => {
-  return '真耶穌教會台北教會'
+  return '真耶穌教會開元教會'
 })
 
 // 方法

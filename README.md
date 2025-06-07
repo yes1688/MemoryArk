@@ -1,52 +1,61 @@
-# MemoryArk 2.0 - 真耶穌教會媒體管理系統
+# MemoryArk 2.0
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org)
-[![Vue Version](https://img.shields.io/badge/Vue.js-3.x-green.svg)](https://vuejs.org)
+> 真耶穌教會的現代化媒體檔案管理系統
 
-## 專案概述
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![Version](https://img.shields.io/badge/Version-2.0.0-green.svg)](./CHANGELOG.md)
 
-MemoryArk 2.0 是專為真耶穌教會設計的現代化媒體管理系統，提供高效的文件管理、媒體處理和用戶協作功能。系統採用現代化技術堆疊，具備企業級安全性和性能優化。
+## 🎯 專案概述
 
-### 主要特性
+MemoryArk 2.0 是為真耶穌教會設計的現代化媒體檔案管理系統，提供安全、高效的檔案存儲、管理和分享功能，特別針對教會的安息日資料、共享資源等需求進行優化。
 
-- 🔐 **雙層身份驗證** - Cloudflare Access + 內部用戶審核機制
-- 📁 **智能文件管理** - 支持多種媒體格式，智能分類和搜索
-- 🎵 **音頻處理** - 自動轉換和優化音頻文件
-- 📱 **響應式設計** - 完美適配桌面和移動設備
-- ⚡ **高性能** - Go 後端 + Vue 3 前端，快速響應
-- 🐳 **容器化部署** - 使用 Podman 容器，易於部署和維護
+### ✨ 主要特色
 
-## 技術堆疊
+- 🔐 **安全認證** - 基於 JWT 的用戶認證和權限管理
+- 📁 **檔案管理** - 支援多種檔案格式的上傳、分類和管理
+- 🔍 **智能搜尋** - 強大的檔案搜尋和篩選功能
+- 🏷️ **標籤系統** - 靈活的標籤分類和管理
+- ❤️ **收藏功能** - 個人化的檔案收藏和整理
+- 🔗 **分享連結** - 安全的檔案分享和權限控制
+- 📊 **存儲統計** - 詳細的存儲使用情況分析
+- 🎨 **現代 UI** - 基於 Windows 11 設計語言的美觀界面
 
-### 前端
-- **框架**: Vue 3 + TypeScript
-- **UI庫**: Element Plus
-- **構建工具**: Vite
-- **狀態管理**: Pinia
+### 🎯 教會特色功能
 
-### 後端
-- **語言**: Go 1.21+
-- **框架**: Gin
-- **數據庫**: SQLite
-- **認證**: JWT + Cloudflare Access
+- 📖 **安息日資料專區** - 專門的安息日資料管理和分享
+- 🤝 **共享資源中心** - 教會內部資源共享平台
+- 👥 **用戶權限管理** - 靈活的角色和權限控制
+- 📱 **響應式設計** - 支援桌面和行動裝置
 
-### 部署
-- **容器**: Podman
-- **反向代理**: Nginx
-- **端口**: 7001
+## 🛠️ 技術架構
 
-## 快速開始
+### 後端技術
+- **Go 1.22** - 高效能的後端服務
+- **Gin Framework** - 輕量級 Web 框架
+- **SQLite** - 輕量級關聯式資料庫
+- **GORM** - Go ORM 框架
+- **JWT** - 安全的用戶認證
 
-### 前置需求
+### 前端技術
+- **Vue 3** - 現代化前端框架
+- **TypeScript** - 類型安全的 JavaScript
+- **Tailwind CSS** - 實用優先的 CSS 框架
+- **Pinia** - Vue 狀態管理
+- **Vite** - 快速的建構工具
 
-- **Podman** 4.0+ (推薦) 或 Docker
-- **Git** 版本控制
-- **Make** (可選，簡化開發命令)
+### 基礎設施
+- **Docker/Podman** - 容器化部署
+- **Nginx** - 反向代理和靜態檔案服務
+- **Alpine Linux** - 輕量級容器基礎映像
 
-> 💡 本項目採用容器化開發，無需在本機安裝 Go 或 Node.js
+## 🚀 快速開始
 
-### 🐳 容器化開發環境設置 (推薦)
+### 系統需求
+
+- **Docker/Podman** 4.0+
+- **端口** 7001（對外服務）
+
+### 部署步驟
 
 1. **克隆專案**
    ```bash
@@ -54,148 +63,113 @@ MemoryArk 2.0 是專為真耶穌教會設計的現代化媒體管理系統，提
    cd MemoryArk2
    ```
 
-2. **啟動開發環境**
+2. **配置環境變數**
    ```bash
-   # 使用 Makefile (推薦)
-   make dev-start
+   cp .env.example .env
+   # 編輯 .env 設定你的配置
+   ```
+
+3. **啟動服務**
+   ```bash
+   # 使用 Docker
+   docker-compose up -d
    
-   # 或使用腳本
-   ./scripts/dev-start.sh
+   # 或使用 Podman
+   podman-compose up -d
    ```
 
-3. **進入開發容器**
+4. **訪問系統**
+   - 開啟瀏覽器前往：http://localhost:7001
+   - 使用設定的根管理員信箱登入
+
+### 環境變數配置
+
+創建 `.env` 檔案並設定以下變數：
+
+```bash
+# JWT 認證密鑰（建議使用 openssl rand -hex 32 生成）
+JWT_SECRET=your-64-character-hex-secret-key
+
+# 根管理員設定（首次啟動自動創建）
+ROOT_ADMIN_EMAIL=admin@yourchurch.org
+ROOT_ADMIN_NAME=系統管理員
+
+# Cloudflare Access（可選）
+CLOUDFLARE_ENABLED=false
+```
+
+## 📖 開發指南
+
+### 本地開發
+
+1. **後端開發**
    ```bash
-   make dev-shell
+   cd backend
+   go run ./cmd/server
    ```
 
-4. **初始化開發環境**
+2. **前端開發**
    ```bash
-   # 在容器內執行
-   make init-all
+   cd frontend
+   npm install
+   npm run dev
    ```
 
-5. **開始開發**
+3. **使用開發腳本**
    ```bash
-   # 後端開發 (在容器內)
-   cd /app/backend && air
+   # 啟動開發環境
+   ./scripts/dev.sh start
    
-   # 前端開發 (在容器內，新終端)
-   cd /app/frontend && npm run dev
+   # 停止開發環境
+   ./scripts/dev.sh stop
    ```
 
-6. **訪問應用**
-   - 前端: <http://localhost:5173>
-   - 後端 API: <http://localhost:7001>
-
-### 📚 傳統本地開發 (可選)
-
-### 使用 Podman 部署
-
-1. **構建容器**
-   ```bash
-   podman build -t memoryark2 .
-   ```
-
-2. **運行容器**
-   ```bash
-   podman run -d -p 7001:7001 --name memoryark2 \
-     -v ./data:/app/data \
-     -v ./uploads:/app/uploads \
-     memoryark2
-   ```
-
-## 專案結構
+### 專案結構
 
 ```
 MemoryArk2/
-├── backend/                 # Go 後端應用
-│   ├── cmd/                # 應用程序入口
+├── backend/                 # Go 後端服務
+│   ├── cmd/server/         # 主程式入口
 │   ├── internal/           # 內部包
-│   │   ├── api/           # API 路由和處理器
-│   │   ├── auth/          # 認證相關
-│   │   ├── config/        # 配置管理
-│   │   ├── database/      # 數據庫相關
-│   │   ├── middleware/    # 中間件
-│   │   ├── models/        # 數據模型
-│   │   └── services/      # 業務邏輯
-│   ├── pkg/               # 公共包
-│   └── go.mod
-├── frontend/               # Vue 3 前端應用
-│   ├── src/
-│   │   ├── components/    # Vue 組件
-│   │   ├── views/         # 頁面視圖
-│   │   ├── stores/        # Pinia 狀態管理
-│   │   ├── router/        # 路由配置
-│   │   ├── api/           # API 調用
-│   │   └── utils/         # 工具函數
-│   ├── public/            # 靜態資源
-│   └── package.json
-├── docs/                   # 文檔
-├── deploy/                 # 部署配置
-├── .github/               # GitHub 配置
-└── README.md
+│   └── pkg/               # 公用包
+├── frontend/               # Vue 前端應用
+│   ├── src/               # 源代碼
+│   └── dist/              # 建構輸出
+├── docs/                   # 專案文檔
+├── scripts/               # 開發腳本
+├── docker-compose.yml     # 容器編排
+├── Dockerfile            # 容器建構
+└── nginx.conf            # Nginx 配置
 ```
 
-## 認證流程
+## 📚 文檔
 
-MemoryArk 2.0 採用雙層認證機制：
+- [API 設計文檔](./docs/API_DESIGN.md)
+- [部署指南](./docs/DEPLOYMENT.md)
+- [開發環境設置](./docs/DEVELOPMENT.md)
+- [專案結構說明](./docs/PROJECT_STRUCTURE.md)
+- [貢獻指南](./CONTRIBUTING.md)
+- [技術規格](./SPECIFICATION.md)
 
-1. **第一層**: Cloudflare Access 進行 Google 帳號驗證
-2. **第二層**: 內部用戶註冊申請和管理員審核
+## 🔄 更新記錄
 
-### 用戶註冊流程
+詳見 [CHANGELOG.md](./CHANGELOG.md)
 
-1. 用戶通過 Cloudflare Access 驗證
-2. 填寫註冊申請表（姓名、電話、所屬教會等）
-3. 管理員審核申請
-4. 審核通過後用戶可正常使用系統
+## 🤝 貢獻
 
-## API 文檔
+歡迎提交 Issue 和 Pull Request！請先閱讀 [貢獻指南](./CONTRIBUTING.md)。
 
-API 文檔將在開發完成後通過 Swagger UI 提供，通常可以在以下地址訪問：
-- 開發環境: http://localhost:7001/swagger/
-- 生產環境: https://your-domain.com/api/swagger/
+## 📄 授權
 
-## 配置說明
+本專案採用 [MIT 授權](./LICENSE)。
 
-### 環境變量
-
-| 變量名 | 說明 | 默認值 |
-|--------|------|--------|
-| `PORT` | 服務端口 | 7001 |
-| `DB_PATH` | SQLite 數據庫路徑 | ./data/memoryark.db |
-| `UPLOAD_PATH` | 文件上傳路徑 | ./uploads |
-| `JWT_SECRET` | JWT 密鑰 | - |
-| `CLOUDFLARE_DOMAIN` | Cloudflare Access 域名 | - |
-
-### Cloudflare Access 配置
-
-請參考 `docs/cloudflare-setup.md` 了解如何配置 Cloudflare Access。
-
-## 貢獻指南
-
-請閱讀 [CONTRIBUTING.md](CONTRIBUTING.md) 了解如何參與專案貢獻。
-
-## 版本歷史
-
-請查看 [CHANGELOG.md](CHANGELOG.md) 了解版本變更記錄。
-
-## 許可證
-
-本專案採用 MIT 許可證 - 查看 [LICENSE](LICENSE) 文件了解詳情。
-
-## 支持
+## 📞 支援
 
 如有問題或建議，請：
+1. 查閱 [文檔](./docs/)
+2. 搜尋現有的 [Issues](../../issues)
+3. 提交新的 [Issue](../../issues/new)
 
-1. 查看 [文檔](docs/)
-2. 搜索 [Issues](../../issues)
-3. 創建新的 [Issue](../../issues/new)
+---
 
-## 作者
-
-- **開發團隊** - 真耶穌教會 IT 部門
-
-## 致謝
-
-感謝所有為 MemoryArk 2.0 專案做出貢獻的開發者和用戶。
+*為真耶穌教會的數位化服務而設計 💙*

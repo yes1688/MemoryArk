@@ -1,551 +1,261 @@
-# MemoryArk 2.0 部署指南
+# 部署指南
 
-本文檔詳細說明如何在生產環境中部署 MemoryArk 2.0。
+本文檔說明如何在生產環境中部署 MemoryArk 2.0。
 
-## 目錄
+## 🎯 部署概述
 
-- [系統需求](#系統需求)
-- [Podman 部署](#podman-部署)
-- [Nginx 配置](#nginx-配置)
-- [Cloudflare Access 設置](#cloudflare-access-設置)
-- [SSL 證書配置](#ssl-證書配置)
-- [備份策略](#備份策略)
-- [監控和日誌](#監控和日誌)
-- [故障排除](#故障排除)
+MemoryArk 2.0 採用容器化架構，支援 Docker 和 Podman 部署：
 
-## 系統需求
+```
+┌─────────────────┐    ┌──────────────┐    ┌─────────────────┐
+│   用戶請求       │───▶│    Nginx     │───▶│   後端服務       │
+│  (port 7001)    │    │   (反向代理)  │    │  (Go + SQLite)  │
+└─────────────────┘    └──────────────┘    └─────────────────┘
+```
 
-### 硬體需求
-- **CPU**: 2 核心或以上
-- **RAM**: 4GB 或以上
-- **儲存**: 50GB 或以上（根據媒體文件需求調整）
-- **網路**: 穩定的網際網路連接
+## 📋 系統需求
 
-### 軟體需求
-- **作業系統**: Linux (Ubuntu 20.04+ / CentOS 8+ / RHEL 8+)
-- **Podman**: 4.0 或以上
-- **Nginx**: 1.18 或以上
-- **Git**: 2.25 或以上
+### 最低需求
+- **作業系統**：Linux (推薦 Ubuntu 20.04+, CentOS 8+)
+- **容器引擎**：Docker 20.0+ 或 Podman 4.0+
+- **記憶體**：2GB RAM
+- **儲存空間**：10GB（依使用量調整）
+- **網路**：開放 7001 端口
 
-## Podman 部署
+### 推薦配置
+- **記憶體**：4GB+ RAM
+- **CPU**：2+ 核心
+- **儲存空間**：50GB+ SSD
 
-### 1. 準備部署文件
+## 🚀 快速部署
+
+### 1. 準備環境
 
 ```bash
 # 克隆專案
 git clone <repository-url>
 cd MemoryArk2
 
-# 創建必要的目錄
-sudo mkdir -p /opt/memoryark2/{data,uploads,logs,backups}
-sudo chown -R $USER:$USER /opt/memoryark2
+# 確認容器引擎可用
+docker --version
+# 或
+podman --version
 ```
 
-### 2. 配置環境變量
+### 2. 配置環境變數
 
 ```bash
-# 複製並編輯環境配置
-cp backend/.env.example /opt/memoryark2/.env
-nano /opt/memoryark2/.env
+# 複製環境變數範例
+cp .env.example .env
+
+# 編輯配置
+nano .env
 ```
 
-重要配置項：
-```env
-APP_ENV=production
-PORT=7001
-DB_PATH=/app/data/memoryark.db
-UPLOAD_PATH=/app/uploads
-JWT_SECRET=your-production-jwt-secret-here
-CLOUDFLARE_DOMAIN=your-domain.com
-CLOUDFLARE_AUD=your-cloudflare-audience-tag
-```
-
-### 3. 構建容器映像
+**重要配置項目**：
 
 ```bash
-# 構建映像
-podman build -t memoryark2:latest .
+# JWT 認證密鑰（必須設定）
+JWT_SECRET=$(openssl rand -hex 32)
 
-# 或使用預構建映像（如果可用）
-# podman pull ghcr.io/your-org/memoryark2:latest
+# 根管理員設定
+ROOT_ADMIN_EMAIL=admin@yourchurch.org
+ROOT_ADMIN_NAME=系統管理員
+
+# Cloudflare Access（可選）
+CLOUDFLARE_ENABLED=false
 ```
 
-### 4. 運行容器
+### 3. 啟動服務
 
 ```bash
-# 創建 Podman 網路（可選）
-podman network create memoryark-network
+# 使用 Docker
+docker-compose up -d
 
-# 運行容器
-podman run -d \
-  --name memoryark2 \
-  --network memoryark-network \
-  -p 127.0.0.1:7001:7001 \
-  -v /opt/memoryark2/data:/app/data \
-  -v /opt/memoryark2/uploads:/app/uploads \
-  -v /opt/memoryark2/logs:/app/logs \
-  -v /opt/memoryark2/.env:/app/.env:ro \
-  --restart unless-stopped \
-  memoryark2:latest
+# 或使用 Podman
+podman-compose up -d
 ```
 
-### 5. 設置系統服務
-
-創建 systemd 服務文件：
+### 4. 驗證部署
 
 ```bash
-sudo nano /etc/systemd/system/memoryark2.service
+# 檢查容器狀態
+docker-compose ps
+# 或
+podman-compose ps
+
+# 檢查服務健康狀態
+curl http://localhost:7001/api/health
 ```
 
-```ini
-[Unit]
-Description=MemoryArk 2.0 Container
-After=network-online.target
-Wants=network-online.target
+## 🔧 詳細配置
 
-[Service]
-Type=forking
-ExecStart=/usr/bin/podman start memoryark2
-ExecStop=/usr/bin/podman stop memoryark2
-PIDFile=/run/containers/storage/overlay-containers/%i/userdata/conmon.pid
-KillMode=none
-Restart=on-failure
-RestartSec=5
+### 環境變數說明
 
-[Install]
-WantedBy=multi-user.target
+| 變數名稱 | 說明 | 預設值 | 必須 |
+|---------|------|--------|------|
+| `JWT_SECRET` | JWT 認證密鑰 | - | ✅ |
+| `ROOT_ADMIN_EMAIL` | 根管理員信箱 | - | ✅ |
+| `ROOT_ADMIN_NAME` | 根管理員名稱 | 系統管理員 | ❌ |
+| `CLOUDFLARE_ENABLED` | Cloudflare Access | false | ❌ |
+
+### 容器配置
+
+#### 後端容器
+- **映像**：基於 Go 1.22 Alpine
+- **端口**：8080（內部）
+- **資料持久化**：
+  - `./data` → `/app/data`（資料庫）
+  - `./uploads` → `/app/uploads`（檔案）
+  - `./logs` → `/app/logs`（日誌）
+
+#### Nginx 容器
+- **映像**：nginx:alpine
+- **端口**：7001（對外）→ 80（內部）
+- **功能**：
+  - 靜態檔案服務
+  - API 請求代理
+  - 檔案上傳處理
+
+### 目錄結構
+
+```
+MemoryArk2/
+├── data/                    # 資料庫檔案（持久化）
+│   └── memoryark.db
+├── uploads/                 # 上傳檔案（持久化）
+├── logs/                    # 應用程式日誌（持久化）
+├── frontend/dist/           # 前端靜態檔案
+├── docker-compose.yml       # 容器編排配置
+├── Dockerfile              # 後端容器建構
+├── nginx.conf              # Nginx 配置
+└── .env                    # 環境變數配置
 ```
 
-啟用服務：
+## 🔒 安全考量
+
+### 檔案權限
+
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable memoryark2
-sudo systemctl start memoryark2
+# 設定適當的目錄權限
+chmod 755 data uploads logs
+chown -R 1000:1000 data uploads logs
 ```
 
-## Nginx 配置
-
-### 1. 安裝 Nginx
+### 防火牆設定
 
 ```bash
 # Ubuntu/Debian
-sudo apt update && sudo apt install nginx
+sudo ufw allow 7001/tcp
 
 # CentOS/RHEL
-sudo yum install nginx
-# 或
-sudo dnf install nginx
+sudo firewall-cmd --permanent --add-port=7001/tcp
+sudo firewall-cmd --reload
 ```
 
-### 2. 配置虛擬主機
+### SSL/TLS 配置
 
-創建配置文件：
-```bash
-sudo nano /etc/nginx/sites-available/memoryark2
-```
+如需 HTTPS，建議使用反向代理（如 Cloudflare）或更新 Nginx 配置：
 
 ```nginx
-# /etc/nginx/sites-available/memoryark2
-
-upstream memoryark2_backend {
-    server 127.0.0.1:7001;
-    keepalive 32;
-}
-
 server {
-    listen 80;
-    server_name your-domain.com;
+    listen 443 ssl;
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
     
-    # 重定向到 HTTPS
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name your-domain.com;
-    
-    # SSL 配置
-    ssl_certificate /path/to/your/certificate.crt;
-    ssl_certificate_key /path/to/your/private.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
-    
-    # 安全標頭
-    add_header X-Frame-Options DENY;
-    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection "1; mode=block";
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    
-    # 文件上傳大小限制
-    client_max_body_size 100M;
-    
-    # 靜態文件處理
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        try_files $uri $uri/ @proxy;
-    }
-    
-    # API 路由
-    location /api/ {
-        proxy_pass http://memoryark2_backend;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-        proxy_connect_timeout 30s;
-        proxy_send_timeout 30s;
-        proxy_read_timeout 30s;
-    }
-    
-    # 文件上傳路由
-    location /uploads/ {
-        proxy_pass http://memoryark2_backend;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_request_buffering off;
-        proxy_connect_timeout 300s;
-        proxy_send_timeout 300s;
-        proxy_read_timeout 300s;
-    }
-    
-    # 默認路由（SPA 支持）
-    location / {
-        proxy_pass http://memoryark2_backend;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-        
-        # SPA 回退
-        try_files $uri $uri/ @proxy;
-    }
-    
-    location @proxy {
-        proxy_pass http://memoryark2_backend;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-    
-    # 健康檢查
-    location /health {
-        access_log off;
-        proxy_pass http://memoryark2_backend;
-    }
+    # 其他配置...
 }
 ```
 
-### 3. 啟用配置
+## 📊 監控和維護
 
-```bash
-# 啟用網站配置
-sudo ln -s /etc/nginx/sites-available/memoryark2 /etc/nginx/sites-enabled/
-
-# 測試配置
-sudo nginx -t
-
-# 重載 Nginx
-sudo systemctl reload nginx
-```
-
-## Cloudflare Access 設置
-
-### 1. 創建 Cloudflare Access 應用程序
-
-1. 登入 Cloudflare Dashboard
-2. 選擇您的域名
-3. 轉到 **Access** > **Applications**
-4. 點擊 **Add an application**
-5. 選擇 **Self-hosted**
-
-### 2. 配置應用程序設置
-
-**Application Configuration:**
-- Application name: `MemoryArk 2.0`
-- Application domain: `your-domain.com`
-- Session duration: `24 hours`
-
-**Authentication:**
-- Add identity provider: **Google**
-- Configure allowed users/groups
-
-### 3. 創建訪問策略
-
-```json
-{
-  "name": "MemoryArk Users",
-  "decision": "allow",
-  "rules": [
-    {
-      "emails": ["user1@church.org", "user2@church.org"],
-      "groups": ["church-members"]
-    }
-  ]
-}
-```
-
-### 4. 獲取配置信息
-
-從 Cloudflare Access 獲取以下信息並更新 `.env` 文件：
-- `CLOUDFLARE_DOMAIN`
-- `CLOUDFLARE_AUD`
-- `CLOUDFLARE_CERT_URL`
-
-## SSL 證書配置
-
-### 使用 Let's Encrypt
-
-```bash
-# 安裝 Certbot
-sudo apt install certbot python3-certbot-nginx
-
-# 獲取證書
-sudo certbot --nginx -d your-domain.com
-
-# 設置自動更新
-sudo crontab -e
-# 添加以下行
-0 12 * * * /usr/bin/certbot renew --quiet
-```
-
-## 備份策略
-
-### 1. 數據庫備份
-
-```bash
-#!/bin/bash
-# /opt/memoryark2/scripts/backup-db.sh
-
-BACKUP_DIR="/opt/memoryark2/backups"
-DB_PATH="/opt/memoryark2/data/memoryark.db"
-DATE=$(date +%Y%m%d_%H%M%S)
-
-# 創建備份
-sqlite3 $DB_PATH ".backup $BACKUP_DIR/memoryark_$DATE.db"
-
-# 壓縮備份
-gzip "$BACKUP_DIR/memoryark_$DATE.db"
-
-# 清理舊備份（保留 30 天）
-find $BACKUP_DIR -name "memoryark_*.db.gz" -mtime +30 -delete
-```
-
-### 2. 文件備份
-
-```bash
-#!/bin/bash
-# /opt/memoryark2/scripts/backup-files.sh
-
-BACKUP_DIR="/opt/memoryark2/backups"
-UPLOAD_DIR="/opt/memoryark2/uploads"
-DATE=$(date +%Y%m%d_%H%M%S)
-
-# 創建上傳文件備份
-tar -czf "$BACKUP_DIR/uploads_$DATE.tar.gz" -C "$UPLOAD_DIR" .
-
-# 清理舊備份
-find $BACKUP_DIR -name "uploads_*.tar.gz" -mtime +30 -delete
-```
-
-### 3. 自動備份 Cron 作業
-
-```bash
-sudo crontab -e
-```
-
-```cron
-# 每日凌晨 2 點備份數據庫
-0 2 * * * /opt/memoryark2/scripts/backup-db.sh
-
-# 每週日凌晨 3 點備份文件
-0 3 * * 0 /opt/memoryark2/scripts/backup-files.sh
-```
-
-## 監控和日誌
-
-### 1. 應用程序日誌
+### 日誌查看
 
 ```bash
 # 查看容器日誌
-podman logs memoryark2
+docker-compose logs -f
 
-# 持續監控日誌
-podman logs -f memoryark2
-
-# 查看應用日誌文件
-tail -f /opt/memoryark2/logs/app.log
+# 查看特定服務日誌
+docker-compose logs -f backend
+docker-compose logs -f nginx
 ```
 
-### 2. 系統監控
+### 資料備份
 
-安裝監控工具：
 ```bash
-# 安裝 htop 和 iotop
-sudo apt install htop iotop
+# 備份資料庫
+cp data/memoryark.db backup/memoryark_$(date +%Y%m%d).db
 
-# 安裝 disk usage analyzer
-sudo apt install ncdu
+# 備份上傳檔案
+tar -czf backup/uploads_$(date +%Y%m%d).tar.gz uploads/
 ```
 
-### 3. 日誌輪轉
-
-創建日誌輪轉配置：
-```bash
-sudo nano /etc/logrotate.d/memoryark2
-```
-
-```
-/opt/memoryark2/logs/*.log {
-    daily
-    missingok
-    rotate 30
-    compress
-    delaycompress
-    notifempty
-    create 644 root root
-    postrotate
-        podman kill -s USR1 memoryark2 || true
-    endscript
-}
-```
-
-## 故障排除
-
-### 常見問題
-
-1. **容器無法啟動**
-   ```bash
-   # 檢查容器狀態
-   podman ps -a
-   
-   # 檢查日誌
-   podman logs memoryark2
-   
-   # 檢查磁碟空間
-   df -h
-   ```
-
-2. **Nginx 502 錯誤**
-   ```bash
-   # 檢查後端服務
-   curl http://localhost:7001/health
-   
-   # 檢查 Nginx 配置
-   sudo nginx -t
-   
-   # 檢查 Nginx 日誌
-   sudo tail -f /var/log/nginx/error.log
-   ```
-
-3. **文件上傳失敗**
-   ```bash
-   # 檢查磁碟空間
-   df -h /opt/memoryark2/uploads
-   
-   # 檢查權限
-   ls -la /opt/memoryark2/uploads
-   
-   # 檢查 Nginx 配置中的文件大小限制
-   ```
-
-### 性能優化
-
-1. **數據庫優化**
-   ```sql
-   -- 定期執行 VACUUM
-   VACUUM;
-   
-   -- 分析查詢計劃
-   EXPLAIN QUERY PLAN SELECT ...;
-   ```
-
-2. **Nginx 緩存**
-   ```nginx
-   # 在 http 區塊添加
-   proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=memoryark_cache:10m max_size=1g inactive=60m use_temp_path=off;
-   
-   # 在 server 區塊添加
-   location /api/ {
-       proxy_cache memoryark_cache;
-       proxy_cache_valid 200 5m;
-       proxy_cache_use_stale error timeout invalid_header updating http_500 http_502 http_503 http_504;
-       # ... 其他配置
-   }
-   ```
-
-3. **容器資源限制**
-   ```bash
-   # 運行容器時添加資源限制
-   podman run -d \
-     --name memoryark2 \
-     --memory=2g \
-     --cpus=2 \
-     # ... 其他參數
-   ```
-
-## 更新部署
+### 更新部署
 
 ```bash
 # 拉取最新代碼
-git pull origin main
+git pull
 
-# 重新構建映像
-podman build -t memoryark2:latest .
-
-# 停止並移除舊容器
-podman stop memoryark2
-podman rm memoryark2
-
-# 運行新容器
-podman run -d \
-  --name memoryark2 \
-  # ... 相同的參數
+# 重建並重啟服務
+docker-compose down
+docker-compose build
+docker-compose up -d
 ```
 
-## 安全考慮
+## 🐛 故障排除
 
-1. **防火牆配置**
+### 常見問題
+
+1. **端口被占用**
    ```bash
-   # 僅允許必要端口
-   sudo ufw allow ssh
-   sudo ufw allow 80
-   sudo ufw allow 443
-   sudo ufw enable
+   # 檢查端口使用情況
+   sudo netstat -tlnp | grep 7001
+   
+   # 或使用其他端口
+   sed -i 's/7001:80/8001:80/' docker-compose.yml
    ```
 
-2. **定期安全更新**
+2. **權限問題**
    ```bash
-   # 系統更新
-   sudo apt update && sudo apt upgrade
-
-   # 容器映像更新
-   podman pull memoryark2:latest
+   # 修復目錄權限
+   sudo chown -R $(id -u):$(id -g) data uploads logs
    ```
 
-3. **監控異常活動**
+3. **容器無法啟動**
    ```bash
-   # 檢查失敗的登入嘗試
-   sudo grep "Failed password" /var/log/auth.log
-
-   # 監控網路連接
-   sudo netstat -tulpn
+   # 檢查容器日誌
+   docker-compose logs backend
+   
+   # 檢查環境變數
+   docker-compose config
    ```
 
-如需更多幫助，請參考 [故障排除指南](troubleshooting.md) 或聯繫技術支援團隊。
+### 效能調優
+
+1. **增加檔案上傳限制**
+   ```nginx
+   # 在 nginx.conf 中增加
+   client_max_body_size 500M;
+   ```
+
+2. **資料庫優化**
+   ```bash
+   # SQLite 效能調優（在後端配置中）
+   PRAGMA journal_mode=WAL;
+   PRAGMA synchronous=NORMAL;
+   ```
+
+## 📞 支援
+
+如遇到部署問題：
+
+1. 檢查 [故障排除](#-故障排除) 章節
+2. 查看容器日誌
+3. 提交 [Issue](../../issues/new) 並附上：
+   - 系統環境資訊
+   - 錯誤日誌
+   - 部署步驟
+
+---
+
+*確保在生產環境中定期備份資料 🔒*

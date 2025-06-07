@@ -1,209 +1,70 @@
-# MemoryArk 2.0 變更記錄
+# 更新記錄
 
-所有重要的專案變更都會記錄在此文件中。
+本檔案記錄 MemoryArk 2.0 的所有重要變更。
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)，
-並且本專案遵循 [語義化版本控制](https://semver.org/lang/zh-TW/)。
+版本編號遵循 [語意化版本](https://semver.org/lang/zh-TW/)。
 
-## [2025-06-03] 修復: WebSocket 連線失敗和 API 連線被拒問題
+## [2.0.0] - 2025-01-07
 
-- 修復前端 API 配置中的端口不匹配問題（從 port 3000 改為 7001）
-- 配置 Vite HMR WebSocket 以正確支援 Cloudflare Tunnel
-- 添加 favicon.svg 解決 404 錯誤
-- 更新 Vite 配置以改善通過 Cloudflare Tunnel 的開發體驗
-- 確認後端 API 在 port 7001 正常運行
-- 驗證 Cloudflare Access 認證流程正常工作
-- **新增**: 創建 HMR 修復腳本解決 Mixed Content 錯誤
+### 🎉 新增
+- **現代化前端架構** - 使用 Vue 3 + TypeScript + Tailwind CSS
+- **Windows 11 設計語言** - 全新的 UI 設計系統
+- **教會特色功能**
+  - 安息日資料專區
+  - 共享資源中心
+  - 教會分類和配色系統
+- **進階檔案管理**
+  - 標籤系統 - 支援建立、搜尋、分類標籤
+  - 收藏功能 - 支援收藏夾分類管理
+  - 最近訪問記錄 - 時間分組顯示和清除功能
+  - 分享連結生成 - 支援過期時間、密碼保護、下載限制
+- **全新首頁設計**
+  - 個人化歡迎頭部
+  - 快速操作區
+  - 最近檔案小工具
+  - 儲存空間統計
+  - 快速訪問資料夾
+- **根管理員自動初始化** - 透過環境變數自動創建管理員帳號
 
-### 技術細節
+### 🔧 改進
+- **容器化架構** - 簡化為 Backend + Nginx 雙容器架構
+- **環境變數優化** - 統一配置管理，減少 82% 無用變數
+- **檔案管理** - 全面重構檔案管理界面和功能
+- **響應式設計** - 支援桌面和行動裝置
+- **效能優化** - 前端建構和載入速度提升
 
-- 後端配置: 默認端口 7001 (config.go 中的默認值)
-- 前端配置: API 基礎 URL 更新為 <http://localhost:7001/api>
-- Vite HMR: 移除強制協議配置，讓 Vite 自動處理
-- Favicon: 創建 SVG 格式的簡單圖標
-- **HMR 修復**: 創建客戶端腳本自動將 WS 連接轉換為 WSS
+### 🗑️ 移除
+- **過度設計的配置** - 移除 20 個無用檔案和腳本
+- **Cloudflare Tunnel** - 簡化部署，移除複雜的隧道配置
+- **supervisord** - 採用更簡潔的容器架構
+- **多餘的環境變數** - 大幅精簡配置項目
 
-### 已解決的錯誤
+### 🔄 變更
+- **技術棧更新**
+  - 前端：Vue 3 + TypeScript + Tailwind CSS
+  - 後端：Go 1.22 + Gin Framework
+  - 部署：Docker/Podman + Nginx
+- **端口配置** - 統一對外使用 7001 端口
+- **檔案結構** - 重新組織專案結構，提高可維護性
 
-- `GET http://localhost:3000/api/auth/status net::ERR_CONNECTION_REFUSED`
-- WebSocket 連線失敗 (`wss://files.94work.net/?token=*` 和 `wss://localhost:5173/?token=*`)
-- `GET http://files.94work.net/favicon.ico 404 (Not Found)`
-- **Mixed Content 錯誤**: `Mixed Content: The page at 'https://files.94work.net/cloudflare-auth' was loaded over HTTPS, but attempted to connect to the insecure WebSocket endpoint 'ws://files.94work.net:5173'`
+### 🐛 修復
+- **TypeScript 類型錯誤** - 修復前端類型定義問題
+- **容器建構** - 解決前端建構時的依賴問題
+- **環境變數** - 修復配置不一致的問題
 
-## [2025-06-02] 修復完成: 後端服務編譯錯誤和數據庫遷移
+## [1.0.0] - 初始版本
 
-- 修復 file.go 中 userID 變量未使用的編譯錯誤，添加用戶權限控制
-- 修復 auth.go 中未使用的 import
-- 修復數據庫模型中 Phone 字段 NOT NULL 約束問題
-- 後端服務成功啟動，所有 API 路由正常註冊
-- ✅ 所有服務已準備就緒，可進行 Cloudflare Tunnels 部署
-
-## [2025-06-02] 修復: 後端服務編譯錯誤和數據庫遷移問題
-
-- 修復 `file.go` 中 userID 變量未使用的編譯錯誤，添加用戶權限控制
-- 修復 `auth.go` 中未使用的 import (`time`, `memoryark/internal/auth`)
-- 修復 `router.go` 中未使用的 userHandler 變量
-- 修復數據庫模型中 Phone 字段 NOT NULL 約束導致的遷移錯誤
-- 重新創建數據庫文件以解決模式衝突
-- 後端服務成功啟動，所有 API 路由正常註冊
-
-## [2025-06-02] 完成: MemoryArk 2.0 Cloudflare Tunnels 部署準備檢查
-
-- ✅ 容器 memoryark-dev 正在運行 (Up 21+ hours)
-- ✅ 前端服務 (端口 5173) 正常監聽和響應 (HTTP 200)
-- ✅ 後端服務 (端口 7001) 正常監聽和響應 (HTTP 200)
-- ✅ API 健康檢查通過 (`{"status":"healthy","version":"2.0.0"}`)
-- ✅ Cloudflare Tunnel 配置文件和部署腳本存在
-- ✅ cloudflared 工具已安裝 (版本 2025.4.0)
-- 🎉 所有服務已準備就緒，可進行 Cloudflare Tunnels 部署
-
-## [2025-06-02] 添加: 部署狀態檢查腳本
-
-- 創建 `check-deployment-status.sh` 自動化檢查腳本
-- 提供完整的部署前狀態驗證
-- 包含容器、端口、服務響應和配置文件檢查
-
-## [2025-06-03] 已完成: NGINX 代理統一入口配置
-
-### ✅ NGINX 代理配置成功
-
-- **統一入口**: 端口 7001 作為容器唯一對外端口
-- **前端代理**: `<http://localhost:7001/>` → 前端服務 (5173)
-- **API 代理**: `<http://localhost:7001/api/*>` → 後端服務 (8080)
-- **健康檢查**: `<http://localhost:7001/nginx-health>` → NGINX 狀態
-
-### 🔧 修復內容
-
-1. **容器內安裝 NGINX + Supervisor**
-
-   - 在現有 `memoryark-dev` 容器中安裝 nginx 和 supervisor
-   - 配置 supervisor 統一管理三個服務: nginx、frontend、backend
-
-2. **後端配置調整**
-
-   - 修改後端端口從 7001 → 8080 避免與 NGINX 衝突
-   - 修復 `auth.go` 編譯錯誤（重複代碼、語法錯誤）
-   - 添加缺失的類型定義: `LoginRequest`, `RefreshTokenRequest`
-   - 添加 `auth` 包引用解決依賴問題
-
-3. **NGINX 配置優化**
-
-   - 移除 `try_files` 指令，直接代理所有非 API 請求到前端
-   - 配置正確的上游服務器: frontend_dev (5173), backend_api (8080)
-   - 添加安全標頭和 CORS 支持
-   - 支援 WebSocket 和 Vite HMR
-
-### 📊 服務狀態
-
-- **NGINX**: 進程 7322 (master) + 7323 (worker) - 端口 7001 ✅
-- **前端**: 進程 7277 (Vite) - 端口 5173 ✅
-- **後端**: 進程 7297 (Go) - 端口 8080 ✅
-- **Supervisor**: 進程 7127 (統一管理) ✅
-
-### 🌐 訪問方式
-
-- **Web 界面**: `<http://localhost:7001>` (透過 NGINX 代理)
-- **API 端點**: `<http://localhost:7001/api/*>` (透過 NGINX 代理)
-- **健康檢查**: `<http://localhost:7001/nginx-health>`
-
-### 🔗 Cloudflare Tunnels 準備狀況
-
-- 容器已準備好通過 Cloudflare Tunnels 進行部署訪問
-- 所有服務通過統一端口 7001 對外提供服務
-- 適合透過隧道進行生產環境部署
-
-## [未發布]
-
-### 修復
-
-- [2025-01-21] 修復 FilesView.vue 檔案截斷問題並重新整合完整功能
-
-  - 使用 FilesView_new.vue 的完整內容重新創建 FilesView.vue
-  - 修復 Files Store 與 API 之間的參數不匹配問題
-  - 修正類型錯誤，包括 navigateToPath 方法的 null 值處理
-  - 調整 API 調用以匹配實際的後端接口簽名
-  - 確保檔案管理功能（上傳、創建資料夾、刪除、還原等）正常運作
-
-### 功能新增
-
-- 專案初始化和技術規格制定
-- 雙層身份驗證系統設計（Cloudflare Access + 內部審核）
-- 用戶註冊申請流程設計
-- 技術架構設計（Vue 3 + Go + SQLite）
-- 專案文檔結構建立
-
-### 計劃中
-
-- 後端 API 開發
-- 前端界面開發
-- 數據庫模式實現
-- 認證系統實現
-- 文件管理功能
-- 媒體處理功能
-
-## [0.1.0] - 2024-12-19
-
-### 新增功能
-
-- 專案技術規格文檔 (SPECIFICATION.md)
-- 專案基礎文檔結構
-- README.md 專案介紹
-- CHANGELOG.md 變更記錄
-- 貢獻指南架構
-
-### 變更
-
-- 確定技術堆疊：Vue 3 + TypeScript + Go + SQLite
-- 設計雙層認證機制
-- 規劃用戶管理流程
-
-## [2025-06-02] 完成: 前後端完整開發環境建置
-
-- **後端 Go 項目**: 成功建立完整的後端架構
-
-  - 實現所有 API 處理器 (auth, user, file, admin, health)
-  - 完成 GORM 模型定義 (User, File, UserRegistrationRequest, ActivityLog, MediaTask)
-  - 建立 JWT 認證中介軟體
-  - 實現日誌系統和配置管理
-  - 修復 SQLite 驅動程序兼容性 (使用 github.com/glebarez/sqlite)
-  - 修復所有欄位名稱和方法名稱問題
-  - **✅ 後端編譯成功，可執行文件生成**
-
-- **前端 Vue 3 項目**: 成功建立完整的前端架構
-
-  - 實現所有核心組件 (FileCard, FileFilters, FileUploader)
-  - 建立管理員組件 (AdminUsers, AdminRegistrations, AdminFiles, AdminStats)
-  - 完成 Pinia 狀態管理 (auth, files stores)
-  - 建立 API 服務層 (auth, files, admin)
-  - 實現所有頁面視圖 (Home, Login, Register, Upload, Admin)
-  - 配置 Tailwind CSS 樣式系統
-  - 修復 PostCSS 配置 ES6 模組問題
-  - **✅ 前端構建成功，開發服務器正常啟動**
-
-- **開發環境**: 容器化開發環境完全就緒
-
-  - **✅ 前端依賴安裝成功 (434 packages)**
-  - **✅ 後端依賴安裝成功 (純 Go SQLite 驅動)**
-  - **✅ 前端 Vite 開發服務器運行正常** (`<http://localhost:5173>`)
-  - **✅ 後端編譯生成可執行文件 (19MB)**
-
-## [2025-06-02] 新增: Podman 容器化開發環境
-
-- 新增 Podman 開發環境配置 (Dockerfile.dev)
-- 新增開發腳本 (scripts/dev-start.sh, dev-shell.sh, dev-stop.sh)
-- 新增前後端初始化腳本 (scripts/init-backend.sh, init-frontend.sh)
-- 新增 Makefile 簡化開發命令
-- 新增 Podman 開發指南文檔 (docs/PODMAN_DEVELOPMENT.md)
-- 更新 docker-compose.dev.yml 支援 Podman
-- 更新 README.md 優先推薦容器化開發流程
+### 新增
+- 基礎檔案管理功能
+- 用戶認證系統
+- 初步的 Web 界面
 
 ---
 
-## 變更類型說明
-
-- **新增** - 新功能
-- **變更** - 現有功能的變更
-- **棄用** - 即將移除的功能
-- **移除** - 已移除的功能
-- **修復** - 錯誤修復
-- **安全** - 安全性相關變更
+**版本說明**：
+- `新增` 表示新功能
+- `改進` 表示現有功能的改善
+- `移除` 表示被移除的功能
+- `變更` 表示重大變更
+- `修復` 表示錯誤修復
