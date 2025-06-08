@@ -63,21 +63,21 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <div
             v-for="item in group.files"
-            :key="`${item.file.id}-${item.accessedAt}`"
+            :key="`${item.id}-${item.lastAccessedAt}`"
             class="access-file-card bg-white rounded-win11 shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow duration-200"
           >
             <!-- 檔案圖標和動作標記 -->
             <div class="flex items-start justify-between mb-3">
               <div class="flex items-center space-x-3">
                 <AppFileIcon
-                  :file-type="item.file.mimeType"
+                  :file-type="item.mimeType"
                   size="md"
                 />
                 <div class="flex-1 min-w-0">
-                  <h4 class="font-medium text-gray-900 truncate" :title="item.file.originalName">
-                    {{ item.file.originalName }}
+                  <h4 class="font-medium text-gray-900 truncate" :title="item.originalName">
+                    {{ item.originalName }}
                   </h4>
-                  <p class="text-sm text-gray-500">{{ formatFileSize(item.file.size) }}</p>
+                  <p class="text-sm text-gray-500">{{ formatFileSize(item.size) }}</p>
                 </div>
               </div>
               
@@ -86,24 +86,24 @@
                 <span
                   :class="[
                     'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-                    getActionStyle(item.action)
+                    getActionStyle(item.lastAction)
                   ]"
                 >
-                  {{ getActionText(item.action) }}
+                  {{ getActionText(item.lastAction) }}
                 </span>
               </div>
             </div>
             
             <!-- 訪問時間 -->
             <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
-              <span>{{ formatAccessTime(item.accessedAt) }}</span>
-              <span>{{ item.file.uploaderName || '未知用戶' }}</span>
+              <span>{{ formatAccessTime(item.lastAccessedAt) }}</span>
+              <span>{{ item.uploaderName || '未知用戶' }}</span>
             </div>
             
             <!-- 操作按鈕 -->
             <div class="flex space-x-2">
               <AppButton
-                @click="openFile(item.file)"
+                @click="openFile(item)"
                 variant="primary"
                 size="small"
                 class="flex-1"
@@ -118,7 +118,7 @@
               </AppButton>
               
               <AppButton
-                @click="downloadFile(item.file)"
+                @click="downloadFile(item)"
                 variant="ghost"
                 size="small"
               >
@@ -232,14 +232,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { AppButton, AppDialog } from '@/components/ui'
 import AppFileIcon from '@/components/ui/file-icon/AppFileIcon.vue'
-import type { FileInfo } from '@/types/files'
-
-interface AccessHistoryItem {
-  id: number
-  file: FileInfo
-  action: 'view' | 'download' | 'edit'
-  accessedAt: string
-}
+import type { AccessHistoryItem } from '@/types/files'
 
 interface TimeGroup {
   label: string
@@ -247,7 +240,7 @@ interface TimeGroup {
 }
 
 interface Emits {
-  (e: 'file-selected', file: FileInfo): void
+  (e: 'file-selected', file: AccessHistoryItem): void
 }
 
 const emit = defineEmits<Emits>()
@@ -276,7 +269,7 @@ const timeGroups = computed((): TimeGroup[] => {
   ]
   
   accessHistory.value.forEach(item => {
-    const accessDate = new Date(item.accessedAt)
+    const accessDate = new Date(item.lastAccessedAt)
     
     if (accessDate >= today) {
       groups[0].files.push(item)
@@ -308,45 +301,54 @@ const loadAccessHistory = async (page = 1) => {
     const mockHistory: AccessHistoryItem[] = [
       {
         id: 1,
-        file: {
-          id: 1,
-          originalName: '講道錄音_主的恩典.mp3',
-          mimeType: 'audio/mpeg',
-          size: 15728640,
-          uploaderName: '張傳道',
-          createdAt: '2024-12-25T10:00:00Z',
-          downloadCount: 12
-        },
-        action: 'view',
-        accessedAt: new Date().toISOString()
+        name: 'sermon-grace.mp3',
+        originalName: '講道錄音_主的恩典.mp3',
+        mimeType: 'audio/mpeg',
+        size: 15728640,
+        uploaderName: '張傳道',
+        createdAt: '2024-12-25T10:00:00Z',
+        updatedAt: '2024-12-25T10:00:00Z',
+        downloadCount: 12,
+        lastAccessedAt: new Date().toISOString(),
+        lastAction: 'view',
+        isDirectory: false,
+        path: '/audio/sermon-grace.mp3',
+        uploaderId: 1,
+        isDeleted: false
       },
       {
         id: 2,
-        file: {
-          id: 2,
-          originalName: '2024年度教會活動總結.pdf',
-          mimeType: 'application/pdf',
-          size: 2097152,
-          uploaderName: '李執事',
-          createdAt: '2024-12-24T14:30:00Z',
-          downloadCount: 8
-        },
-        action: 'download',
-        accessedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+        name: 'annual-report-2024.pdf',
+        originalName: '2024年度教會活動總結.pdf',
+        mimeType: 'application/pdf',
+        size: 2097152,
+        uploaderName: '李執事',
+        createdAt: '2024-12-24T14:30:00Z',
+        updatedAt: '2024-12-24T14:30:00Z',
+        downloadCount: 8,
+        lastAccessedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        lastAction: 'download',
+        isDirectory: false,
+        path: '/documents/annual-report-2024.pdf',
+        uploaderId: 2,
+        isDeleted: false
       },
       {
         id: 3,
-        file: {
-          id: 3,
-          originalName: '聖餐禮照片集.zip',
-          mimeType: 'application/zip',
-          size: 52428800,
-          uploaderName: '王弟兄',
-          createdAt: '2024-12-23T16:45:00Z',
-          downloadCount: 25
-        },
-        action: 'view',
-        accessedAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString()
+        name: 'communion-photos.zip',
+        originalName: '聖餐禮照片集.zip',
+        mimeType: 'application/zip',
+        size: 52428800,
+        uploaderName: '王弟兄',
+        createdAt: '2024-12-23T16:45:00Z',
+        updatedAt: '2024-12-23T16:45:00Z',
+        downloadCount: 25,
+        lastAccessedAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+        lastAction: 'view',
+        isDirectory: false,
+        path: '/photos/communion-photos.zip',
+        uploaderId: 3,
+        isDeleted: false
       }
     ]
     
@@ -378,13 +380,13 @@ const loadMore = () => {
   }
 }
 
-const openFile = (file: FileInfo) => {
+const openFile = (file: AccessHistoryItem) => {
   emit('file-selected', file)
   // 記錄新的訪問
   recordAccess(file.id, 'view')
 }
 
-const downloadFile = (file: FileInfo) => {
+const downloadFile = (file: AccessHistoryItem) => {
   window.open(`/api/files/${file.id}/download`, '_blank')
   recordAccess(file.id, 'download')
 }
@@ -426,7 +428,7 @@ const clearHistory = async () => {
     }
     
     accessHistory.value = accessHistory.value.filter(item => {
-      return new Date(item.accessedAt) > cutoffDate
+      return new Date(item.lastAccessedAt) > cutoffDate
     })
     
     showClearDialog.value = false
@@ -445,7 +447,7 @@ const recordAccess = async (fileId: number, action: 'view' | 'download' | 'edit'
 }
 
 const getActionText = (action: string): string => {
-  const actionMap = {
+  const actionMap: Record<string, string> = {
     view: '查看',
     download: '下載',
     edit: '編輯'
@@ -454,7 +456,7 @@ const getActionText = (action: string): string => {
 }
 
 const getActionStyle = (action: string): string => {
-  const styleMap = {
+  const styleMap: Record<string, string> = {
     view: 'bg-blue-100 text-blue-800',
     download: 'bg-green-100 text-green-800',
     edit: 'bg-orange-100 text-orange-800'

@@ -67,14 +67,14 @@
   
   <!-- 上傳模態框 -->
   <UploadModal
-    v-if="showUploadModal"
+    :isVisible="showUploadModal"
     @close="showUploadModal = false"
     @files-uploaded="handleFilesUploaded"
   />
   
   <!-- 創建資料夾模態框 -->
   <CreateFolderModal
-    v-if="showCreateFolderModal"
+    :isVisible="showCreateFolderModal"
     @close="showCreateFolderModal = false"
     @folder-created="handleFolderCreated"
   />

@@ -16,7 +16,7 @@ const toggleSidebar = () => {
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 
 // 路由動畫方向判斷
-const routeDepthMap = {
+const routeDepthMap: Record<string, number> = {
   '/': 1,
   '/upload': 2,
   '/shared': 2,
@@ -70,13 +70,13 @@ const onEnter = (el: Element) => {
           isSidebarOpen ? 'w-64' : 'w-16'
         ]"
       >
-        <div class="flex items-center justify-between p-4 border-b">
-          <h1 v-show="isSidebarOpen" class="text-xl font-bold text-gray-800">
+        <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <h1 v-show="isSidebarOpen" class="text-xl font-bold text-gray-800 dark:text-gray-200">
             MemoryArk 2.0
           </h1>
           <button
             @click="toggleSidebar"
-            class="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -87,8 +87,8 @@ const onEnter = (el: Element) => {
         <nav class="mt-4">
           <RouterLink
             to="/"
-            class="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-            active-class="bg-blue-50 text-blue-600 border-r-2 border-blue-600"
+            class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            active-class="bg-blue-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 border-r-2 border-blue-600 dark:border-blue-400"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
@@ -98,8 +98,8 @@ const onEnter = (el: Element) => {
 
           <RouterLink
             to="/upload"
-            class="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-            active-class="bg-blue-50 text-blue-600 border-r-2 border-blue-600"
+            class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            active-class="bg-blue-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 border-r-2 border-blue-600 dark:border-blue-400"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -110,8 +110,8 @@ const onEnter = (el: Element) => {
           <RouterLink
             v-if="authStore.user?.role === 'admin'"
             to="/admin"
-            class="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-            active-class="bg-blue-50 text-blue-600 border-r-2 border-blue-600"
+            class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            active-class="bg-blue-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 border-r-2 border-blue-600 dark:border-blue-400"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
@@ -121,16 +121,16 @@ const onEnter = (el: Element) => {
         </nav>
 
         <!-- 用戶信息和登出 -->
-        <div class="absolute bottom-0 left-0 right-0 p-4 border-t bg-white">
+        <div class="absolute bottom-0 left-0 right-0 p-4 border-t bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <div class="flex items-center">
             <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">
               {{ authStore.user?.name?.charAt(0) || 'U' }}
             </div>
             <div v-show="isSidebarOpen" class="ml-3 flex-1">
-              <p class="text-sm font-medium text-gray-700">{{ authStore.user?.name }}</p>
+              <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ authStore.user?.name }}</p>
               <button
                 @click="authStore.logout"
-                class="text-xs text-gray-500 hover:text-red-600 transition-colors"
+                class="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
               >
                 登出
               </button>

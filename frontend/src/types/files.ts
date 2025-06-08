@@ -99,3 +99,15 @@ export interface FileListResponse {
   page: number
   totalPages: number
 }
+
+// 最近檔案類型 - 繼承 FileInfo 並添加訪問記錄
+export interface RecentFile extends FileInfo {
+  lastAccessedAt: string
+  lastAction: 'view' | 'download' | 'edit'
+}
+
+// 訪問歷史類型 - 繼承 FileInfo 並添加訪問記錄
+export interface AccessHistoryItem extends FileInfo {
+  lastAccessedAt: string
+  lastAction: 'view' | 'download' | 'edit'
+}

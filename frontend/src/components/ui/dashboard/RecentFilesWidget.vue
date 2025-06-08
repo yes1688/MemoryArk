@@ -169,15 +169,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import AppFileIcon from '@/components/ui/file-icon/AppFileIcon.vue'
-import type { FileInfo } from '@/types/files'
-
-interface RecentFile extends FileInfo {
-  lastAccessedAt: string
-  lastAction: 'view' | 'download' | 'edit'
-}
+import type { RecentFile } from '@/types/files'
 
 interface Emits {
-  (e: 'file-selected', file: FileInfo): void
+  (e: 'file-selected', file: RecentFile): void
 }
 
 const emit = defineEmits<Emits>()
@@ -190,17 +185,17 @@ const isLoading = ref(false)
 // 視圖模式選項
 const viewModes = [
   {
-    value: 'grid',
+    value: 'grid' as const,
     label: '網格視圖',
     icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z'
   },
   {
-    value: 'list',
+    value: 'list' as const,
     label: '列表視圖',
     icon: 'M4 6h16M4 10h16M4 14h16M4 18h16'
   },
   {
-    value: 'timeline',
+    value: 'timeline' as const,
     label: '時間線視圖',
     icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
   }
@@ -249,58 +244,88 @@ const loadRecentFiles = async () => {
     recentFiles.value = [
       {
         id: 1,
+        name: 'christmas-video-2024.mp4',
         originalName: '2024年聖誕節聚會錄影.mp4',
         mimeType: 'video/mp4',
         size: 125829120,
         uploaderName: '張傳道',
         createdAt: '2024-12-25T10:00:00Z',
+        updatedAt: '2024-12-25T10:00:00Z',
         downloadCount: 45,
         lastAccessedAt: new Date().toISOString(),
-        lastAction: 'view'
+        lastAction: 'view',
+        isDirectory: false,
+        path: '/videos/christmas-video-2024.mp4',
+        uploaderId: 1,
+        isDeleted: false
       },
       {
         id: 2,
+        name: 'annual-financial-report.pdf',
         originalName: '教會年度財務報告.pdf',
         mimeType: 'application/pdf',
         size: 2097152,
         uploaderName: '李執事',
         createdAt: '2024-12-20T14:30:00Z',
+        updatedAt: '2024-12-20T14:30:00Z',
         downloadCount: 23,
         lastAccessedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        lastAction: 'download'
+        lastAction: 'download',
+        isDirectory: false,
+        path: '/documents/annual-financial-report.pdf',
+        uploaderId: 2,
+        isDeleted: false
       },
       {
         id: 3,
+        name: 'hymnal-v5.docx',
         originalName: '詩歌本第五版.docx',
         mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         size: 5242880,
         uploaderName: '王姊妹',
         createdAt: '2024-12-18T16:45:00Z',
+        updatedAt: '2024-12-18T16:45:00Z',
         downloadCount: 67,
         lastAccessedAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-        lastAction: 'edit'
+        lastAction: 'edit',
+        isDirectory: false,
+        path: '/documents/hymnal-v5.docx',
+        uploaderId: 3,
+        isDeleted: false
       },
       {
         id: 4,
+        name: 'bible-study-john.txt',
         originalName: '聖經查經筆記_約翰福音.txt',
         mimeType: 'text/plain',
         size: 1048576,
         uploaderName: '陳弟兄',
         createdAt: '2024-12-15T09:20:00Z',
+        updatedAt: '2024-12-15T09:20:00Z',
         downloadCount: 31,
         lastAccessedAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-        lastAction: 'view'
+        lastAction: 'view',
+        isDirectory: false,
+        path: '/documents/bible-study-john.txt',
+        uploaderId: 4,
+        isDeleted: false
       },
       {
         id: 5,
+        name: 'church-activity-photos.zip',
         originalName: '教會活動照片集.zip',
         mimeType: 'application/zip',
         size: 52428800,
         uploaderName: '林姊妹',
         createdAt: '2024-12-10T11:15:00Z',
+        updatedAt: '2024-12-10T11:15:00Z',
         downloadCount: 89,
         lastAccessedAt: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
-        lastAction: 'download'
+        lastAction: 'download',
+        isDirectory: false,
+        path: '/photos/church-activity-photos.zip',
+        uploaderId: 5,
+        isDeleted: false
       }
     ]
   } catch (error) {
@@ -365,7 +390,7 @@ const formatDetailedTime = (dateString: string): string => {
 }
 
 const getActionText = (action: string): string => {
-  const actionMap = {
+  const actionMap: Record<string, string> = {
     view: '查看',
     download: '下載',
     edit: '編輯'
@@ -374,7 +399,7 @@ const getActionText = (action: string): string => {
 }
 
 const getActionStyle = (action: string): string => {
-  const styleMap = {
+  const styleMap: Record<string, string> = {
     view: 'bg-blue-100 text-blue-800',
     download: 'bg-green-100 text-green-800',
     edit: 'bg-orange-100 text-orange-800'

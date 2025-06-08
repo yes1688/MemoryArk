@@ -11,8 +11,8 @@ const stats = ref({
 
 const isLoading = ref(true)
 
-const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return '0 Bytes'
+const formatFileSize = (bytes: number | undefined | null) => {
+  if (!bytes || bytes === 0 || isNaN(bytes)) return '0 Bytes'
   const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
@@ -23,11 +23,26 @@ const loadStats = async () => {
   try {
     isLoading.value = true
     const response = await adminApi.getSystemStats()
-    if (response.success) {
-      stats.value = response.data
+    if (response.success && response.data) {
+      // 確保所有數值都是有效的數字
+      stats.value = {
+        totalUsers: Number(response.data.totalUsers) || 0,
+        totalFiles: Number(response.data.totalFiles) || 0,
+        totalSize: Number(response.data.totalSize) || 0,
+        pendingRegistrations: Number(response.data.pendingRegistrations) || 0
+      }
+    } else {
+      console.warn('API 回應無效或缺少數據:', response)
     }
   } catch (error) {
     console.error('載入統計資料失敗:', error)
+    // 使用預設值
+    stats.value = {
+      totalUsers: 0,
+      totalFiles: 0,
+      totalSize: 0,
+      pendingRegistrations: 0
+    }
   } finally {
     isLoading.value = false
   }

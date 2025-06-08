@@ -104,15 +104,15 @@ const buttonClasses = computed(() => {
       'focus:ring-primary-500'
     ],
     secondary: [
-      'bg-white',
-      'text-gray-700',
+      'bg-white dark:bg-gray-800',
+      'text-gray-700 dark:text-gray-300',
       'border',
-      'border-gray-300',
+      'border-gray-300 dark:border-gray-600',
       'shadow-win11',
-      'hover:bg-gray-50',
-      'hover:border-gray-400',
+      'hover:bg-gray-50 dark:hover:bg-gray-700',
+      'hover:border-gray-400 dark:hover:border-gray-500',
       'hover:shadow-win11-hover',
-      'active:bg-gray-100',
+      'active:bg-gray-100 dark:active:bg-gray-600',
       'active:shadow-win11-active',
       'focus:ring-gray-500'
     ],
@@ -130,20 +130,20 @@ const buttonClasses = computed(() => {
     ],
     ghost: [
       'bg-transparent',
-      'text-gray-700',
-      'hover:bg-gray-100',
-      'hover:text-gray-900',
-      'active:bg-gray-200',
+      'text-gray-700 dark:text-gray-300',
+      'hover:bg-gray-100 dark:hover:bg-gray-800',
+      'hover:text-gray-900 dark:hover:text-gray-100',
+      'active:bg-gray-200 dark:active:bg-gray-700',
       'focus:ring-gray-500'
     ],
     outline: [
       'bg-transparent',
-      'text-primary-600',
+      'text-primary-600 dark:text-primary-400',
       'border',
-      'border-primary-300',
-      'hover:bg-primary-50',
-      'hover:border-primary-400',
-      'active:bg-primary-100',
+      'border-primary-300 dark:border-primary-600',
+      'hover:bg-primary-50 dark:hover:bg-primary-900/20',
+      'hover:border-primary-400 dark:hover:border-primary-500',
+      'active:bg-primary-100 dark:active:bg-primary-900/30',
       'focus:ring-primary-500'
     ]
   }

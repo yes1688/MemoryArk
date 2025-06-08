@@ -156,7 +156,7 @@ const containerClasses = computed(() => {
     'items-center',
     'transition-colors',
     'duration-200',
-    'bg-white',
+    'bg-white dark:bg-gray-800',
     'border-2',
     'rounded-win11'
   ]
@@ -174,11 +174,11 @@ const containerClasses = computed(() => {
   } else if (isFocused.value) {
     stateClasses.push('border-primary-500', 'ring-1', 'ring-primary-500')
   } else {
-    stateClasses.push('border-gray-300', 'hover:border-gray-400')
+    stateClasses.push('border-gray-300 dark:border-gray-600', 'hover:border-gray-400 dark:hover:border-gray-500')
   }
 
   if (props.disabled) {
-    stateClasses.push('bg-gray-50', 'border-gray-200', 'cursor-not-allowed')
+    stateClasses.push('bg-gray-50 dark:bg-gray-900', 'border-gray-200 dark:border-gray-700', 'cursor-not-allowed')
   }
 
   return [
@@ -193,11 +193,11 @@ const inputClasses = computed(() => {
   const baseClasses = [
     'flex-1',
     'bg-transparent',
-    'text-gray-900',
-    'placeholder-gray-500',
+    'text-gray-900 dark:text-gray-100',
+    'placeholder-gray-500 dark:placeholder-gray-400',
     'focus:outline-none',
     'disabled:cursor-not-allowed',
-    'disabled:text-gray-400'
+    'disabled:text-gray-400 dark:disabled:text-gray-500'
   ]
 
   const sizeClasses = {
@@ -272,7 +272,7 @@ defineExpose({
 }
 
 .app-input-label {
-  @apply block text-sm font-medium text-gray-700 mb-1;
+  @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
 }
 
 .app-input-container {
@@ -281,12 +281,12 @@ defineExpose({
 
 .app-input-prefix,
 .app-input-suffix {
-  @apply flex items-center px-3 text-gray-400;
+  @apply flex items-center px-3 text-gray-400 dark:text-gray-500;
 }
 
 .app-input-clear,
 .app-input-toggle {
-  @apply p-1 text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition-colors duration-200;
+  @apply p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 focus:outline-none focus:text-gray-600 dark:focus:text-gray-400 transition-colors duration-200;
 }
 
 .app-input-helper {
@@ -294,14 +294,14 @@ defineExpose({
 }
 
 .app-input-error {
-  @apply text-sm text-red-600;
+  @apply text-sm text-red-600 dark:text-red-400;
 }
 
 .app-input-helper-text {
-  @apply text-sm text-gray-500;
+  @apply text-sm text-gray-500 dark:text-gray-400;
 }
 
 .app-input-count {
-  @apply mt-1 text-xs text-gray-400 text-right;
+  @apply mt-1 text-xs text-gray-400 dark:text-gray-500 text-right;
 }
 </style>

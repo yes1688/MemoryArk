@@ -82,25 +82,25 @@ const cardClasses = computed(() => {
   // Variant classes
   const variantClasses = {
     default: [
-      'bg-white',
+      'bg-white dark:bg-gray-800',
       'border',
-      'border-gray-200'
+      'border-gray-200 dark:border-gray-700'
     ],
     outlined: [
-      'bg-white',
+      'bg-white dark:bg-gray-800',
       'border-2',
-      'border-gray-300'
+      'border-gray-300 dark:border-gray-600'
     ],
     elevated: [
-      'bg-white',
+      'bg-white dark:bg-gray-800',
       'shadow-win11',
       'border',
-      'border-gray-100'
+      'border-gray-100 dark:border-gray-700'
     ],
     filled: [
-      'bg-gray-50',
+      'bg-gray-50 dark:bg-gray-900',
       'border',
-      'border-gray-200'
+      'border-gray-200 dark:border-gray-700'
     ]
   }
 
@@ -168,19 +168,19 @@ const handleClick = (event: MouseEvent) => {
 }
 
 .card-title {
-  @apply text-lg font-semibold text-gray-900 leading-tight;
+  @apply text-lg font-semibold text-gray-900 dark:text-gray-100 leading-tight;
 }
 
 .card-content {
-  @apply text-gray-700 leading-relaxed;
+  @apply text-gray-700 dark:text-gray-300 leading-relaxed;
 }
 
 .card-footer {
-  @apply mt-4 pt-3 border-t border-gray-200;
+  @apply mt-4 pt-3 border-t border-gray-200 dark:border-gray-700;
 }
 
 .card-loading {
-  @apply absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center;
+  @apply absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center;
 }
 
 .card-selection-indicator {
@@ -197,7 +197,7 @@ const handleClick = (event: MouseEvent) => {
 }
 
 .card-skeleton .skeleton-line {
-  @apply h-4 bg-gray-200 rounded;
+  @apply h-4 bg-gray-200 dark:bg-gray-700 rounded;
 }
 
 .card-skeleton .skeleton-line:nth-child(1) {
