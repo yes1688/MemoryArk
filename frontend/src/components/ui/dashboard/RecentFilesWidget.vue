@@ -1,8 +1,8 @@
 <template>
-  <div class="widget recent-files-widget bg-white rounded-win11 shadow-win11 border border-gray-200">
+  <div class="widget recent-files-widget">
     <!-- 小工具標題 -->
-    <div class="widget-header flex items-center justify-between p-4 border-b border-gray-200">
-      <h3 class="flex items-center space-x-2 text-lg font-semibold text-gray-900">
+    <div class="widget-header">
+      <h3 class="widget-title flex items-center space-x-2">
         <svg class="w-5 h-5 text-church-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
@@ -18,7 +18,7 @@
             'p-2 rounded-lg transition-colors duration-200',
             viewMode === view.value
               ? 'bg-church-primary text-white'
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              : 'text-tertiary hover:text-primary bg-surface-hover'
           ]"
           :title="view.label"
         >
@@ -32,14 +32,14 @@
     <!-- 載入狀態 -->
     <div v-if="isLoading" class="p-6 text-center">
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-church-primary mx-auto"></div>
-      <p class="text-gray-500 mt-2">載入中...</p>
+      <p class="text-secondary mt-2">載入中...</p>
     </div>
     
     <!-- 空狀態 -->
     <div v-else-if="recentFiles.length === 0" class="p-6 text-center">
       <div class="text-4xl mb-3">📂</div>
-      <h4 class="text-lg font-medium text-gray-900 mb-2">尚無最近檔案</h4>
-      <p class="text-gray-600 text-sm">開始使用系統後，您最近訪問的檔案會顯示在這裡。</p>
+      <h4 class="text-lg font-medium text-primary mb-2">尚無最近檔案</h4>
+      <p class="text-secondary text-sm">開始使用系統後，您最近訪問的檔案會顯示在這裡。</p>
     </div>
     
     <!-- 檔案內容 -->
@@ -51,7 +51,7 @@
             v-for="file in displayFiles"
             :key="file.id"
             @click="openFile(file)"
-            class="file-card bg-gray-50 rounded-lg p-3 cursor-pointer hover:bg-gray-100 transition-colors duration-200"
+            class="card-item"
           >
             <div class="flex items-center space-x-3">
               <AppFileIcon
@@ -59,10 +59,10 @@
                 size="md"
               />
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate" :title="file.originalName">
+                <p class="file-name" :title="file.originalName">
                   {{ file.originalName }}
                 </p>
-                <p class="text-xs text-gray-500">{{ formatAccessTime(file.lastAccessedAt) }}</p>
+                <p class="file-meta">{{ formatAccessTime(file.lastAccessedAt) }}</p>
               </div>
             </div>
           </div>
@@ -75,7 +75,7 @@
           v-for="file in displayFiles"
           :key="file.id"
           @click="openFile(file)"
-          class="file-list-item flex items-center space-x-4 p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+          class="file-list-item flex items-center space-x-4 p-4 bg-surface-hover cursor-pointer border-b border-surface-light last:border-b-0"
         >
           <AppFileIcon
             :file-type="file.mimeType"
@@ -84,19 +84,19 @@
           
           <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between">
-              <p class="text-sm font-medium text-gray-900 truncate">{{ file.originalName }}</p>
-              <span class="text-xs text-gray-500 ml-2">{{ formatFileSize(file.size) }}</span>
+              <p class="file-name">{{ file.originalName }}</p>
+              <span class="file-meta ml-2">{{ formatFileSize(file.size) }}</span>
             </div>
             <div class="flex items-center space-x-4 mt-1">
-              <span class="text-xs text-gray-500">{{ formatAccessTime(file.lastAccessedAt) }}</span>
-              <span class="text-xs text-gray-500">{{ file.uploaderName || '未知' }}</span>
+              <span class="file-meta">{{ formatAccessTime(file.lastAccessedAt) }}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">{{ file.uploaderName || '未知' }}</span>
             </div>
           </div>
           
           <div class="flex space-x-2">
             <button
               @click.stop="downloadFile(file)"
-              class="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              class="p-1 text-tertiary hover:text-secondary transition-colors"
               title="下載"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,16 +114,16 @@
           :key="group.label"
           class="timeline-group"
         >
-          <h4 class="text-sm font-medium text-gray-700 mb-3 flex items-center">
+          <h4 class="text-sm font-medium text-secondary mb-3 flex items-center">
             <div class="w-2 h-2 bg-church-primary rounded-full mr-2"></div>
             {{ group.label }}
           </h4>
-          <div class="space-y-2 ml-4 border-l-2 border-gray-200 pl-4">
+          <div class="space-y-2 ml-4 border-l-2 border-surface pl-4">
             <div
               v-for="file in group.files"
               :key="file.id"
               @click="openFile(file)"
-              class="timeline-item bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:shadow-sm transition-shadow duration-200"
+              class="timeline-item bg-surface border border-surface rounded-lg p-3 cursor-pointer hover:shadow-sm transition-shadow duration-200"
             >
               <div class="flex items-center space-x-3">
                 <AppFileIcon
@@ -131,8 +131,8 @@
                   size="sm"
                 />
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-900 truncate">{{ file.originalName }}</p>
-                  <p class="text-xs text-gray-500">{{ formatDetailedTime(file.lastAccessedAt) }}</p>
+                  <p class="file-name">{{ file.originalName }}</p>
+                  <p class="file-meta">{{ formatDetailedTime(file.lastAccessedAt) }}</p>
                 </div>
                 <div class="flex items-center space-x-2">
                   <span
@@ -152,7 +152,7 @@
     </div>
     
     <!-- 小工具底部 -->
-    <div class="widget-footer p-4 border-t border-gray-200 bg-gray-50 rounded-b-win11">
+    <div class="widget-footer p-4 border-t border-surface bg-surface-secondary rounded-b-win11">
       <router-link 
         to="/history" 
         class="inline-flex items-center text-sm text-church-primary hover:text-church-primary-light font-medium"
@@ -471,12 +471,24 @@ onMounted(() => {
   background: #f1f5f9;
 }
 
+.dark .widget-content::-webkit-scrollbar-track {
+  background: #374151;
+}
+
 .widget-content::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 2px;
 }
 
+.dark .widget-content::-webkit-scrollbar-thumb {
+  background: #6b7280;
+}
+
 .widget-content::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+.dark .widget-content::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }
 </style>

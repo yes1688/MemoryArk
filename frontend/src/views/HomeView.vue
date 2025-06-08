@@ -63,7 +63,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="home-view bg-gray-50 min-h-screen">
+  <div class="home-view bg-gray-50 dark:bg-gray-900 min-h-screen">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <!-- 歡迎頭部 -->
       <WelcomeHeader />
@@ -128,7 +128,7 @@ onMounted(() => {
               <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <router-link
                   to="/shared"
-                  class="folder-tile group bg-purple-50 hover:bg-purple-100 border-2 border-purple-200 hover:border-purple-400 rounded-win11 p-4 text-center transition-all duration-200"
+                  class="folder-tile group bg-purple-50 dark:bg-purple-900 hover:bg-purple-100 dark:hover:bg-purple-800 border-2 border-purple-200 dark:border-purple-700 hover:border-purple-400 dark:hover:border-purple-600 rounded-win11 p-4 text-center transition-all duration-200"
                 >
                   <div class="folder-icon bg-purple-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-purple-600 transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,7 +141,7 @@ onMounted(() => {
                 
                 <router-link
                   to="/sabbath"
-                  class="folder-tile group bg-green-50 hover:bg-green-100 border-2 border-green-200 hover:border-green-400 rounded-win11 p-4 text-center transition-all duration-200"
+                  class="folder-tile group bg-green-50 dark:bg-green-900 hover:bg-green-100 dark:hover:bg-green-800 border-2 border-green-200 dark:border-green-700 hover:border-green-400 dark:hover:border-green-600 rounded-win11 p-4 text-center transition-all duration-200"
                 >
                   <div class="folder-icon bg-green-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-green-600 transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -154,7 +154,7 @@ onMounted(() => {
                 
                 <router-link
                   to="/files"
-                  class="folder-tile group bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 hover:border-blue-400 rounded-win11 p-4 text-center transition-all duration-200"
+                  class="folder-tile group bg-blue-50 dark:bg-blue-900 hover:bg-blue-100 dark:hover:bg-blue-800 border-2 border-blue-200 dark:border-blue-700 hover:border-blue-400 dark:hover:border-blue-600 rounded-win11 p-4 text-center transition-all duration-200"
                 >
                   <div class="folder-icon bg-blue-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-blue-600 transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,7 +167,7 @@ onMounted(() => {
                 
                 <button
                   @click="showAccessHistory = true"
-                  class="folder-tile group bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 hover:border-amber-400 rounded-win11 p-4 text-center transition-all duration-200"
+                  class="folder-tile group bg-amber-50 dark:bg-amber-900 hover:bg-amber-100 dark:hover:bg-amber-800 border-2 border-amber-200 dark:border-amber-700 hover:border-amber-400 dark:hover:border-amber-600 rounded-win11 p-4 text-center transition-all duration-200"
                 >
                   <div class="folder-icon bg-amber-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-amber-600 transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,12 +190,12 @@ onMounted(() => {
       class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4"
       @click="showFavorites = false"
     >
-      <div @click.stop class="bg-white rounded-win11 shadow-win11 max-w-2xl w-full max-h-96 overflow-y-auto">
-        <div class="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 class="text-lg font-medium text-gray-900">我的收藏</h3>
+      <div @click.stop class="bg-white dark:bg-gray-800 rounded-win11 shadow-win11 max-w-2xl w-full max-h-96 overflow-y-auto">
+        <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">我的收藏</h3>
           <button
             @click="showFavorites = false"
-            class="text-gray-400 hover:text-gray-600 transition-colors"
+            class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -203,7 +203,7 @@ onMounted(() => {
           </button>
         </div>
         <div class="p-6">
-          <p class="text-gray-600 text-center">收藏功能正在開發中...</p>
+          <p class="text-gray-600 dark:text-gray-400 text-center">收藏功能正在開發中...</p>
         </div>
       </div>
     </div>
@@ -214,12 +214,12 @@ onMounted(() => {
       class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4"
       @click="showAccessHistory = false"
     >
-      <div @click.stop class="bg-white rounded-win11 shadow-win11 max-w-4xl w-full max-h-96 overflow-hidden">
-        <div class="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 class="text-lg font-medium text-gray-900">訪問記錄</h3>
+      <div @click.stop class="bg-white dark:bg-gray-800 rounded-win11 shadow-win11 max-w-4xl w-full max-h-96 overflow-hidden">
+        <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">訪問記錄</h3>
           <button
             @click="showAccessHistory = false"
-            class="text-gray-400 hover:text-gray-600 transition-colors"
+            class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>

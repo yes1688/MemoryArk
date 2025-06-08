@@ -1,8 +1,8 @@
 <template>
-  <div class="widget storage-widget bg-white rounded-win11 shadow-win11 border border-gray-200">
+  <div class="widget storage-widget bg-white dark:bg-gray-800 rounded-win11 shadow-win11 border border-gray-200 dark:border-gray-700">
     <!-- 小工具標題 -->
-    <div class="widget-header flex items-center justify-between p-4 border-b border-gray-200">
-      <h3 class="flex items-center space-x-2 text-lg font-semibold text-gray-900">
+    <div class="widget-header flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+      <h3 class="flex items-center space-x-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
         <svg class="w-5 h-5 text-church-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
         </svg>
@@ -11,7 +11,7 @@
       
       <button
         @click="refreshStats"
-        class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+        class="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200"
         title="重新整理"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,8 +52,8 @@
           <!-- 中心內容 -->
           <div class="absolute inset-0 flex items-center justify-center">
             <div class="text-center">
-              <p class="text-2xl font-bold text-gray-900">{{ Math.round(usagePercentage) }}%</p>
-              <p class="text-xs text-gray-500">已使用</p>
+              <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ Math.round(usagePercentage) }}%</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">已使用</p>
             </div>
           </div>
         </div>
@@ -62,22 +62,22 @@
       <!-- 詳細資訊 -->
       <div class="storage-details space-y-3 mb-6">
         <div class="detail-item flex justify-between items-center">
-          <span class="text-sm text-gray-600">已使用</span>
-          <span class="font-medium text-gray-900">{{ formatSize(usedSpace) }}</span>
+          <span class="text-sm text-gray-600 dark:text-gray-400">已使用</span>
+          <span class="font-medium text-gray-900 dark:text-gray-100">{{ formatSize(usedSpace) }}</span>
         </div>
         <div class="detail-item flex justify-between items-center">
-          <span class="text-sm text-gray-600">可用</span>
-          <span class="font-medium text-green-600">{{ formatSize(freeSpace) }}</span>
+          <span class="text-sm text-gray-600 dark:text-gray-400">可用</span>
+          <span class="font-medium text-green-600 dark:text-green-400">{{ formatSize(freeSpace) }}</span>
         </div>
         <div class="detail-item flex justify-between items-center">
-          <span class="text-sm text-gray-600">總容量</span>
-          <span class="font-medium text-gray-900">{{ formatSize(totalSpace) }}</span>
+          <span class="text-sm text-gray-600 dark:text-gray-400">總容量</span>
+          <span class="font-medium text-gray-900 dark:text-gray-100">{{ formatSize(totalSpace) }}</span>
         </div>
       </div>
       
       <!-- 檔案類型分布 -->
       <div class="type-breakdown">
-        <h4 class="text-sm font-medium text-gray-900 mb-3">類型分布</h4>
+        <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">類型分布</h4>
         <div class="type-bars space-y-3">
           <div 
             v-for="type in fileTypes"
@@ -90,17 +90,17 @@
                   class="w-3 h-3 rounded-full"
                   :style="{ backgroundColor: type.color }"
                 ></div>
-                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="type.iconPath"/>
                 </svg>
-                <span class="text-sm text-gray-700">{{ type.label }}</span>
+                <span class="text-sm text-gray-700 dark:text-gray-300">{{ type.label }}</span>
               </div>
               <div class="text-right">
-                <span class="text-sm font-medium text-gray-900">{{ formatSize(type.size) }}</span>
-                <span class="text-xs text-gray-500 ml-1">({{ Math.round(type.percentage) }}%)</span>
+                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ formatSize(type.size) }}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">({{ Math.round(type.percentage) }}%)</span>
               </div>
             </div>
-            <div class="bar-track bg-gray-200 rounded-full h-2">
+            <div class="bar-track bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div 
                 class="bar-fill rounded-full h-full transition-all duration-1000 ease-out"
                 :style="{ 
@@ -114,12 +114,12 @@
       </div>
       
       <!-- 警告訊息 -->
-      <div v-if="showWarning" class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+      <div v-if="showWarning" class="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
         <div class="flex items-center space-x-2">
           <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
           </svg>
-          <p class="text-sm text-yellow-800">
+          <p class="text-sm text-yellow-800 dark:text-yellow-300">
             {{ warningMessage }}
           </p>
         </div>
@@ -127,7 +127,7 @@
     </div>
     
     <!-- 小工具底部 -->
-    <div class="widget-footer p-4 border-t border-gray-200 bg-gray-50 rounded-b-win11">
+    <div class="widget-footer p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 rounded-b-win11">
       <div class="flex items-center justify-between">
         <button
           @click="cleanupFiles"
@@ -336,14 +336,18 @@ onMounted(() => {
 }
 
 .detail-item {
+  padding: 0.25rem 0.5rem;
+  margin: -0.25rem -0.5rem;
+  border-radius: 0.375rem;
   transition: background-color 0.2s ease;
 }
 
 .detail-item:hover {
   background-color: #f9fafb;
-  padding: 0.25rem 0.5rem;
-  margin: -0.25rem -0.5rem;
-  border-radius: 0.375rem;
+}
+
+.dark .detail-item:hover {
+  background-color: #374151;
 }
 
 /* 響應式設計 */

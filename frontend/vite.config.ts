@@ -10,6 +10,13 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        api: 'modern-compiler' // 使用新的 Sass API
+      }
+    }
+  },
   server: {
     port: 5175, // 使用實際運行的端口
     host: '0.0.0.0',

@@ -130,21 +130,22 @@ const buttonClasses = computed(() => {
     ],
     ghost: [
       'bg-transparent',
-      'text-gray-700 dark:text-gray-300',
-      'hover:bg-gray-100 dark:hover:bg-gray-800',
-      'hover:text-gray-900 dark:hover:text-gray-100',
-      'active:bg-gray-200 dark:active:bg-gray-700',
-      'focus:ring-gray-500'
+      'text-gray-700 dark:text-gray-200',
+      'hover:bg-gray-100 dark:hover:bg-gray-700',
+      'hover:text-gray-900 dark:hover:text-white',
+      'active:bg-gray-200 dark:active:bg-gray-600',
+      'focus:ring-gray-500 dark:focus:ring-gray-400'
     ],
     outline: [
       'bg-transparent',
-      'text-primary-600 dark:text-primary-400',
+      'text-primary-600 dark:text-primary-300',
       'border',
-      'border-primary-300 dark:border-primary-600',
-      'hover:bg-primary-50 dark:hover:bg-primary-900/20',
-      'hover:border-primary-400 dark:hover:border-primary-500',
-      'active:bg-primary-100 dark:active:bg-primary-900/30',
-      'focus:ring-primary-500'
+      'border-primary-300 dark:border-primary-500',
+      'hover:bg-primary-50 dark:hover:bg-primary-900/30',
+      'hover:border-primary-400 dark:hover:border-primary-400',
+      'hover:text-primary-700 dark:hover:text-primary-200',
+      'active:bg-primary-100 dark:active:bg-primary-900/40',
+      'focus:ring-primary-500 dark:focus:ring-primary-400'
     ]
   }
 
@@ -161,6 +162,8 @@ const buttonClasses = computed(() => {
 
 const handleClick = (event: MouseEvent) => {
   if (!props.disabled && !props.loading) {
+    // 在點擊後移除焦點，避免 focus 樣式殘留
+    (event.target as HTMLElement).blur()
     emit('click', event)
   }
 }

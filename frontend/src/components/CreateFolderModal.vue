@@ -5,17 +5,17 @@
     @click="handleBackdropClick"
   >
     <div
-      class="relative w-full max-w-md mx-4 bg-white rounded-lg shadow-xl transform transition-all"
+      class="relative w-full max-w-md mx-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl transform transition-all"
       @click.stop
     >
       <!-- 標題列 -->
-      <div class="flex items-center justify-between p-6 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900">
+      <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
           新增資料夾
         </h2>
         <button
           @click="close"
-          class="text-gray-400 hover:text-gray-600 transition-colors"
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
         >
           <XMarkIcon class="w-6 h-6" />
         </button>
@@ -24,7 +24,7 @@
       <!-- 內容區域 -->
       <div class="p-6">
         <div class="mb-4">
-          <label for="folderName" class="block text-sm font-medium text-gray-700 mb-2">
+          <label for="folderName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             資料夾名稱
           </label>
           <input
@@ -34,8 +34,8 @@
             type="text"
             placeholder="請輸入資料夾名稱"
             :class="[
-              'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:border-transparent transition-colors',
-              error ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+              'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:border-transparent transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100',
+              error ? 'border-red-300 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
             ]"
             @keyup.enter="createFolder"
             @input="clearError"
@@ -43,32 +43,32 @@
         </div>
 
         <!-- 錯誤訊息 -->
-        <div v-if="error" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+        <div v-if="error" class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-md">
           <div class="flex items-center">
-            <ExclamationTriangleIcon class="w-5 h-5 text-red-600 mr-2" />
-            <span class="text-sm text-red-800">{{ error }}</span>
+            <ExclamationTriangleIcon class="w-5 h-5 text-red-600 dark:text-red-400 mr-2" />
+            <span class="text-sm text-red-800 dark:text-red-300">{{ error }}</span>
           </div>
         </div>
 
         <!-- 提示文字 -->
-        <div class="text-sm text-gray-500">
+        <div class="text-sm text-gray-500 dark:text-gray-400">
           資料夾名稱不能包含以下字符：\ / : * ? " &lt; &gt; |
         </div>
       </div>
 
       <!-- 操作按鈕 -->
-      <div class="flex items-center justify-end space-x-3 p-6 border-t border-gray-200">
+      <div class="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
         <button
           @click="close"
           :disabled="creating"
-          class="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+          class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
         >
           取消
         </button>
         <button
           @click="createFolder"
           :disabled="!folderName.trim() || creating"
-          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+          class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50"
         >
           {{ creating ? '建立中...' : '建立' }}
         </button>

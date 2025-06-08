@@ -15,6 +15,28 @@ const toggleSidebar = () => {
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 
+// 取得用戶頭像顯示文字
+const getUserInitial = () => {
+  const user = authStore.user
+  if (!user || !user.name) return '?'
+  
+  // 如果名字是中文，取第一個字
+  // 如果名字是英文，取第一個字母大寫
+  const name = user.name.trim()
+  if (!name) return '?'
+  
+  // 檢查是否包含中文字符
+  const hasChinese = /[\u4e00-\u9fa5]/.test(name)
+  
+  if (hasChinese) {
+    // 取中文名字的第一個字
+    return name.charAt(0)
+  } else {
+    // 取英文名字的第一個字母並大寫
+    return name.charAt(0).toUpperCase()
+  }
+}
+
 // 路由動畫方向判斷
 const routeDepthMap: Record<string, number> = {
   '/': 1,
@@ -123,8 +145,8 @@ const onEnter = (el: Element) => {
         <!-- 用戶信息和登出 -->
         <div class="absolute bottom-0 left-0 right-0 p-4 border-t bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <div class="flex items-center">
-            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">
-              {{ authStore.user?.name?.charAt(0) || 'U' }}
+            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+              {{ getUserInitial() }}
             </div>
             <div v-show="isSidebarOpen" class="ml-3 flex-1">
               <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ authStore.user?.name }}</p>

@@ -5,6 +5,69 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 統一的深色模式顏色系統 */
+@layer components {
+  /* 主要文字樣式 */
+  .text-primary {
+    @apply text-gray-900 dark:text-white;
+  }
+  
+  .text-secondary {
+    @apply text-gray-600 dark:text-gray-300;
+  }
+  
+  .text-tertiary {
+    @apply text-gray-500 dark:text-gray-400;
+  }
+
+  /* 背景樣式 */
+  .bg-surface {
+    @apply bg-white dark:bg-gray-800;
+  }
+  
+  .bg-surface-secondary {
+    @apply bg-gray-50 dark:bg-gray-700;
+  }
+  
+  .bg-surface-hover {
+    @apply hover:bg-gray-50 dark:hover:bg-gray-700;
+  }
+
+  /* 邊框樣式 */
+  .border-surface {
+    @apply border-gray-200 dark:border-gray-700;
+  }
+  
+  .border-surface-light {
+    @apply border-gray-100 dark:border-gray-600;
+  }
+
+  /* 組件樣式 */
+  .widget {
+    @apply bg-surface rounded-win11 shadow-win11 border border-surface;
+  }
+  
+  .widget-header {
+    @apply flex items-center justify-between p-4 border-b border-surface;
+  }
+  
+  .widget-title {
+    @apply text-lg font-semibold text-primary;
+  }
+  
+  .card-item {
+    @apply bg-surface-secondary rounded-lg p-3 cursor-pointer bg-surface-hover transition-colors duration-200;
+  }
+  
+  .file-name {
+    @apply text-sm font-medium text-primary truncate;
+  }
+  
+  .file-meta {
+    @apply text-xs text-secondary;
+  }
+}
+
 /* 自定義樣式 */
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -21,13 +84,25 @@ body {
   background: #f1f1f1;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: #374151;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #c1c1c1;
   border-radius: 3px;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: #6b7280;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }
 
 /* 檔案拖放區域 */

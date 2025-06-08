@@ -5,17 +5,17 @@
     @click="handleBackdropClick"
   >
     <div
-      class="relative w-full max-w-2xl mx-4 bg-white rounded-lg shadow-xl transform transition-all"
+      class="relative w-full max-w-2xl mx-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl transform transition-all"
       @click.stop
     >
       <!-- 標題列 -->
-      <div class="flex items-center justify-between p-6 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900">
+      <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
           上傳檔案
         </h2>
         <button
           @click="close"
-          class="text-gray-400 hover:text-gray-600 transition-colors"
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
         >
           <XMarkIcon class="w-6 h-6" />
         </button>
@@ -28,23 +28,23 @@
           ref="dropZone"
           :class="[
             'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
-            isDragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+            isDragOver ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
           ]"
           @dragenter.prevent="onDragEnter"
           @dragover.prevent="onDragOver"
           @dragleave.prevent="onDragLeave"
           @drop.prevent="onDrop"
         >
-          <CloudArrowUpIcon class="w-12 h-12 mx-auto text-gray-400 mb-4" />
-          <div class="text-lg font-medium text-gray-900 mb-2">
+          <CloudArrowUpIcon class="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
+          <div class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
             將檔案拖拽到此處或點擊選擇
           </div>
-          <div class="text-sm text-gray-500 mb-4">
+          <div class="text-sm text-gray-500 dark:text-gray-400 mb-4">
             支援多檔案上傳，單檔最大 100MB
           </div>
           <button
             @click="selectFiles"
-            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
           >
             選擇檔案
           </button>
@@ -59,29 +59,29 @@
 
         <!-- 選中檔案列表 -->
         <div v-if="selectedFiles.length > 0" class="mt-6">
-          <h3 class="text-sm font-medium text-gray-900 mb-3">
+          <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
             選中的檔案 ({{ selectedFiles.length }})
           </h3>
           <div class="max-h-48 overflow-y-auto">
             <div
               v-for="file in selectedFiles"
               :key="file.name + file.size"
-              class="flex items-center justify-between p-3 bg-gray-50 rounded-md mb-2"
+              class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md mb-2"
             >
               <div class="flex items-center flex-1 min-w-0">
-                <DocumentIcon class="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
+                <DocumentIcon class="w-5 h-5 text-gray-400 dark:text-gray-500 mr-3 flex-shrink-0" />
                 <div class="min-w-0 flex-1">
-                  <div class="text-sm font-medium text-gray-900 truncate">
+                  <div class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                     {{ file.name }}
                   </div>
-                  <div class="text-sm text-gray-500">
+                  <div class="text-sm text-gray-500 dark:text-gray-400">
                     {{ formatFileSize(file.size) }}
                   </div>
                 </div>
               </div>
               <button
                 @click="removeFile(file)"
-                class="ml-2 text-gray-400 hover:text-red-600 transition-colors"
+                class="ml-2 text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
               >
                 <XMarkIcon class="w-4 h-4" />
               </button>
@@ -92,42 +92,42 @@
         <!-- 上傳進度 -->
         <div v-if="uploading" class="mt-6">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-medium text-gray-900">上傳進度</span>
-            <span class="text-sm text-gray-500">{{ Math.round(uploadProgress) }}%</span>
+            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">上傳進度</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">{{ Math.round(uploadProgress) }}%</span>
           </div>
-          <div class="w-full bg-gray-200 rounded-full h-2">
+          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
             <div
-              class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              class="bg-blue-600 dark:bg-blue-500 h-2 rounded-full transition-all duration-300"
               :style="{ width: `${uploadProgress}%` }"
             ></div>
           </div>
-          <div v-if="currentUploadFile" class="text-sm text-gray-500 mt-2">
+          <div v-if="currentUploadFile" class="text-sm text-gray-500 dark:text-gray-400 mt-2">
             正在上傳: {{ currentUploadFile }}
           </div>
         </div>
 
         <!-- 錯誤訊息 -->
-        <div v-if="error" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+        <div v-if="error" class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-md">
           <div class="flex items-center">
-            <ExclamationTriangleIcon class="w-5 h-5 text-red-600 mr-2" />
-            <span class="text-sm text-red-800">{{ error }}</span>
+            <ExclamationTriangleIcon class="w-5 h-5 text-red-600 dark:text-red-400 mr-2" />
+            <span class="text-sm text-red-800 dark:text-red-300">{{ error }}</span>
           </div>
         </div>
       </div>
 
       <!-- 操作按鈕 -->
-      <div class="flex items-center justify-end space-x-3 p-6 border-t border-gray-200">
+      <div class="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
         <button
           @click="close"
           :disabled="uploading"
-          class="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+          class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
         >
           取消
         </button>
         <button
           @click="startUpload"
           :disabled="selectedFiles.length === 0 || uploading"
-          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+          class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50"
         >
           {{ uploading ? '上傳中...' : '開始上傳' }}
         </button>
