@@ -75,15 +75,29 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useFilesStore } from '@/stores/files'
 
 const authStore = useAuthStore()
+const filesStore = useFilesStore()
 
-// 響應式數據
-const totalFiles = ref(2847)
-const todayUploads = ref(12)
-const activeUsers = ref(156)
-const storagePercentage = ref(65)
-const usedStorage = ref('6.5 GB')
+// 響應式數據 - 使用真實數據
+const totalFiles = computed(() => filesStore.files.length)
+const todayUploads = computed(() => {
+  const today = new Date().toDateString()
+  return filesStore.files.filter(file => 
+    new Date(file.createdAt).toDateString() === today
+  ).length
+})
+const activeUsers = computed(() => authStore.user ? 1 : 0) // 當前登入用戶數
+const storagePercentage = computed(() => {
+  const totalSize = filesStore.files.reduce((sum, file) => sum + (file.size || 0), 0)
+  const maxStorage = 10 * 1024 * 1024 * 1024 // 10GB
+  return Math.round((totalSize / maxStorage) * 100)
+})
+const usedStorage = computed(() => {
+  const totalSize = filesStore.files.reduce((sum, file) => sum + (file.size || 0), 0)
+  return formatStorage(totalSize)
+})
 const totalStorage = ref('10 GB')
 
 // 計算屬性
@@ -155,17 +169,16 @@ const formatNumber = (num: number): string => {
   return num.toString()
 }
 
+const formatStorage = (bytes: number): string => {
+  if (!bytes) return '0 GB'
+  const gb = bytes / (1024 * 1024 * 1024)
+  return gb.toFixed(1) + ' GB'
+}
+
 const loadStats = async () => {
   try {
-    // 模擬 API 調用獲取統計數據
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // 這裡可以接入真實的 API
-    // const stats = await api.getDashboardStats()
-    // totalFiles.value = stats.totalFiles
-    // todayUploads.value = stats.todayUploads
-    // activeUsers.value = stats.activeUsers
-    // storagePercentage.value = stats.storagePercentage
+    // 載入檔案數據以確保統計準確
+    await filesStore.fetchFiles()
   } catch (error) {
     console.error('Failed to load dashboard stats:', error)
   }

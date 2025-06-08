@@ -265,7 +265,10 @@ import { AppButton, AppDialog } from '@/components/ui'
 import UploadModal from '@/components/UploadModal.vue'
 import SabbathFileCard from '@/components/SabbathFileCard.vue'
 import SabbathFileItem from '@/components/SabbathFileItem.vue'
+import { useFilesStore } from '@/stores/files'
 import type { FileInfo } from '@/types/files'
+
+const filesStore = useFilesStore()
 
 // 響應式狀態
 const selectedYear = ref(new Date().getFullYear())
@@ -336,10 +339,31 @@ const getSabbathsInMonth = (year: number, month: number): SabbathData[] => {
   // 找到該月所有的星期六
   for (let date = new Date(firstDay); date <= lastDay; date.setDate(date.getDate() + 1)) {
     if (date.getDay() === 6) { // 星期六
+      const sabbathDateStr = date.toISOString().split('T')[0]
+      
+      // 計算該安息日的檔案數量（基於真實數據）
+      const filesOnThisDate = filesStore.files.filter(file => {
+        if (file.isDeleted || file.categoryId !== 1) return false // categoryId 1 = sabbath
+        const fileDate = new Date(file.createdAt).toISOString().split('T')[0]
+        return fileDate === sabbathDateStr
+      }).length
+      
+      // 檢查是否有特殊事件（根據檔案名稱判斷）
+      const hasSpecialEvent = filesStore.files.some(file => {
+        if (file.isDeleted || file.categoryId !== 1) return false // categoryId 1 = sabbath
+        const fileDate = new Date(file.createdAt).toISOString().split('T')[0]
+        const fileName = (file.name || '').toLowerCase()
+        return fileDate === sabbathDateStr && (
+          fileName.includes('特別') || fileName.includes('special') ||
+          fileName.includes('節慶') || fileName.includes('holiday') ||
+          fileName.includes('洗禮') || fileName.includes('baptism')
+        )
+      })
+      
       sabbaths.push({
-        date: date.toISOString().split('T')[0],
-        filesCount: Math.floor(Math.random() * 10), // 模擬資料
-        hasSpecialEvent: Math.random() > 0.8 // 模擬特殊事件
+        date: sabbathDateStr,
+        filesCount: filesOnThisDate,
+        hasSpecialEvent
       })
     }
   }
@@ -374,11 +398,15 @@ const selectSabbath = async (sabbath: SabbathData) => {
 const loadSabbathFiles = async (sabbathDate: string) => {
   isLoading.value = true
   try {
-    // 這裡應該調用 API 獲取特定安息日的檔案
-    await new Promise(resolve => setTimeout(resolve, 500))
+    // 載入檔案數據
+    await filesStore.fetchFiles()
     
-    // 模擬資料
-    sabbathFiles.value = []
+    // 篩選該安息日的檔案
+    sabbathFiles.value = filesStore.files.filter(file => {
+      if (file.isDeleted || file.categoryId !== 1) return false // categoryId 1 = sabbath
+      const fileDate = new Date(file.createdAt).toISOString().split('T')[0]
+      return fileDate === sabbathDate
+    })
   } catch (error) {
     console.error('Failed to load sabbath files:', error)
   } finally {
@@ -439,7 +467,10 @@ const onSabbathFileUploaded = () => {
 }
 
 // 生命週期
-onMounted(() => {
+onMounted(async () => {
+  // 載入檔案數據
+  await filesStore.fetchFiles()
+  
   // 自動選擇當前月份
   const currentMonth = new Date().getMonth() + 1
   expandedMonths.value = [currentMonth]

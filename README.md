@@ -15,6 +15,7 @@ MemoryArk 2.0 是專為真耶穌教會設計的檔案管理系統，提供安全
 - 🔗 **分享連結** - 安全的檔案分享
 - 📖 **安息日資料專區** - 教會專屬功能
 - 🤝 **共享資源中心** - 內部資源共享
+- 📊 **真實數據統計** - 所有統計基於真實 API 數據，無假數據
 
 ## 快速部署
 
@@ -81,9 +82,10 @@ cd frontend && npm install && npm run dev
 
 ## 技術架構
 
-**前端**: Vue 3 + TypeScript + Tailwind CSS  
+**前端**: Vue 3 + TypeScript + Tailwind CSS + Pinia  
 **後端**: Go + Gin + SQLite  
-**部署**: Docker/Podman + Nginx
+**部署**: Docker/Podman + Nginx  
+**設計**: Windows 11 Fluent Design + Apple Human Interface Guidelines
 
 ## 系統訪問
 

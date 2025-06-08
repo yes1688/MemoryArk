@@ -293,7 +293,10 @@ import { AppButton, AppInput, AppDialog } from '@/components/ui'
 import UploadModal from '@/components/UploadModal.vue'
 import SharedResourceCard from '@/components/SharedResourceCard.vue'
 import SharedResourceItem from '@/components/SharedResourceItem.vue'
+import { useFilesStore } from '@/stores/files'
 import type { FileInfo } from '@/types/files'
+
+const filesStore = useFilesStore()
 
 // 響應式狀態
 const searchQuery = ref('')
@@ -316,61 +319,102 @@ interface ChurchCategory {
   fileCount: number
 }
 
-const churchCategories = ref<ChurchCategory[]>([
-  {
-    id: 1,
-    name: '講道影音',
-    description: '安息日講道和特別聚會的錄音錄影',
-    icon: 'MicrophoneIcon',
-    fileCount: 128
-  },
-  {
-    id: 2,
-    name: '詩歌本',
-    description: '讚美詩歌和聖歌資源',
-    icon: 'MusicalNoteIcon',
-    fileCount: 45
-  },
-  {
-    id: 3,
-    name: '聖經研讀',
-    description: '查經資料和靈修材料',
-    icon: 'BookOpenIcon',
-    fileCount: 89
-  },
-  {
-    id: 4,
-    name: '教會活動',
-    description: '教會活動照片和紀錄',
-    icon: 'CameraIcon',
-    fileCount: 234
-  },
-  {
-    id: 5,
-    name: '見證分享',
-    description: '弟兄姊妹的見證和分享',
-    icon: 'HeartIcon',
-    fileCount: 67
-  },
-  {
-    id: 6,
-    name: '宗教教育',
-    description: '宗教教育教材和資源',
-    icon: 'AcademicCapIcon',
-    fileCount: 156
+// 從真實數據計算教會分類
+const churchCategories = computed(() => {
+  // 統計各分類的檔案數量
+  const categorizeFile = (file: FileInfo) => {
+    const name = (file.name || '').toLowerCase()
+    const mimeType = (file.mimeType || '').toLowerCase()
+    
+    if (mimeType.startsWith('video/') || mimeType.startsWith('audio/') || name.includes('講道') || name.includes('sermon')) {
+      return 1 // 講道影音
+    } else if (name.includes('詩歌') || name.includes('hymn') || name.includes('song')) {
+      return 2 // 詩歌本
+    } else if (name.includes('聖經') || name.includes('bible') || name.includes('查經') || name.includes('靈修')) {
+      return 3 // 聖經研讀
+    } else if (mimeType.startsWith('image/') || name.includes('活動') || name.includes('照片') || name.includes('photo')) {
+      return 4 // 教會活動
+    } else if (name.includes('見證') || name.includes('分享') || name.includes('testimony')) {
+      return 5 // 見證分享
+    } else if (name.includes('教育') || name.includes('教材') || name.includes('education')) {
+      return 6 // 宗教教育
+    }
+    return null
   }
-])
 
-// 模擬檔案資料
-const files = ref<FileInfo[]>([])
+  const counts = [0, 0, 0, 0, 0, 0]
+  filesStore.files.forEach(file => {
+    if (file.categoryId && file.categoryId >= 1 && file.categoryId <= 6 && !file.isDeleted) {
+      counts[file.categoryId - 1]++
+    }
+  })
+
+  return [
+    {
+      id: 1,
+      name: '講道影音',
+      description: '安息日講道和特別聚會的錄音錄影',
+      icon: 'MicrophoneIcon',
+      fileCount: counts[0]
+    },
+    {
+      id: 2,
+      name: '詩歌本',
+      description: '讚美詩歌和聖歌資源',
+      icon: 'MusicalNoteIcon',
+      fileCount: counts[1]
+    },
+    {
+      id: 3,
+      name: '聖經研讀',
+      description: '查經資料和靈修材料',
+      icon: 'BookOpenIcon',
+      fileCount: counts[2]
+    },
+    {
+      id: 4,
+      name: '教會活動',
+      description: '教會活動照片和紀錄',
+      icon: 'CameraIcon',
+      fileCount: counts[3]
+    },
+    {
+      id: 5,
+      name: '見證分享',
+      description: '弟兄姊妹的見證和分享',
+      icon: 'HeartIcon',
+      fileCount: counts[4]
+    },
+    {
+      id: 6,
+      name: '宗教教育',
+      description: '宗教教育教材和資源',
+      icon: 'AcademicCapIcon',
+      fileCount: counts[5]
+    }
+  ]
+})
+
+// 使用真實檔案資料
+const files = computed(() => {
+  return filesStore.files.filter(file => file.categoryId && file.categoryId >= 1 && file.categoryId <= 6 && !file.isDeleted)
+})
 
 // 計算屬性
-const totalFiles = computed(() => 
-  churchCategories.value.reduce((sum, cat) => sum + cat.fileCount, 0)
-)
+const totalFiles = computed(() => files.value.length)
 
-const monthlyNewFiles = computed(() => 23)
-const popularDownloads = computed(() => 156)
+const monthlyNewFiles = computed(() => {
+  const oneMonthAgo = new Date()
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+  
+  return files.value.filter(file => 
+    new Date(file.createdAt) >= oneMonthAgo
+  ).length
+})
+
+const popularDownloads = computed(() => {
+  return files.value.reduce((sum, file) => sum + (file.downloadCount || 0), 0)
+})
 
 const filteredFiles = computed(() => {
   let result = files.value
@@ -425,13 +469,8 @@ const onSortChange = () => {
 const loadFiles = async () => {
   isLoading.value = true
   try {
-    // 這裡應該調用 API 獲取檔案
-    // 暫時使用模擬資料
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    files.value = [
-      // 模擬檔案資料
-    ]
+    // 載入真實檔案數據
+    await filesStore.fetchFiles()
   } catch (error) {
     console.error('Failed to load files:', error)
   } finally {

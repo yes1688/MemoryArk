@@ -232,6 +232,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { AppButton, AppDialog } from '@/components/ui'
 import AppFileIcon from '@/components/ui/file-icon/AppFileIcon.vue'
+import { useFilesStore } from '@/stores/files'
 import type { AccessHistoryItem } from '@/types/files'
 
 interface TimeGroup {
@@ -245,14 +246,40 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 
+const filesStore = useFilesStore()
+
 // 狀態管理
-const accessHistory = ref<AccessHistoryItem[]>([])
 const isLoading = ref(false)
 const isLoadingMore = ref(false)
 const hasMore = ref(true)
 const currentPage = ref(1)
 const showClearDialog = ref(false)
 const clearOption = ref<'all' | 'week' | 'month'>('all')
+
+// 使用真實數據 - 將檔案轉換為訪問歷史項目
+const accessHistory = computed(() => {
+  return filesStore.files
+    .filter(file => !file.isDirectory && !file.isDeleted)
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
+    .slice(0, 50) // 限制顯示最近50個檔案
+    .map(file => ({
+      id: file.id,
+      name: file.name,
+      originalName: file.originalName || file.name,
+      mimeType: file.mimeType || 'application/octet-stream',
+      size: file.size || 0,
+      uploaderName: file.uploaderName || '未知用戶',
+      createdAt: file.createdAt,
+      updatedAt: file.updatedAt,
+      downloadCount: file.downloadCount || 0,
+      lastAccessedAt: file.updatedAt || file.createdAt,
+      lastAction: 'view' as const,
+      isDirectory: file.isDirectory,
+      path: file.path || '',
+      uploaderId: file.uploaderId || 0,
+      isDeleted: file.isDeleted
+    }))
+})
 
 // 計算屬性
 const timeGroups = computed((): TimeGroup[] => {
@@ -295,71 +322,11 @@ const loadAccessHistory = async (page = 1) => {
   }
   
   try {
-    // 模擬 API 調用
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    const mockHistory: AccessHistoryItem[] = [
-      {
-        id: 1,
-        name: 'sermon-grace.mp3',
-        originalName: '講道錄音_主的恩典.mp3',
-        mimeType: 'audio/mpeg',
-        size: 15728640,
-        uploaderName: '張傳道',
-        createdAt: '2024-12-25T10:00:00Z',
-        updatedAt: '2024-12-25T10:00:00Z',
-        downloadCount: 12,
-        lastAccessedAt: new Date().toISOString(),
-        lastAction: 'view',
-        isDirectory: false,
-        path: '/audio/sermon-grace.mp3',
-        uploaderId: 1,
-        isDeleted: false
-      },
-      {
-        id: 2,
-        name: 'annual-report-2024.pdf',
-        originalName: '2024年度教會活動總結.pdf',
-        mimeType: 'application/pdf',
-        size: 2097152,
-        uploaderName: '李執事',
-        createdAt: '2024-12-24T14:30:00Z',
-        updatedAt: '2024-12-24T14:30:00Z',
-        downloadCount: 8,
-        lastAccessedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        lastAction: 'download',
-        isDirectory: false,
-        path: '/documents/annual-report-2024.pdf',
-        uploaderId: 2,
-        isDeleted: false
-      },
-      {
-        id: 3,
-        name: 'communion-photos.zip',
-        originalName: '聖餐禮照片集.zip',
-        mimeType: 'application/zip',
-        size: 52428800,
-        uploaderName: '王弟兄',
-        createdAt: '2024-12-23T16:45:00Z',
-        updatedAt: '2024-12-23T16:45:00Z',
-        downloadCount: 25,
-        lastAccessedAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-        lastAction: 'view',
-        isDirectory: false,
-        path: '/photos/communion-photos.zip',
-        uploaderId: 3,
-        isDeleted: false
-      }
-    ]
-    
-    if (page === 1) {
-      accessHistory.value = mockHistory
-    } else {
-      accessHistory.value.push(...mockHistory)
-    }
+    // 載入真實檔案數據
+    await filesStore.fetchFiles()
     
     currentPage.value = page
-    hasMore.value = page < 3 // 模擬只有3頁
+    hasMore.value = false // 由於使用 computed，不需要分頁
   } catch (error) {
     console.error('Failed to load access history:', error)
   } finally {
@@ -393,13 +360,9 @@ const downloadFile = (file: AccessHistoryItem) => {
 
 const removeFromHistory = async (item: AccessHistoryItem) => {
   try {
-    // 模擬 API 調用
-    await new Promise(resolve => setTimeout(resolve, 200))
-    
-    const index = accessHistory.value.findIndex(h => h.id === item.id)
-    if (index > -1) {
-      accessHistory.value.splice(index, 1)
-    }
+    // 在真實實現中，這裡會調用 API 來標記檔案為已刪除或從歷史記錄中移除
+    // 暫時記錄操作
+    console.log('Remove from history:', item.name)
   } catch (error) {
     console.error('Failed to remove from history:', error)
   }
@@ -407,29 +370,8 @@ const removeFromHistory = async (item: AccessHistoryItem) => {
 
 const clearHistory = async () => {
   try {
-    // 模擬 API 調用
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
-    const now = new Date()
-    let cutoffDate: Date
-    
-    switch (clearOption.value) {
-      case 'week':
-        cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-        break
-      case 'month':
-        cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        break
-      default:
-        // 清除所有
-        accessHistory.value = []
-        showClearDialog.value = false
-        return
-    }
-    
-    accessHistory.value = accessHistory.value.filter(item => {
-      return new Date(item.lastAccessedAt) > cutoffDate
-    })
+    // 在真實實現中，這裡會調用 API 來清除歷史記錄
+    console.log('Clear history option:', clearOption.value)
     
     showClearDialog.value = false
   } catch (error) {

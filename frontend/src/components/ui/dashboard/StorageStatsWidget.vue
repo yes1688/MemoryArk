@@ -148,6 +148,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useFilesStore } from '@/stores/files'
 
 interface FileType {
   name: string
@@ -165,53 +166,98 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 
+const filesStore = useFilesStore()
+
 // 狀態管理
-const usedSpace = ref(6979321856) // 6.5 GB in bytes
 const totalSpace = ref(10737418240) // 10 GB in bytes
 const isLoading = ref(false)
 
-const fileTypes = ref<FileType[]>([
-  {
-    name: 'video',
-    label: '影片',
-    size: 3489660928, // 3.25 GB
-    percentage: 50,
-    color: '#ef4444',
-    iconPath: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z'
-  },
-  {
-    name: 'document',
-    label: '文件',
-    size: 1395864371, // 1.3 GB
-    percentage: 20,
-    color: '#3b82f6',
-    iconPath: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
-  },
-  {
-    name: 'image',
-    label: '圖片',
-    size: 1073741824, // 1 GB
-    percentage: 15.4,
-    color: '#10b981',
-    iconPath: 'm4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'
-  },
-  {
-    name: 'audio',
-    label: '音訊',
-    size: 715827883, // 683 MB
-    percentage: 10.3,
-    color: '#f59e0b',
-    iconPath: 'M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3'
-  },
-  {
-    name: 'other',
-    label: '其他',
-    size: 304087859, // 290 MB
-    percentage: 4.3,
-    color: '#6b7280',
-    iconPath: 'M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z'
+// 使用真實數據計算已使用空間
+const usedSpace = computed(() => {
+  return filesStore.files.reduce((sum, file) => sum + (file.size || 0), 0)
+})
+
+// 從真實檔案數據計算檔案類型分布
+const fileTypes = computed(() => {
+  const typeStats = {
+    video: { size: 0, mimeTypes: ['video/'] },
+    document: { size: 0, mimeTypes: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument', 'text/'] },
+    image: { size: 0, mimeTypes: ['image/'] },
+    audio: { size: 0, mimeTypes: ['audio/'] },
+    other: { size: 0, mimeTypes: [] }
   }
-])
+
+  // 統計各類型檔案大小
+  filesStore.files.forEach(file => {
+    if (!file.size || !file.mimeType) {
+      typeStats.other.size += file.size || 0
+      return
+    }
+
+    const mimeType = file.mimeType.toLowerCase()
+    let categorized = false
+
+    // 檢查各類型
+    for (const [type, config] of Object.entries(typeStats)) {
+      if (type === 'other') continue
+      
+      if (config.mimeTypes.some(prefix => mimeType.startsWith(prefix))) {
+        config.size += file.size
+        categorized = true
+        break
+      }
+    }
+
+    if (!categorized) {
+      typeStats.other.size += file.size
+    }
+  })
+
+  const totalUsed = usedSpace.value || 1
+
+  return [
+    {
+      name: 'video',
+      label: '影片',
+      size: typeStats.video.size,
+      percentage: (typeStats.video.size / totalUsed) * 100,
+      color: '#ef4444',
+      iconPath: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z'
+    },
+    {
+      name: 'document',
+      label: '文件',
+      size: typeStats.document.size,
+      percentage: (typeStats.document.size / totalUsed) * 100,
+      color: '#3b82f6',
+      iconPath: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
+    },
+    {
+      name: 'image',
+      label: '圖片',
+      size: typeStats.image.size,
+      percentage: (typeStats.image.size / totalUsed) * 100,
+      color: '#10b981',
+      iconPath: 'm4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'
+    },
+    {
+      name: 'audio',
+      label: '音訊',
+      size: typeStats.audio.size,
+      percentage: (typeStats.audio.size / totalUsed) * 100,
+      color: '#f59e0b',
+      iconPath: 'M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3'
+    },
+    {
+      name: 'other',
+      label: '其他',
+      size: typeStats.other.size,
+      percentage: (typeStats.other.size / totalUsed) * 100,
+      color: '#6b7280',
+      iconPath: 'M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z'
+    }
+  ].filter(type => type.size > 0) // 只顯示有檔案的類型
+})
 
 // 計算屬性
 const freeSpace = computed(() => totalSpace.value - usedSpace.value)
@@ -257,15 +303,8 @@ const formatSize = (bytes: number): string => {
 const refreshStats = async () => {
   isLoading.value = true
   try {
-    // 模擬 API 調用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // 這裡可以接入真實的 API
-    // const stats = await api.getStorageStats()
-    // usedSpace.value = stats.usedSpace
-    // totalSpace.value = stats.totalSpace
-    // fileTypes.value = stats.fileTypes
-    
+    // 重新載入檔案數據
+    await filesStore.fetchFiles()
     console.log('Storage stats refreshed')
   } catch (error) {
     console.error('Failed to refresh storage stats:', error)
@@ -284,13 +323,8 @@ const manageStorage = () => {
 
 const loadStorageStats = async () => {
   try {
-    // 模擬 API 調用
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
-    // 計算檔案類型百分比
-    fileTypes.value.forEach(type => {
-      type.percentage = (type.size / usedSpace.value) * 100
-    })
+    // 載入檔案數據
+    await filesStore.fetchFiles()
   } catch (error) {
     console.error('Failed to load storage stats:', error)
   }

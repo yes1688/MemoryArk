@@ -34,9 +34,22 @@ const recentFiles = computed(() => {
   return fileStore.files.slice(0, 4)
 })
 
-const storagePercent = computed(() => {
-  return Math.round((6.5 / 10) * 100)
+// 真實儲存空間數據
+const storageStats = ref({
+  used: 0,
+  total: 0,
+  percent: 0
 })
+
+const storagePercent = computed(() => {
+  return storageStats.value.percent
+})
+
+const formatStorage = (bytes: number): string => {
+  if (!bytes) return '0 GB'
+  const gb = bytes / (1024 * 1024 * 1024)
+  return gb.toFixed(1) + ' GB'
+}
 
 // 方法
 const navigateTo = (path: string) => {
@@ -74,7 +87,19 @@ onMounted(() => {
 const loadDashboardData = async () => {
   isLoading.value = true
   try {
+    // 載入檔案數據
     await fileStore.fetchFiles()
+    
+    // 載入儲存空間統計（假設有相關 API）
+    // 暫時使用檔案 store 中的數據
+    const totalSize = fileStore.files.reduce((sum, file) => sum + (file.size || 0), 0)
+    const maxStorage = 10 * 1024 * 1024 * 1024 // 10GB 假設最大空間
+    
+    storageStats.value = {
+      used: totalSize,
+      total: maxStorage,
+      percent: Math.round((totalSize / maxStorage) * 100)
+    }
   } catch (error) {
     console.error('Failed to load dashboard data:', error)
   } finally {
@@ -115,7 +140,7 @@ const formatFileSize = (bytes: number): string => {
           <!-- 極簡統計 -->
           <div class="mt-12 flex items-center space-x-12 animate-slide-up">
             <div class="text-center">
-              <div class="text-4xl font-light">2.8K</div>
+              <div class="text-4xl font-light">{{ fileStore.files.length }}</div>
               <div class="text-sm opacity-80 mt-1">檔案總數</div>
             </div>
             <div class="w-px h-12 bg-white opacity-20"></div>
@@ -125,8 +150,8 @@ const formatFileSize = (bytes: number): string => {
             </div>
             <div class="w-px h-12 bg-white opacity-20"></div>
             <div class="text-center">
-              <div class="text-4xl font-light">156</div>
-              <div class="text-sm opacity-80 mt-1">活躍用戶</div>
+              <div class="text-4xl font-light">{{ authStore.user ? 1 : 0 }}</div>
+              <div class="text-sm opacity-80 mt-1">當前用戶</div>
             </div>
           </div>
         </div>
@@ -168,7 +193,7 @@ const formatFileSize = (bytes: number): string => {
                 </svg>
               </div>
               <h3 class="font-medium" style="color: var(--text-primary); font-size: var(--text-lg);">共享資料夾</h3>
-              <p class="mt-1" style="color: var(--text-tertiary); font-size: var(--text-sm);">245 個檔案</p>
+              <p class="mt-1" style="color: var(--text-tertiary); font-size: var(--text-sm);">{{ fileStore.files.filter(f => f.categoryId === 2).length || 0 }} 個檔案</p>
             </div>
           </button>
 
@@ -185,7 +210,7 @@ const formatFileSize = (bytes: number): string => {
                 </svg>
               </div>
               <h3 class="font-medium" style="color: var(--text-primary); font-size: var(--text-lg);">安息日資料</h3>
-              <p class="mt-1" style="color: var(--text-tertiary); font-size: var(--text-sm);">128 個檔案</p>
+              <p class="mt-1" style="color: var(--text-tertiary); font-size: var(--text-sm);">{{ fileStore.files.filter(f => f.categoryId === 1).length || 0 }} 個檔案</p>
             </div>
           </button>
 
@@ -260,7 +285,7 @@ const formatFileSize = (bytes: number): string => {
         <div class="storage-widget" style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md);">
           <div class="widget-header flex items-center justify-between mb-6">
             <h3 class="text-xl font-light" style="color: var(--text-primary);">儲存空間</h3>
-            <span class="text-sm" style="color: var(--text-secondary);">6.5 GB / 10 GB</span>
+            <span class="text-sm" style="color: var(--text-secondary);">{{ formatStorage(storageStats.used) }} / {{ formatStorage(storageStats.total) }}</span>
           </div>
           
           <div class="storage-bar" style="height: 8px; background: var(--bg-tertiary); border-radius: var(--radius-full); overflow: hidden;">
@@ -281,11 +306,11 @@ const formatFileSize = (bytes: number): string => {
               <div class="text-sm" style="color: var(--text-tertiary);">已使用</div>
             </div>
             <div>
-              <div class="text-2xl font-light" style="color: var(--text-primary);">3.5 GB</div>
+              <div class="text-2xl font-light" style="color: var(--text-primary);">{{ formatStorage(storageStats.total - storageStats.used) }}</div>
               <div class="text-sm" style="color: var(--text-tertiary);">可用</div>
             </div>
             <div>
-              <div class="text-2xl font-light" style="color: var(--text-primary);">10 GB</div>
+              <div class="text-2xl font-light" style="color: var(--text-primary);">{{ formatStorage(storageStats.total) }}</div>
               <div class="text-sm" style="color: var(--text-tertiary);">總容量</div>
             </div>
           </div>

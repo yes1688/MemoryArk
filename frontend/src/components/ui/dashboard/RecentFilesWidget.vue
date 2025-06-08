@@ -169,6 +169,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import AppFileIcon from '@/components/ui/file-icon/AppFileIcon.vue'
+import { useFilesStore } from '@/stores/files'
 import type { RecentFile } from '@/types/files'
 
 interface Emits {
@@ -177,10 +178,36 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 
+const filesStore = useFilesStore()
+
 // 狀態管理
 const viewMode = ref<'grid' | 'list' | 'timeline'>('grid')
-const recentFiles = ref<RecentFile[]>([])
 const isLoading = ref(false)
+
+// 使用真實數據 - 從檔案 store 取得最近檔案
+const recentFiles = computed(() => {
+  return filesStore.files
+    .filter(file => !file.isDirectory && !file.isDeleted)
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
+    .slice(0, 15)
+    .map(file => ({
+      id: file.id,
+      name: file.name,
+      originalName: file.originalName || file.name,
+      mimeType: file.mimeType || 'application/octet-stream',
+      size: file.size || 0,
+      uploaderName: file.uploaderName || '未知',
+      createdAt: file.createdAt,
+      updatedAt: file.updatedAt,
+      downloadCount: file.downloadCount || 0,
+      lastAccessedAt: file.updatedAt || file.createdAt,
+      lastAction: 'view' as const,
+      isDirectory: file.isDirectory,
+      path: file.path || '',
+      uploaderId: file.uploaderId || 0,
+      isDeleted: file.isDeleted
+    }))
+})
 
 // 視圖模式選項
 const viewModes = [
@@ -238,96 +265,8 @@ const timelineGroups = computed(() => {
 const loadRecentFiles = async () => {
   isLoading.value = true
   try {
-    // 模擬 API 調用
-    await new Promise(resolve => setTimeout(resolve, 800))
-    
-    recentFiles.value = [
-      {
-        id: 1,
-        name: 'christmas-video-2024.mp4',
-        originalName: '2024年聖誕節聚會錄影.mp4',
-        mimeType: 'video/mp4',
-        size: 125829120,
-        uploaderName: '張傳道',
-        createdAt: '2024-12-25T10:00:00Z',
-        updatedAt: '2024-12-25T10:00:00Z',
-        downloadCount: 45,
-        lastAccessedAt: new Date().toISOString(),
-        lastAction: 'view',
-        isDirectory: false,
-        path: '/videos/christmas-video-2024.mp4',
-        uploaderId: 1,
-        isDeleted: false
-      },
-      {
-        id: 2,
-        name: 'annual-financial-report.pdf',
-        originalName: '教會年度財務報告.pdf',
-        mimeType: 'application/pdf',
-        size: 2097152,
-        uploaderName: '李執事',
-        createdAt: '2024-12-20T14:30:00Z',
-        updatedAt: '2024-12-20T14:30:00Z',
-        downloadCount: 23,
-        lastAccessedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        lastAction: 'download',
-        isDirectory: false,
-        path: '/documents/annual-financial-report.pdf',
-        uploaderId: 2,
-        isDeleted: false
-      },
-      {
-        id: 3,
-        name: 'hymnal-v5.docx',
-        originalName: '詩歌本第五版.docx',
-        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        size: 5242880,
-        uploaderName: '王姊妹',
-        createdAt: '2024-12-18T16:45:00Z',
-        updatedAt: '2024-12-18T16:45:00Z',
-        downloadCount: 67,
-        lastAccessedAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-        lastAction: 'edit',
-        isDirectory: false,
-        path: '/documents/hymnal-v5.docx',
-        uploaderId: 3,
-        isDeleted: false
-      },
-      {
-        id: 4,
-        name: 'bible-study-john.txt',
-        originalName: '聖經查經筆記_約翰福音.txt',
-        mimeType: 'text/plain',
-        size: 1048576,
-        uploaderName: '陳弟兄',
-        createdAt: '2024-12-15T09:20:00Z',
-        updatedAt: '2024-12-15T09:20:00Z',
-        downloadCount: 31,
-        lastAccessedAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-        lastAction: 'view',
-        isDirectory: false,
-        path: '/documents/bible-study-john.txt',
-        uploaderId: 4,
-        isDeleted: false
-      },
-      {
-        id: 5,
-        name: 'church-activity-photos.zip',
-        originalName: '教會活動照片集.zip',
-        mimeType: 'application/zip',
-        size: 52428800,
-        uploaderName: '林姊妹',
-        createdAt: '2024-12-10T11:15:00Z',
-        updatedAt: '2024-12-10T11:15:00Z',
-        downloadCount: 89,
-        lastAccessedAt: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
-        lastAction: 'download',
-        isDirectory: false,
-        path: '/photos/church-activity-photos.zip',
-        uploaderId: 5,
-        isDeleted: false
-      }
-    ]
+    // 載入檔案數據
+    await filesStore.fetchFiles()
   } catch (error) {
     console.error('Failed to load recent files:', error)
   } finally {

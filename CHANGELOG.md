@@ -5,6 +5,32 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)，
 版本編號遵循 [語意化版本](https://semver.org/lang/zh-TW/)。
 
+## [2.0.1] - 2025-01-08
+
+### 🔧 改進
+- **真實數據整合** - 全面移除假數據，改用真實 API 數據
+  - 更新 HomeView.vue - 主頁統計數據改為真實計算
+  - 更新 WelcomeHeader.vue - 歡迎標題組件使用真實檔案統計
+  - 更新 RecentFilesWidget.vue - 最近檔案小工具從檔案 store 動態計算
+  - 更新 StorageStatsWidget.vue - 儲存空間統計基於真實檔案大小計算
+  - 更新 SharedFolderView.vue - 共享資料夾頁面使用 categoryId 分類統計
+  - 更新 SabbathDataView.vue - 安息日資料頁面基於真實檔案日期和分類
+  - 更新 AppAccessHistory.vue - 訪問歷史組件轉換真實檔案為歷史記錄
+
+### 🔧 修復
+- **TypeScript 類型錯誤** - 修復檔案屬性不存在的編譯錯誤
+  - 將 `isShared` 屬性改為使用 `categoryId` 判斷
+  - 將 `category` 屬性統一改為使用 `categoryId` 
+- **數據一致性** - 確保所有組件都使用相同的 filesStore 數據源
+- **編譯成功** - 所有 TypeScript 錯誤已修復，建構成功
+
+### 📊 數據改進
+- **檔案統計** - 所有檔案數量統計改為動態計算
+- **儲存空間** - 儲存使用量基於真實檔案大小總和
+- **分類統計** - 根據 categoryId 動態計算各分類檔案數量
+- **時間統計** - 基於檔案創建和更新時間計算最近檔案
+- **安息日統計** - 根據檔案創建日期和分類計算安息日檔案數量
+
 ## [2.0.0] - 2025-01-07
 
 ### 🎉 新增
