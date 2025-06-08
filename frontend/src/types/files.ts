@@ -86,7 +86,7 @@ export interface FileUploadRequest {
 }
 
 export interface FileListParams {
-  parentId?: number
+  parent_id?: number
   includeDeleted?: boolean
   search?: string
   page?: number

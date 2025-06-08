@@ -52,14 +52,25 @@ type AuthStatusResponse struct {
 
 // GetAuthStatus 檢查當前用戶狀態 - 根據規格書定義
 func (h *AuthHandler) GetAuthStatus(c *gin.Context) {
-	// 從 Cloudflare Access 標頭獲取用戶郵箱 - 嘗試多種可能的格式
-	email := c.GetHeader("CF-Access-Authenticated-User-Email")
-	if email == "" {
-		email = c.GetHeader("Cf-Access-Authenticated-User-Email")
+	var email string
+	
+	// 開發者模式：直接使用配置的管理員郵箱
+	if h.cfg.Development.Enabled && h.cfg.Development.BypassAuth {
+		email = h.cfg.Development.AutoLoginEmail
+		if email == "" {
+			email = h.cfg.Admin.RootEmail
+		}
+	} else {
+		// 正常模式：從 Cloudflare Access 標頭獲取用戶郵箱
+		email = c.GetHeader("CF-Access-Authenticated-User-Email")
+		if email == "" {
+			email = c.GetHeader("Cf-Access-Authenticated-User-Email")
+		}
+		if email == "" {
+			email = c.GetHeader("cf-access-authenticated-user-email")
+		}
 	}
-	if email == "" {
-		email = c.GetHeader("cf-access-authenticated-user-email")
-	}
+	
 	if email == "" {
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,

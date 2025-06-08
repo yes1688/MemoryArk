@@ -400,6 +400,7 @@ func (h *AdminHandler) GetSystemStats(c *gin.Context) {
 		PendingRequests   int64 `json:"pending_requests"`
 		TotalFiles        int64 `json:"total_files"`
 		TotalStorage      int64 `json:"total_storage"`
+		StorageCapacity   int64 `json:"storage_capacity"`
 		DeletedFiles      int64 `json:"deleted_files"`
 	}
 	
@@ -421,6 +422,7 @@ func (h *AdminHandler) GetSystemStats(c *gin.Context) {
 		Select("COALESCE(SUM(file_size), 0) as total").
 		Scan(&totalSize)
 	stats.TotalStorage = totalSize.Total
+	stats.StorageCapacity = h.cfg.Storage.TotalCapacity
 	
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

@@ -92,7 +92,9 @@ const handleDragLeave = () => {
 }
 
 const openFileDialog = () => {
-  fileInput.value?.click()
+  if (fileInput.value && !fileInput.value.disabled) {
+    fileInput.value.click()
+  }
 }
 
 const handleUpload = () => {

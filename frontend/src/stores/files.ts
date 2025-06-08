@@ -17,18 +17,23 @@ export const useFilesStore = defineStore('files', () => {
   // 計算屬性
   const canPaste = computed(() => clipboard.value !== null)
   const hasSelection = computed(() => selectedFiles.value.length > 0)
-  const currentFolderId = computed(() => currentFolder.value?.id)
+  const currentFolderId = computed(() => {
+    console.log('🔍 currentFolderId computed:', currentFolder.value?.id)
+    return currentFolder.value?.id
+  })
 
   // 獲取檔案列表
-  const fetchFiles = async (folderId?: number) => {
+  const fetchFiles = async (folderId?: number | null) => {
     try {
       isLoading.value = true
       error.value = null
       
-      const params: { parentId?: number } = {}
-      if (folderId !== undefined) {
-        params.parentId = folderId
+      const params: { parent_id?: number } = {}
+      if (folderId !== undefined && folderId !== null) {
+        params.parent_id = folderId
       }
+      
+      console.log('📂 fetchFiles:', { folderId, params })
       
       const response = await filesApi.getFiles(params)
       
@@ -55,9 +60,9 @@ export const useFilesStore = defineStore('files', () => {
           thumbnailUrl: file.thumbnail_url
         }))
         files.value = transformedFiles
-        // 從檔案列表中構建當前資料夾和麵包屑
-        currentFolder.value = null // 暫時設為 null，後續可以從 API 回應中獲取
-        breadcrumbs.value = [] // 暫時設為空，後續可以從 API 回應中獲取
+        
+        // 注意：這裡不設置當前資料夾和麵包屑
+        // 因為 fetchFiles 只是獲取檔案列表，導航邏輯由 navigateToFolder 處理
         return response.data
       } else {
         throw new Error(response.message || '獲取檔案列表失敗')
@@ -88,7 +93,7 @@ export const useFilesStore = defineStore('files', () => {
       
       if (response.success) {
         // 重新獲取當前資料夾檔案列表
-        await fetchFiles(currentFolderId.value || undefined)
+        await fetchFiles(currentFolderId.value || null)
         // 將 UploadResult 轉換為 FileInfo 格式
         const fileInfo: FileInfo = {
           id: response.data.id,
@@ -127,7 +132,7 @@ export const useFilesStore = defineStore('files', () => {
       
       if (response.success) {
         // 重新獲取當前資料夾檔案列表
-        await fetchFiles(currentFolderId.value || undefined)
+        await fetchFiles(currentFolderId.value || null)
         return response.data
       } else {
         throw new Error(response.message || '創建資料夾失敗')
@@ -173,7 +178,7 @@ export const useFilesStore = defineStore('files', () => {
       }
       
       // 重新獲取當前資料夾檔案列表
-      await fetchFiles(currentFolderId.value || undefined)
+      await fetchFiles(currentFolderId.value || null)
     } catch (err: any) {
       error.value = err.message || '網路連線錯誤'
       throw err
@@ -207,7 +212,7 @@ export const useFilesStore = defineStore('files', () => {
       }
 
       // 重新獲取當前資料夾檔案列表
-      await fetchFiles(currentFolderId.value || undefined)
+      await fetchFiles(currentFolderId.value || null)
     } catch (err: any) {
       error.value = err.message || '網路連線錯誤'
       throw err
@@ -328,9 +333,102 @@ export const useFilesStore = defineStore('files', () => {
   }
 
   // 導航到資料夾
-  const navigateToFolder = async (folderId?: number): Promise<void> => {
-    await fetchFiles(folderId)
-    clearSelection()
+  const navigateToFolder = async (folderId?: number | null): Promise<void> => {
+    try {
+      // 在導航前先獲取資料夾信息（如果需要）
+      let folderInfo: FileInfo | null = null
+      if (folderId) {
+        // 嘗試從當前檔案列表中找到資料夾信息
+        folderInfo = files.value.find(f => f.id === folderId && f.isDirectory) || null
+        
+        // 如果找不到，通過 API 獲取資料夾詳細信息
+        if (!folderInfo) {
+          try {
+            const response = await filesApi.getFileDetails(folderId)
+            if (response.success && (response.data as any).is_directory) {
+              // 轉換 API 返回的資料格式
+              const rawData = response.data as any
+              folderInfo = {
+                id: rawData.id,
+                name: rawData.name,
+                originalName: rawData.original_name,
+                size: rawData.file_size,
+                mimeType: rawData.mime_type,
+                isDirectory: rawData.is_directory,
+                parentId: rawData.parent_id,
+                path: rawData.file_path,
+                uploaderId: rawData.uploaded_by,
+                uploaderName: rawData.uploader?.name,
+                downloadCount: rawData.download_count || 0,
+                isDeleted: rawData.is_deleted,
+                deletedAt: rawData.deleted_at,
+                deletedBy: rawData.deleted_by,
+                createdAt: rawData.created_at,
+                updatedAt: rawData.updated_at,
+                url: rawData.url,
+                thumbnailUrl: rawData.thumbnail_url
+              }
+            }
+          } catch (err) {
+            console.warn('無法獲取資料夾詳細信息:', err)
+            // 使用默認信息作為後備
+            folderInfo = {
+              id: folderId,
+              name: `資料夾 ${folderId}`,
+              isDirectory: true,
+              parentId: currentFolder.value?.id,
+              size: 0,
+              mimeType: 'folder',
+              originalName: '',
+              path: '',
+              uploaderId: 0,
+              downloadCount: 0,
+              isDeleted: false,
+              createdAt: '',
+              updatedAt: '',
+              url: ''
+            }
+          }
+        }
+      }
+      
+      // 獲取目標資料夾的檔案列表
+      await fetchFiles(folderId)
+      
+      // 更新當前資料夾狀態
+      if (folderId && folderInfo) {
+        console.log('🗂️ 設置當前資料夾:', folderInfo)
+        currentFolder.value = folderInfo
+        
+        // 構建麵包屑導航
+        const newBreadcrumbs: BreadcrumbItem[] = [{ id: null, name: '根目錄', path: '/' }]
+        
+        // 添加當前資料夾
+        newBreadcrumbs.push({
+          id: folderInfo.id,
+          name: folderInfo.name,
+          path: `/${folderInfo.name}`
+        })
+        
+        breadcrumbs.value = newBreadcrumbs
+      } else {
+        console.log('🏠 返回根目錄, folderId:', folderId, 'folderInfo:', folderInfo)
+        // 返回根目錄
+        currentFolder.value = null
+        breadcrumbs.value = [{ id: null, name: '根目錄', path: '/' }]
+      }
+      
+      clearSelection()
+    } catch (err: any) {
+      error.value = err.message || '導航失敗'
+      throw err
+    }
+  }
+  
+  // 返回上一層資料夾
+  const navigateUp = async (): Promise<void> => {
+    const parentId = currentFolder.value?.parentId
+    await navigateToFolder(parentId)
   }
 
   // 清除錯誤
@@ -371,6 +469,7 @@ export const useFilesStore = defineStore('files', () => {
     selectFiles,
     clearSelection,
     navigateToFolder,
+    navigateUp,
     clearError
   }
 })

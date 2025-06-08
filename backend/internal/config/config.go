@@ -13,8 +13,10 @@ type Config struct {
 	Database  DatabaseConfig
 	Auth      AuthConfig
 	Upload    UploadConfig
+	Storage   StorageConfig
 	Cloudflare CloudflareConfig
 	Admin     AdminConfig
+	Development DevelopmentConfig
 }
 
 // ServerConfig 服務器配置
@@ -43,6 +45,11 @@ type UploadConfig struct {
 	UploadPath   string
 }
 
+// StorageConfig 儲存空間配置
+type StorageConfig struct {
+	TotalCapacity int64 // 總容量（字節）
+}
+
 // CloudflareConfig Cloudflare 配置
 type CloudflareConfig struct {
 	Domain       string
@@ -55,6 +62,14 @@ type CloudflareConfig struct {
 type AdminConfig struct {
 	RootEmail string
 	RootName  string
+}
+
+// DevelopmentConfig 開發者模式配置
+type DevelopmentConfig struct {
+	Enabled         bool
+	AutoLoginEmail  string
+	BypassAuth      bool
+	CORSEnabled     bool
 }
 
 // Load 載入配置
@@ -81,6 +96,9 @@ func Load() (*Config, error) {
 			AllowedTypes: []string{".jpg", ".jpeg", ".png", ".gif", ".mp4", ".mp3", ".wav", ".pdf", ".doc", ".docx"},
 			UploadPath:   getEnv("UPLOAD_PATH", "./uploads"),
 		},
+		Storage: StorageConfig{
+			TotalCapacity: getEnvInt64("TOTAL_STORAGE_CAPACITY", 10*1024*1024*1024), // 10GB 默認
+		},
 		Cloudflare: CloudflareConfig{
 			Domain:       getEnv("CLOUDFLARE_DOMAIN", ""),
 			ClientID:     getEnv("CLOUDFLARE_CLIENT_ID", ""),
@@ -90,6 +108,12 @@ func Load() (*Config, error) {
 		Admin: AdminConfig{
 			RootEmail: getEnv("ROOT_ADMIN_EMAIL", ""),
 			RootName:  getEnv("ROOT_ADMIN_NAME", "系統管理員"),
+		},
+		Development: DevelopmentConfig{
+			Enabled:        getEnvBool("DEVELOPMENT_MODE", false),
+			AutoLoginEmail: getEnv("DEV_AUTO_LOGIN_EMAIL", ""),
+			BypassAuth:     getEnvBool("DEV_BYPASS_AUTH", false),
+			CORSEnabled:    getEnvBool("DEV_CORS_ENABLED", false),
 		},
 	}
 	

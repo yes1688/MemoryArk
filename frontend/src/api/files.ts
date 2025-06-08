@@ -31,7 +31,7 @@ export const fileApi = {
     formData.append('file', file)
     
     if (metadata.parentId) {
-      formData.append('parentId', metadata.parentId.toString())
+      formData.append('parent_id', metadata.parentId.toString())
     }
     if (metadata.description) {
       formData.append('description', metadata.description)

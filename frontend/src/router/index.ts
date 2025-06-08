@@ -17,6 +17,13 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/files/folder/:folderId',
+      name: 'files-folder',
+      component: () => import('@/views/FilesView.vue'),
+      meta: { requiresAuth: true },
+      props: route => ({ folderId: Number(route.params.folderId) })
+    },
+    {
       path: '/upload',
       name: 'upload',
       component: () => import('@/views/UploadView.vue'),
@@ -32,6 +39,12 @@ const router = createRouter({
       path: '/sabbath',
       name: 'sabbath',
       component: () => import('@/views/SabbathDataView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('@/views/SettingsView.vue'),
       meta: { requiresAuth: true }
     },
     {

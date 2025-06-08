@@ -12,7 +12,39 @@ import (
 // CloudflareAccessMiddleware Cloudflare Access 認證中間件
 func CloudflareAccessMiddleware(cfg *config.Config, db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 檢查 Cloudflare Access 標頭 - 嘗試多種可能的格式
+		// 開發者模式：直接給予管理員權限，跳過所有檢查
+		if cfg.Development.Enabled && cfg.Development.BypassAuth {
+			devEmail := cfg.Development.AutoLoginEmail
+			if devEmail == "" {
+				devEmail = cfg.Admin.RootEmail
+			}
+			
+			// 查詢資料庫中對應的用戶ID
+			var user models.User
+			if err := db.Where("email = ?", devEmail).First(&user).Error; err == nil {
+				// 找到對應用戶，使用真實的用戶資料
+				c.Set("user_id", user.ID)
+				c.Set("user_email", user.Email)
+				c.Set("user_role", user.Role)
+				c.Set("user", user)
+			} else {
+				// 找不到對應用戶，使用預設管理員 (ID=1)
+				c.Set("user_id", uint(1))
+				c.Set("user_email", devEmail)
+				c.Set("user_role", "admin")
+				c.Set("user", models.User{
+					ID:     1,
+					Email:  devEmail,
+					Name:   cfg.Admin.RootName,
+					Role:   "admin",
+					Status: "approved",
+				})
+			}
+			c.Next()
+			return
+		}
+
+		// 正常模式：檢查 Cloudflare Access 標頭
 		cfAccessEmail := c.GetHeader("CF-Access-Authenticated-User-Email")
 		if cfAccessEmail == "" {
 			cfAccessEmail = c.GetHeader("Cf-Access-Authenticated-User-Email")
@@ -34,7 +66,6 @@ func CloudflareAccessMiddleware(cfg *config.Config, db *gorm.DB) gin.HandlerFunc
 		var user models.User
 		if err := db.Where("email = ?", cfAccessEmail).First(&user).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
-				// 用戶不存在，需要註冊
 				c.JSON(http.StatusForbidden, gin.H{
 					"success": false,
 					"error": "USER_NOT_REGISTERED",
@@ -119,12 +150,21 @@ func AdminMiddleware() gin.HandlerFunc {
 }
 
 // CORSMiddleware CORS 中間件
-func CORSMiddleware() gin.HandlerFunc {
+func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Credentials", "true")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Header("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+		if cfg.Development.Enabled && cfg.Development.CORSEnabled {
+			// 開發模式：寬鬆的 CORS 設定
+			c.Header("Access-Control-Allow-Origin", "*")
+			c.Header("Access-Control-Allow-Credentials", "true")
+			c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+			c.Header("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
+		} else {
+			// 正常模式：標準 CORS 設定
+			c.Header("Access-Control-Allow-Origin", "*")
+			c.Header("Access-Control-Allow-Credentials", "true")
+			c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+			c.Header("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+		}
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)

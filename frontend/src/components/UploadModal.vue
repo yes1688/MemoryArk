@@ -37,7 +37,7 @@
         >
           <CloudArrowUpIcon class="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
           <div class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-            將檔案拖拽到此處或點擊選擇
+            將檔案拖拽到此處
           </div>
           <div class="text-sm text-gray-500 dark:text-gray-400 mb-4">
             支援多檔案上傳，單檔最大 100MB
@@ -176,6 +176,7 @@ const error = ref('')
 const fileInput = ref<HTMLInputElement>()
 const dropZone = ref<HTMLElement>()
 
+
 // 關閉模態窗口
 const close = () => {
   if (!uploading.value) {
@@ -193,12 +194,26 @@ const handleBackdropClick = () => {
 
 // 檔案選擇
 const selectFiles = () => {
-  fileInput.value?.click()
+  // 確保檔案輸入元素存在
+  if (!fileInput.value) {
+    console.error('File input element not found')
+    return
+  }
+  
+  // 重置檔案輸入（確保可以重新選擇相同檔案）
+  fileInput.value.value = ''
+  
+  // 觸發檔案選擇
+  try {
+    fileInput.value.click()
+  } catch (error) {
+    console.error('Error opening file dialog:', error)
+  }
 }
 
 const onFileSelect = (event: Event) => {
   const files = (event.target as HTMLInputElement).files
-  if (files) {
+  if (files && files.length > 0) {
     addFiles(Array.from(files))
   }
 }

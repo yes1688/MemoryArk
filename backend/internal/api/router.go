@@ -19,7 +19,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	// 基礎中間件
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
-	router.Use(middleware.CORSMiddleware())
+	router.Use(middleware.CORSMiddleware(cfg))
 	router.Use(middleware.LoggerMiddleware())
 	
 	// 初始化處理器
@@ -56,6 +56,9 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		protected.DELETE("/files/:id/permanent", fileHandler.PermanentDeleteFile)
 		protected.GET("/files/:id/download", fileHandler.DownloadFile)
 		protected.POST("/files/:id/share", fileHandler.CreateShareLink)
+		
+		// 儲存空間統計
+		protected.GET("/storage/stats", fileHandler.GetStorageStats)
 		
 		// 資料夾管理
 		protected.POST("/folders", fileHandler.CreateFolder)

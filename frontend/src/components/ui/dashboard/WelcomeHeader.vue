@@ -76,9 +76,33 @@
 import { computed, ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useFilesStore } from '@/stores/files'
+import { storageApi, type StorageStats } from '@/api'
 
 const authStore = useAuthStore()
 const filesStore = useFilesStore()
+
+// 儲存統計狀態
+const storageStats = ref<StorageStats | null>(null)
+
+// 獲取儲存統計
+const fetchStorageStats = async () => {
+  try {
+    const response = await storageApi.getStats()
+    if (response.success) {
+      storageStats.value = response.data
+    }
+  } catch (error) {
+    console.error('Failed to fetch storage stats:', error)
+    // 回退到本地計算
+    const usedSpaceLocal = filesStore.files.reduce((sum, file) => sum + (file.size || 0), 0)
+    storageStats.value = {
+      used_space: usedSpaceLocal,
+      total_space: 10737418240, // 10GB 作為回退值
+      free_space: 10737418240 - usedSpaceLocal,
+      usage_percent: (usedSpaceLocal / 10737418240) * 100
+    }
+  }
+}
 
 // 響應式數據 - 使用真實數據
 const totalFiles = computed(() => filesStore.files.length)
@@ -90,15 +114,14 @@ const todayUploads = computed(() => {
 })
 const activeUsers = computed(() => authStore.user ? 1 : 0) // 當前登入用戶數
 const storagePercentage = computed(() => {
-  const totalSize = filesStore.files.reduce((sum, file) => sum + (file.size || 0), 0)
-  const maxStorage = 10 * 1024 * 1024 * 1024 // 10GB
-  return Math.round((totalSize / maxStorage) * 100)
+  return Math.round(storageStats.value?.usage_percent || 0)
 })
 const usedStorage = computed(() => {
-  const totalSize = filesStore.files.reduce((sum, file) => sum + (file.size || 0), 0)
-  return formatStorage(totalSize)
+  return formatStorage(storageStats.value?.used_space || 0)
 })
-const totalStorage = ref('10 GB')
+const totalStorage = computed(() => {
+  return formatStorage(storageStats.value?.total_space || 0)
+})
 
 // 計算屬性
 const userName = computed(() => {
@@ -122,6 +145,11 @@ const todayDate = computed(() => {
     weekday: 'long'
   }
   return today.toLocaleDateString('zh-TW', options)
+})
+
+// 生命週期
+onMounted(() => {
+  fetchStorageStats()
 })
 
 const motivationalQuote = computed(() => {

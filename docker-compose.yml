@@ -10,9 +10,13 @@ services:
       - PORT=8080
       - DATABASE_PATH=/app/data/memoryark.db
       - JWT_SECRET=${JWT_SECRET:-memoryark-secret-key}
-      - UPLOAD_PATH=/app/uploads
+      - UPLOAD_PATH=${UPLOAD_PATH:-./uploads}
       - ROOT_ADMIN_EMAIL=${ROOT_ADMIN_EMAIL:-admin@memoryark.org}
       - ROOT_ADMIN_NAME=${ROOT_ADMIN_NAME:-系統管理員}
+      - DEVELOPMENT_MODE=${DEVELOPMENT_MODE:-false}
+      - DEV_AUTO_LOGIN_EMAIL=${DEV_AUTO_LOGIN_EMAIL:-}
+      - DEV_BYPASS_AUTH=${DEV_BYPASS_AUTH:-false}
+      - DEV_CORS_ENABLED=${DEV_CORS_ENABLED:-false}
     volumes:
       - ./data:/app/data
       - ./uploads:/app/uploads

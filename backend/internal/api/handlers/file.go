@@ -10,10 +10,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"memoryark/internal/config"
 	"memoryark/internal/models"
+	"memoryark/pkg/utils"
 )
 
 // FileHandler 檔案處理器
@@ -194,15 +196,35 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 		return
 	}
 	
-	// 生成檔案名
+	// 使用 UUID 作為安全的檔案名稱，但保留副檔名
 	ext := filepath.Ext(file.Filename)
-	timestamp := time.Now().Unix()
-	hasher := md5.New()
-	hasher.Write([]byte(fmt.Sprintf("%s%d", file.Filename, timestamp)))
-	filename := fmt.Sprintf("%x%s", hasher.Sum(nil), ext)
+	fileUUID := uuid.New().String()
+	filename := fmt.Sprintf("%s%s", fileUUID, ext)
 	
-	// 創建儲存目錄
+	// 創建儲存目錄 - 根據父資料夾ID創建實體目錄結構
 	uploadDir := filepath.Join(h.cfg.Upload.UploadPath, "files")
+	
+	// 如果有父資料夾，獲取完整路徑
+	parentIDStr := c.PostForm("parent_id")
+	fmt.Printf("[UploadFile] 接收到的 parent_id 參數: '%s'\n", parentIDStr)
+	
+	parentID, _ := strconv.ParseUint(parentIDStr, 10, 32)
+	fmt.Printf("[UploadFile] 轉換後的 parent_id: %d\n", parentID)
+	
+	if parentID > 0 {
+		// 獲取父資料夾路徑
+		var parentFolder models.File
+		if err := h.db.First(&parentFolder, parentID).Error; err == nil && parentFolder.IsDirectory {
+			// 使用父資料夾的路徑
+			fmt.Printf("[UploadFile] 找到父資料夾: %s, 路徑: %s\n", parentFolder.Name, parentFolder.FilePath)
+			uploadDir = parentFolder.FilePath
+		} else {
+			fmt.Printf("[UploadFile] 無法找到父資料夾 ID: %d, 錯誤: %v\n", parentID, err)
+		}
+	} else {
+		fmt.Printf("[UploadFile] parent_id 為 0 或無效，使用根目錄\n")
+	}
+	
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -228,7 +250,6 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 	}
 	
 	// 創建檔案記錄
-	parentID, _ := strconv.ParseUint(c.PostForm("parent_id"), 10, 32)
 	var parentIDPtr *uint
 	if parentID > 0 {
 		id := uint(parentID)
@@ -309,11 +330,79 @@ func (h *FileHandler) CreateFolder(c *gin.Context) {
 		return
 	}
 	
+	// 正規化基礎上傳路徑
+	basePath := utils.NormalizePath(h.cfg.Upload.UploadPath)
+	
+	// 確保 files 目錄存在
+	filesDir := filepath.Join(basePath, "files")
+	if err := utils.EnsureDir(filesDir); err != nil {
+		fmt.Printf("[CreateFolder] 創建files目錄失敗: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "BASE_DIR_ERROR",
+				"message": fmt.Sprintf("創建基礎目錄失敗: %v", err),
+			},
+		})
+		return
+	}
+	
+	// 建立實體資料夾路徑
+	var folderPath string
+	
+	// 如果有父資料夾，獲取父資料夾路徑
+	if req.ParentID != nil {
+		var parentFolder models.File
+		if err := h.db.First(&parentFolder, *req.ParentID).Error; err == nil && parentFolder.IsDirectory {
+			if parentFolder.FilePath != "" {
+				folderPath = filepath.Join(parentFolder.FilePath, req.Name)
+			} else {
+				// 如果父資料夾沒有路徑，使用父資料夾名稱建立路徑
+				folderPath = filepath.Join(filesDir, parentFolder.Name, req.Name)
+			}
+		}
+	} else {
+		// 根級資料夾直接在 files 目錄下創建
+		folderPath = filepath.Join(filesDir, req.Name)
+	}
+	
+	// 記錄路徑信息用於調試
+	fmt.Printf("[CreateFolder] 配置路徑: %s, 計算路徑: %s\n", h.cfg.Upload.UploadPath, folderPath)
+	
+	// 在檔案系統中創建實體目錄
+	if err := os.MkdirAll(folderPath, 0755); err != nil {
+		// 記錄詳細錯誤信息
+		fmt.Printf("[CreateFolder] 創建目錄失敗: %s, 錯誤: %v\n", folderPath, err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "FILESYSTEM_ERROR",
+				"message": fmt.Sprintf("創建實體資料夾失敗: %v", err),
+			},
+		})
+		return
+	}
+	
+	// 驗證目錄是否真的創建成功
+	if _, err := os.Stat(folderPath); os.IsNotExist(err) {
+		fmt.Printf("[CreateFolder] 資料夾創建驗證失敗: %s\n", folderPath)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "FILESYSTEM_VERIFICATION_FAILED",
+				"message": "資料夾創建驗證失敗",
+			},
+		})
+		return
+	}
+	
+	fmt.Printf("[CreateFolder] 資料夾創建成功: %s\n", folderPath)
+	
 	// 創建資料夾記錄
 	folder := models.File{
 		Name:         req.Name,
 		OriginalName: req.Name,
-		FilePath:     "",
+		FilePath:     folderPath,
 		FileSize:     0,
 		MimeType:     "folder",
 		ParentID:     req.ParentID,
@@ -323,6 +412,8 @@ func (h *FileHandler) CreateFolder(c *gin.Context) {
 	}
 	
 	if err := h.db.Create(&folder).Error; err != nil {
+		// 如果資料庫創建失敗，刪除已創建的實體目錄
+		os.RemoveAll(folderPath)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error": gin.H{
@@ -615,6 +706,39 @@ func (h *FileHandler) DownloadFile(c *gin.Context) {
 	c.Header("Content-Length", fmt.Sprintf("%d", file.FileSize))
 	
 	c.File(file.FilePath)
+}
+
+// GetStorageStats 獲取儲存空間統計（供前端使用）
+func (h *FileHandler) GetStorageStats(c *gin.Context) {
+	// 計算已使用空間
+	var totalSize struct {
+		Total int64
+	}
+	h.db.Model(&models.File{}).
+		Where("is_deleted = ? AND is_directory = ?", false, false).
+		Select("COALESCE(SUM(file_size), 0) as total").
+		Scan(&totalSize)
+	
+	stats := struct {
+		UsedSpace    int64 `json:"used_space"`
+		TotalSpace   int64 `json:"total_space"`
+		FreeSpace    int64 `json:"free_space"`
+		UsagePercent float64 `json:"usage_percent"`
+	}{
+		UsedSpace:  totalSize.Total,
+		TotalSpace: h.cfg.Storage.TotalCapacity,
+		FreeSpace:  h.cfg.Storage.TotalCapacity - totalSize.Total,
+	}
+	
+	// 計算使用率百分比
+	if stats.TotalSpace > 0 {
+		stats.UsagePercent = (float64(stats.UsedSpace) / float64(stats.TotalSpace)) * 100
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": stats,
+	})
 }
 
 // CreateShareLink 創建分享連結

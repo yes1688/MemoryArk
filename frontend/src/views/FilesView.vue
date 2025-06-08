@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useFilesStore } from '@/stores/files'
 import { useAuthStore } from '@/stores/auth'
 import type { FileInfo } from '@/types/files'
+
+// Props
+interface Props {
+  folderId?: number
+}
+const props = withDefaults(defineProps<Props>(), {
+  folderId: undefined
+})
 
 // UI 組件
 import { MinimalButton } from '@/components/ui'
@@ -11,6 +19,7 @@ import UploadModal from '@/components/UploadModal.vue'
 import CreateFolderModal from '@/components/CreateFolderModal.vue'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const filesStore = useFilesStore()
 
@@ -42,7 +51,8 @@ const filteredFiles = computed(() => {
 // 方法
 const openFile = (file: FileInfo) => {
   if (file.isDirectory) {
-    filesStore.navigateToFolder(file.id)
+    // 導航到資料夾，更新路由
+    router.push({ name: 'files-folder', params: { folderId: file.id.toString() } })
   } else {
     // 預覽檔案
     selectedFile.value = file
@@ -60,8 +70,12 @@ const deleteFile = async (file: FileInfo) => {
   }
 }
 
-const navigateToPath = (folderId?: number) => {
-  filesStore.navigateToFolder(folderId)
+const navigateToPath = (folderId: number | null) => {
+  if (folderId === null) {
+    router.push({ name: 'files' })
+  } else {
+    router.push({ name: 'files-folder', params: { folderId: folderId.toString() } })
+  }
 }
 
 const formatFileSize = (bytes: number): string => {
@@ -106,9 +120,34 @@ const getFileIcon = (file: FileInfo) => {
   </svg>`
 }
 
+// 監聽路由變化
+watch(() => [props.folderId, route.params.folderId], 
+  async ([propsFolderId, routeFolderId]) => {
+    const targetFolderId = propsFolderId || (routeFolderId ? Number(routeFolderId) : null)
+    
+    console.log('🗂️ FilesView 路由變化:', { propsFolderId, routeFolderId, targetFolderId })
+    
+    if (targetFolderId) {
+      await filesStore.navigateToFolder(Number(targetFolderId))
+    } else {
+      await filesStore.navigateToFolder(null)
+    }
+  },
+  { immediate: true }
+)
+
 // 生命週期
-onMounted(() => {
-  filesStore.fetchFiles()
+onMounted(async () => {
+  // 根據路由參數決定載入哪個資料夾
+  const targetFolderId = props.folderId || (route.params.folderId ? Number(route.params.folderId) : null)
+  
+  console.log('🚀 FilesView 掛載:', { props: props.folderId, route: route.params.folderId, target: targetFolderId })
+  
+  if (targetFolderId) {
+    await filesStore.navigateToFolder(Number(targetFolderId))
+  } else {
+    await filesStore.navigateToFolder(null)
+  }
 })
 </script>
 
@@ -119,7 +158,7 @@ onMounted(() => {
       <!-- 麵包屑導航 -->
       <div class="breadcrumbs flex items-center space-x-2 mb-4">
         <button
-          @click="navigateToPath()"
+          @click="navigateToPath(null)"
           class="text-sm hover:underline"
           style="color: var(--text-secondary);"
         >
@@ -128,7 +167,7 @@ onMounted(() => {
         <template v-for="(crumb, index) in breadcrumbs.slice(1)" :key="crumb.id || index">
           <span style="color: var(--text-tertiary);">/</span>
           <button
-            @click="navigateToPath(crumb.id || undefined)"
+            @click="navigateToPath(crumb.id)"
             class="text-sm hover:underline"
             style="color: var(--text-secondary);"
           >

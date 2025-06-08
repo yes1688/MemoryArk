@@ -52,7 +52,7 @@
           <!-- 中心內容 -->
           <div class="absolute inset-0 flex items-center justify-center">
             <div class="text-center">
-              <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ Math.round(usagePercentage) }}%</p>
+              <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ Math.round(usagePercent) }}%</p>
               <p class="text-xs text-gray-500 dark:text-gray-400">已使用</p>
             </div>
           </div>
@@ -149,6 +149,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useFilesStore } from '@/stores/files'
+import { storageApi, type StorageStats } from '@/api'
 
 interface FileType {
   name: string
@@ -169,13 +170,37 @@ const emit = defineEmits<Emits>()
 const filesStore = useFilesStore()
 
 // 狀態管理
-const totalSpace = ref(10737418240) // 10 GB in bytes
+const storageStats = ref<StorageStats | null>(null)
 const isLoading = ref(false)
 
-// 使用真實數據計算已使用空間
-const usedSpace = computed(() => {
-  return filesStore.files.reduce((sum, file) => sum + (file.size || 0), 0)
-})
+// 獲取儲存統計
+const fetchStorageStats = async () => {
+  try {
+    isLoading.value = true
+    const response = await storageApi.getStats()
+    if (response.success) {
+      storageStats.value = response.data
+    }
+  } catch (error) {
+    console.error('Failed to fetch storage stats:', error)
+    // 如果 API 失敗，回退到本地計算
+    const usedSpaceLocal = filesStore.files.reduce((sum, file) => sum + (file.size || 0), 0)
+    storageStats.value = {
+      used_space: usedSpaceLocal,
+      total_space: 10737418240, // 10GB 作為回退值
+      free_space: 10737418240 - usedSpaceLocal,
+      usage_percent: (usedSpaceLocal / 10737418240) * 100
+    }
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 計算屬性
+const usedSpace = computed(() => storageStats.value?.used_space || 0)
+const totalSpace = computed(() => storageStats.value?.total_space || 0)
+const freeSpace = computed(() => storageStats.value?.free_space || 0)
+const usagePercent = computed(() => storageStats.value?.usage_percent || 0)
 
 // 從真實檔案數據計算檔案類型分布
 const fileTypes = computed(() => {
@@ -259,26 +284,20 @@ const fileTypes = computed(() => {
   ].filter(type => type.size > 0) // 只顯示有檔案的類型
 })
 
-// 計算屬性
-const freeSpace = computed(() => totalSpace.value - usedSpace.value)
-
-const usagePercentage = computed(() => {
-  return (usedSpace.value / totalSpace.value) * 100
-})
-
+// 更多計算屬性
 const circumference = computed(() => 2 * Math.PI * 50) // r = 50
 
 const strokeDashoffset = computed(() => {
-  const progress = usagePercentage.value / 100
+  const progress = usagePercent.value / 100
   return circumference.value * (1 - progress)
 })
 
-const showWarning = computed(() => usagePercentage.value >= 80)
+const showWarning = computed(() => usagePercent.value >= 80)
 
 const warningMessage = computed(() => {
-  if (usagePercentage.value >= 95) {
+  if (usagePercent.value >= 95) {
     return '儲存空間即將用完，請立即清理檔案'
-  } else if (usagePercentage.value >= 80) {
+  } else if (usagePercent.value >= 80) {
     return '儲存空間使用量偏高，建議清理不需要的檔案'
   }
   return ''
@@ -286,9 +305,9 @@ const warningMessage = computed(() => {
 
 // 方法
 const getUsageColor = (): string => {
-  if (usagePercentage.value >= 90) return '#ef4444' // 紅色
-  if (usagePercentage.value >= 80) return '#f59e0b' // 橙色
-  if (usagePercentage.value >= 60) return '#3b82f6' // 藍色
+  if (usagePercent.value >= 90) return '#ef4444' // 紅色
+  if (usagePercent.value >= 80) return '#f59e0b' // 橙色
+  if (usagePercent.value >= 60) return '#3b82f6' // 藍色
   return '#10b981' // 綠色
 }
 
@@ -303,8 +322,11 @@ const formatSize = (bytes: number): string => {
 const refreshStats = async () => {
   isLoading.value = true
   try {
-    // 重新載入檔案數據
-    await filesStore.fetchFiles()
+    // 重新載入儲存統計和檔案數據
+    await Promise.all([
+      fetchStorageStats(),
+      filesStore.fetchFiles()
+    ])
     console.log('Storage stats refreshed')
   } catch (error) {
     console.error('Failed to refresh storage stats:', error)
@@ -323,8 +345,11 @@ const manageStorage = () => {
 
 const loadStorageStats = async () => {
   try {
-    // 載入檔案數據
-    await filesStore.fetchFiles()
+    // 載入儲存統計和檔案數據
+    await Promise.all([
+      fetchStorageStats(),
+      filesStore.fetchFiles()
+    ])
   } catch (error) {
     console.error('Failed to load storage stats:', error)
   }

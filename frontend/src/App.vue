@@ -2,10 +2,14 @@
 import { RouterView, useRoute } from 'vue-router'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useTheme } from '@/composables/useTheme'
 import MinimalSidebar from '@/components/ui/navigation/MinimalSidebar.vue'
 
 const authStore = useAuthStore()
 const route = useRoute()
+
+// 初始化主題系統
+const { theme, setTheme } = useTheme()
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 
@@ -26,6 +30,11 @@ watch(() => route.path, () => {
 onMounted(() => {
   // 確保設計系統變量已載入
   document.documentElement.style.setProperty('--font-primary', '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif')
+  
+  // 設置預設為淺色主題（覆蓋自動檢測）
+  if (!localStorage.getItem('memoryark-theme')) {
+    setTheme('light')
+  }
 })
 </script>
 

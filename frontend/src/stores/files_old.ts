@@ -25,7 +25,7 @@ export const useFilesStore = defineStore('files', () => {
       isLoading.value = true
       error.value = null
       
-      const response = await fileApi.getFiles(folderId ? { parentId: folderId } : undefined)
+      const response = await fileApi.getFiles(folderId ? { parent_id: folderId } : undefined)
       
       if (response.success) {
         files.value = response.data.files

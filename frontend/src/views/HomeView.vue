@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useFilesStore } from '@/stores/files'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import { storageApi } from '@/api'
 import type { FileInfo } from '@/types/files'
 
 const router = useRouter()
@@ -87,21 +88,41 @@ onMounted(() => {
 const loadDashboardData = async () => {
   isLoading.value = true
   try {
-    // 載入檔案數據
-    await fileStore.fetchFiles()
+    // 並行載入檔案數據和儲存統計
+    const [_, storageResponse] = await Promise.all([
+      fileStore.fetchFiles(),
+      storageApi.getStats()
+    ])
     
-    // 載入儲存空間統計（假設有相關 API）
-    // 暫時使用檔案 store 中的數據
+    // 更新儲存統計
+    if (storageResponse.success) {
+      storageStats.value = {
+        used: storageResponse.data.used_space,
+        total: storageResponse.data.total_space,
+        percent: Math.round(storageResponse.data.usage_percent)
+      }
+    } else {
+      // 回退到本地計算
+      const totalSize = fileStore.files.reduce((sum, file) => sum + (file.size || 0), 0)
+      const maxStorage = 10 * 1024 * 1024 * 1024 // 10GB 作為回退值
+      
+      storageStats.value = {
+        used: totalSize,
+        total: maxStorage,
+        percent: Math.round((totalSize / maxStorage) * 100)
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load dashboard data:', error)
+    // 錯誤回退
     const totalSize = fileStore.files.reduce((sum, file) => sum + (file.size || 0), 0)
-    const maxStorage = 10 * 1024 * 1024 * 1024 // 10GB 假設最大空間
+    const maxStorage = 10 * 1024 * 1024 * 1024 // 10GB 作為回退值
     
     storageStats.value = {
       used: totalSize,
       total: maxStorage,
       percent: Math.round((totalSize / maxStorage) * 100)
     }
-  } catch (error) {
-    console.error('Failed to load dashboard data:', error)
   } finally {
     isLoading.value = false
   }

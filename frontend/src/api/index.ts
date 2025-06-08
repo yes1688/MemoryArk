@@ -96,3 +96,40 @@ export const apiRequest = {
       },
     }).then(res => res.data),
 }
+
+// 儲存空間統計介面
+export interface StorageStats {
+  used_space: number
+  total_space: number
+  free_space: number
+  usage_percent: number
+}
+
+// 儲存空間 API
+export const storageApi = {
+  getStats: (): Promise<ApiResponse<StorageStats>> => {
+    // 暫時回退到管理員API，直到後端重啟包含新的儲存統計端點
+    return apiRequest.get('/admin/stats').then(response => {
+      if (response.success && response.data) {
+        // 將管理員API格式轉換為儲存統計格式
+        const adminData = response.data as any
+        const storageStats: StorageStats = {
+          used_space: adminData.total_storage || 0,
+          total_space: adminData.storage_capacity || 10737418240, // 10GB 作為回退值
+          free_space: (adminData.storage_capacity || 10737418240) - (adminData.total_storage || 0),
+          usage_percent: adminData.storage_capacity ? 
+            ((adminData.total_storage || 0) / adminData.storage_capacity) * 100 : 0
+        }
+        return {
+          success: true,
+          data: storageStats,
+          message: response.message
+        }
+      }
+      throw new Error('Failed to get storage stats from admin API')
+    }).catch(() => {
+      // 如果管理員API也失敗，嘗試直接調用新端點
+      return apiRequest.get('/storage/stats')
+    })
+  },
+}
