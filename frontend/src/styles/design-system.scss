@@ -1,0 +1,281 @@
+// MemoryArk 2.0 Design System - Jobs Philosophy
+// "Simplicity is the ultimate sophistication"
+
+// ===========================
+// Color System - iOS Inspired
+// ===========================
+:root {
+  // Primary Colors
+  --color-primary: #007AFF;
+  --color-primary-light: #5AC8FA;
+  --color-primary-dark: #0051D5;
+  
+  // Semantic Colors
+  --color-success: #34C759;
+  --color-warning: #FF9500;
+  --color-danger: #FF3B30;
+  --color-info: #5856D6;
+  
+  // Neutral Colors - Refined Grays
+  --color-white: #FFFFFF;
+  --color-gray-50: #FAFAFA;
+  --color-gray-100: #F5F5F7;
+  --color-gray-200: #E8E8ED;
+  --color-gray-300: #D2D2D7;
+  --color-gray-400: #AEAEB2;
+  --color-gray-500: #8E8E93;
+  --color-gray-600: #636366;
+  --color-gray-700: #48484A;
+  --color-gray-800: #2C2C2E;
+  --color-gray-900: #1C1C1E;
+  --color-black: #000000;
+  
+  // Background Colors
+  --bg-primary: var(--color-white);
+  --bg-secondary: var(--color-gray-50);
+  --bg-tertiary: var(--color-gray-100);
+  --bg-elevated: var(--color-white);
+  
+  // Text Colors
+  --text-primary: var(--color-gray-900);
+  --text-secondary: var(--color-gray-600);
+  --text-tertiary: var(--color-gray-500);
+  --text-placeholder: var(--color-gray-400);
+  
+  // Border Colors
+  --border-light: var(--color-gray-200);
+  --border-medium: var(--color-gray-300);
+  --border-heavy: var(--color-gray-400);
+}
+
+// Dark Mode
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: var(--color-gray-900);
+    --bg-secondary: var(--color-gray-800);
+    --bg-tertiary: var(--color-gray-700);
+    --bg-elevated: var(--color-gray-800);
+    
+    --text-primary: var(--color-white);
+    --text-secondary: var(--color-gray-300);
+    --text-tertiary: var(--color-gray-400);
+    --text-placeholder: var(--color-gray-500);
+    
+    --border-light: var(--color-gray-700);
+    --border-medium: var(--color-gray-600);
+    --border-heavy: var(--color-gray-500);
+  }
+}
+
+// ===========================
+// Typography System
+// ===========================
+:root {
+  // Font Families
+  --font-primary: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  
+  // Font Sizes - Harmonious Scale
+  --text-xs: 0.75rem;     // 12px
+  --text-sm: 0.875rem;    // 14px
+  --text-base: 1rem;      // 16px
+  --text-lg: 1.125rem;    // 18px
+  --text-xl: 1.25rem;     // 20px
+  --text-2xl: 1.5rem;     // 24px
+  --text-3xl: 1.875rem;   // 30px
+  --text-4xl: 2.25rem;    // 36px
+  --text-5xl: 3rem;       // 48px
+  
+  // Font Weights
+  --font-light: 300;
+  --font-regular: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  
+  // Line Heights
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+  
+  // Letter Spacing
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.02em;
+}
+
+// ===========================
+// Spacing System - Golden Ratio
+// ===========================
+:root {
+  --space-0: 0;
+  --space-1: 0.25rem;   // 4px
+  --space-2: 0.5rem;    // 8px
+  --space-3: 0.75rem;   // 12px
+  --space-4: 1rem;      // 16px
+  --space-5: 1.5rem;    // 24px
+  --space-6: 2rem;      // 32px
+  --space-7: 3rem;      // 48px
+  --space-8: 4rem;      // 64px
+  --space-9: 6rem;      // 96px
+  --space-10: 8rem;     // 128px
+}
+
+// ===========================
+// Border Radius System
+// ===========================
+:root {
+  --radius-none: 0;
+  --radius-sm: 0.25rem;   // 4px
+  --radius-md: 0.5rem;    // 8px
+  --radius-lg: 0.75rem;   // 12px
+  --radius-xl: 1rem;      // 16px
+  --radius-2xl: 1.5rem;   // 24px
+  --radius-full: 9999px;
+}
+
+// ===========================
+// Shadow System - Layered Depth
+// ===========================
+:root {
+  --shadow-none: none;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+}
+
+// ===========================
+// Animation System
+// ===========================
+:root {
+  // Durations
+  --duration-instant: 50ms;
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 350ms;
+  --duration-slower: 500ms;
+  
+  // Easings - Apple Inspired
+  --ease-in: cubic-bezier(0.55, 0.055, 0.675, 0.19);
+  --ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// ===========================
+// Z-Index System
+// ===========================
+:root {
+  --z-negative: -1;
+  --z-0: 0;
+  --z-10: 10;
+  --z-20: 20;
+  --z-30: 30;
+  --z-40: 40;
+  --z-50: 50;
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+}
+
+// ===========================
+// Global Styles
+// ===========================
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  transition: background-color var(--duration-normal) var(--ease-smooth);
+}
+
+// ===========================
+// Utility Classes
+// ===========================
+
+// Text Utilities
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-tertiary { color: var(--text-tertiary); }
+.text-brand { color: var(--color-primary); }
+
+// Background Utilities
+.bg-primary { background-color: var(--bg-primary); }
+.bg-secondary { background-color: var(--bg-secondary); }
+.bg-tertiary { background-color: var(--bg-tertiary); }
+.bg-elevated { background-color: var(--bg-elevated); }
+
+// Shadow Utilities
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+.shadow-xl { box-shadow: var(--shadow-xl); }
+
+// Radius Utilities
+.rounded-sm { border-radius: var(--radius-sm); }
+.rounded-md { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-xl { border-radius: var(--radius-xl); }
+.rounded-full { border-radius: var(--radius-full); }
+
+// Animation Utilities
+.transition-all {
+  transition: all var(--duration-normal) var(--ease-smooth);
+}
+
+.transition-colors {
+  transition: color var(--duration-fast) var(--ease-smooth),
+              background-color var(--duration-fast) var(--ease-smooth),
+              border-color var(--duration-fast) var(--ease-smooth);
+}
+
+.transition-transform {
+  transition: transform var(--duration-normal) var(--ease-smooth);
+}
+
+.transition-opacity {
+  transition: opacity var(--duration-normal) var(--ease-smooth);
+}
+
+// Hover Effects
+@media (hover: hover) {
+  .hover-lift {
+    transition: transform var(--duration-normal) var(--ease-smooth),
+                box-shadow var(--duration-normal) var(--ease-smooth);
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+  }
+  
+  .hover-scale {
+    transition: transform var(--duration-fast) var(--ease-bounce);
+    
+    &:hover {
+      transform: scale(1.02);
+    }
+  }
+}

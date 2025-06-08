@@ -1,235 +1,359 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useFilesStore } from '@/stores/files'
 import { useAuthStore } from '@/stores/auth'
-import WelcomeHeader from '@/components/ui/dashboard/WelcomeHeader.vue'
-import QuickActions from '@/components/ui/dashboard/QuickActions.vue'
-import RecentFilesWidget from '@/components/ui/dashboard/RecentFilesWidget.vue'
-import StorageStatsWidget from '@/components/ui/dashboard/StorageStatsWidget.vue'
-import { AppAccessHistory, AppFavoriteManager } from '@/components/ui'
-import type { FileInfo, AccessHistoryItem, RecentFile } from '@/types/files'
+import { useRouter } from 'vue-router'
+import type { FileInfo } from '@/types/files'
 
+const router = useRouter()
 const fileStore = useFilesStore()
 const authStore = useAuthStore()
 
 // 狀態管理
-const showFilePreview = ref(false)
-const selectedFile = ref<FileInfo | null>(null)
-const showFavorites = ref(false)
-const showAccessHistory = ref(false)
+const currentTime = ref(new Date())
+const isLoading = ref(false)
+
+// 計算屬性
+const greeting = computed(() => {
+  const hour = currentTime.value.getHours()
+  if (hour < 12) return '早安'
+  if (hour < 18) return '午安'
+  return '晚安'
+})
+
+const formattedDate = computed(() => {
+  return currentTime.value.toLocaleDateString('zh-TW', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long'
+  })
+})
+
+const recentFiles = computed(() => {
+  return fileStore.files.slice(0, 4)
+})
+
+const storagePercent = computed(() => {
+  return Math.round((6.5 / 10) * 100)
+})
 
 // 方法
-const handleFileSelected = (file: FileInfo | AccessHistoryItem | RecentFile) => {
-  selectedFile.value = file
-  showFilePreview.value = true
+const navigateTo = (path: string) => {
+  router.push(path)
 }
 
-const handleActionPerformed = (action: string, data?: any) => {
-  console.log('Dashboard action:', action, data)
-  
+const handleQuickAction = (action: string) => {
   switch (action) {
-    case 'files-uploaded':
-      // 重新載入最近檔案
-      loadDashboardData()
+    case 'upload':
+      navigateTo('/upload')
       break
-    case 'folder-created':
-      console.log('Folder created:', data)
+    case 'shared':
+      navigateTo('/shared')
+      break
+    case 'sabbath':
+      navigateTo('/sabbath')
+      break
+    case 'files':
+      navigateTo('/files')
       break
   }
 }
 
-const handleCleanupRequested = () => {
-  // 打開清理檔案對話框
-  console.log('Cleanup requested')
-}
-
-const handleManageStorage = () => {
-  // 導航到儲存空間管理頁面
-  console.log('Manage storage requested')
-}
+// 生命週期
+onMounted(() => {
+  // 更新時間
+  setInterval(() => {
+    currentTime.value = new Date()
+  }, 1000)
+  
+  // 載入數據
+  loadDashboardData()
+})
 
 const loadDashboardData = async () => {
+  isLoading.value = true
   try {
-    // 載入儀表板相關數據
     await fileStore.fetchFiles()
   } catch (error) {
     console.error('Failed to load dashboard data:', error)
+  } finally {
+    isLoading.value = false
   }
 }
 
-onMounted(() => {
-  loadDashboardData()
-})
+// 工具函數
+const formatFileSize = (bytes: number): string => {
+  if (!bytes || bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
 </script>
 
 <template>
-  <div class="home-view bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <!-- 歡迎頭部 -->
-      <WelcomeHeader />
+  <div class="home-view min-h-screen" style="background-color: var(--bg-secondary);">
+    <!-- 極簡主義頭部 -->
+    <header class="hero-section relative overflow-hidden" style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-info) 100%); min-height: 380px;">
+      <!-- 背景裝飾 -->
+      <div class="absolute inset-0 opacity-10">
+        <div class="absolute -top-24 -right-24 w-96 h-96 bg-white rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-24 -left-24 w-80 h-80 bg-white rounded-full blur-3xl"></div>
+      </div>
       
-      <!-- 快速操作區 -->
-      <QuickActions @action-performed="handleActionPerformed" />
-      
-      <!-- 主要內容網格 -->
-      <div class="dashboard-grid grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- 最近檔案 (占據兩列) -->
-        <div class="lg:col-span-2">
-          <RecentFilesWidget @file-selected="handleFileSelected" />
-        </div>
-        
-        <!-- 儲存空間統計 -->
-        <div class="lg:col-span-1">
-          <StorageStatsWidget 
-            @cleanup-requested="handleCleanupRequested"
-            @manage-storage="handleManageStorage"
-          />
-        </div>
-        
-        <!-- 我的收藏小工具 -->
-        <div class="lg:col-span-1">
-          <div class="widget bg-white dark:bg-gray-800 rounded-win11 shadow-win11 border border-gray-200 dark:border-gray-700">
-            <div class="widget-header flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 class="flex items-center space-x-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                <svg class="w-5 h-5 text-church-primary" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                </svg>
-                <span>我的收藏</span>
-              </h3>
-              <button
-                @click="showFavorites = true"
-                class="text-sm text-church-primary hover:text-church-primary-light font-medium"
-              >
-                查看全部
-              </button>
+      <!-- 內容 -->
+      <div class="relative z-10 max-w-7xl mx-auto px-6 py-16">
+        <div class="text-white">
+          <h1 class="text-5xl font-light mb-2 animate-fade-in">
+            {{ greeting }}，{{ authStore.user?.name }}
+          </h1>
+          <p class="text-lg opacity-90 font-light animate-fade-in-delay">
+            {{ formattedDate }}
+          </p>
+          
+          <!-- 極簡統計 -->
+          <div class="mt-12 flex items-center space-x-12 animate-slide-up">
+            <div class="text-center">
+              <div class="text-4xl font-light">2.8K</div>
+              <div class="text-sm opacity-80 mt-1">檔案總數</div>
             </div>
-            <div class="widget-content p-4">
-              <div class="text-center py-8">
-                <div class="text-4xl mb-3">⭐</div>
-                <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">尚無收藏檔案</h4>
-                <p class="text-gray-600 dark:text-gray-400 text-sm">點擊檔案上的星星圖示來收藏檔案</p>
-              </div>
+            <div class="w-px h-12 bg-white opacity-20"></div>
+            <div class="text-center">
+              <div class="text-4xl font-light">{{ storagePercent }}%</div>
+              <div class="text-sm opacity-80 mt-1">儲存空間</div>
             </div>
-          </div>
-        </div>
-        
-        <!-- 快速訪問資料夾 -->
-        <div class="lg:col-span-2">
-          <div class="widget bg-white dark:bg-gray-800 rounded-win11 shadow-win11 border border-gray-200 dark:border-gray-700">
-            <div class="widget-header flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 class="flex items-center space-x-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                <svg class="w-5 h-5 text-church-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"/>
-                </svg>
-                <span>快速訪問</span>
-              </h3>
-            </div>
-            <div class="widget-content p-4">
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <router-link
-                  to="/shared"
-                  class="folder-tile group bg-purple-50 dark:bg-purple-900 hover:bg-purple-100 dark:hover:bg-purple-800 border-2 border-purple-200 dark:border-purple-700 hover:border-purple-400 dark:hover:border-purple-600 rounded-win11 p-4 text-center transition-all duration-200"
-                >
-                  <div class="folder-icon bg-purple-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-purple-600 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                    </svg>
-                  </div>
-                  <span class="folder-name text-sm font-medium text-gray-900 dark:text-gray-100">共享資料夾</span>
-                  <span class="file-count text-xs text-gray-500 dark:text-gray-400 block">245 個檔案</span>
-                </router-link>
-                
-                <router-link
-                  to="/sabbath"
-                  class="folder-tile group bg-green-50 dark:bg-green-900 hover:bg-green-100 dark:hover:bg-green-800 border-2 border-green-200 dark:border-green-700 hover:border-green-400 dark:hover:border-green-600 rounded-win11 p-4 text-center transition-all duration-200"
-                >
-                  <div class="folder-icon bg-green-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-green-600 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                    </svg>
-                  </div>
-                  <span class="folder-name text-sm font-medium text-gray-900 dark:text-gray-100">安息日資料</span>
-                  <span class="file-count text-xs text-gray-500 dark:text-gray-400 block">128 個檔案</span>
-                </router-link>
-                
-                <router-link
-                  to="/files"
-                  class="folder-tile group bg-blue-50 dark:bg-blue-900 hover:bg-blue-100 dark:hover:bg-blue-800 border-2 border-blue-200 dark:border-blue-700 hover:border-blue-400 dark:hover:border-blue-600 rounded-win11 p-4 text-center transition-all duration-200"
-                >
-                  <div class="folder-icon bg-blue-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-blue-600 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                  </div>
-                  <span class="folder-name text-sm font-medium text-gray-900 dark:text-gray-100">所有檔案</span>
-                  <span class="file-count text-xs text-gray-500 dark:text-gray-400 block">{{ fileStore.files.length }} 個檔案</span>
-                </router-link>
-                
-                <button
-                  @click="showAccessHistory = true"
-                  class="folder-tile group bg-amber-50 dark:bg-amber-900 hover:bg-amber-100 dark:hover:bg-amber-800 border-2 border-amber-200 dark:border-amber-700 hover:border-amber-400 dark:hover:border-amber-600 rounded-win11 p-4 text-center transition-all duration-200"
-                >
-                  <div class="folder-icon bg-amber-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-amber-600 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                  </div>
-                  <span class="folder-name text-sm font-medium text-gray-900 dark:text-gray-100">訪問記錄</span>
-                  <span class="file-count text-xs text-gray-500 dark:text-gray-400 block">查看歷史</span>
-                </button>
-              </div>
+            <div class="w-px h-12 bg-white opacity-20"></div>
+            <div class="text-center">
+              <div class="text-4xl font-light">156</div>
+              <div class="text-sm opacity-80 mt-1">活躍用戶</div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    
-    <!-- 收藏管理模態框 -->
-    <div
-      v-if="showFavorites"
-      class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4"
-      @click="showFavorites = false"
-    >
-      <div @click.stop class="bg-white dark:bg-gray-800 rounded-win11 shadow-win11 max-w-2xl w-full max-h-96 overflow-y-auto">
-        <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">我的收藏</h3>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="main-content relative -mt-20 z-20">
+      <div class="max-w-7xl mx-auto px-6">
+        <!-- 快速操作卡片 - 極簡風格 -->
+        <div class="quick-actions grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <!-- 上傳檔案 -->
           <button
-            @click="showFavorites = false"
-            class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            @click="handleQuickAction('upload')"
+            class="action-card group"
+            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth);"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
+            <div class="flex flex-col items-center text-center">
+              <div class="icon-wrapper mb-4" style="width: 64px; height: 64px; background: var(--color-primary); background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; transition: transform var(--duration-normal) var(--ease-bounce);">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+              </div>
+              <h3 class="font-medium" style="color: var(--text-primary); font-size: var(--text-lg);">上傳檔案</h3>
+              <p class="mt-1" style="color: var(--text-tertiary); font-size: var(--text-sm);">拖放或選擇檔案</p>
+            </div>
+          </button>
+
+          <!-- 共享資料夾 -->
+          <button
+            @click="handleQuickAction('shared')"
+            class="action-card group"
+            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth);"
+          >
+            <div class="flex flex-col items-center text-center">
+              <div class="icon-wrapper mb-4" style="width: 64px; height: 64px; background: var(--color-info); background: linear-gradient(135deg, var(--color-info) 0%, #8B86F9 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; transition: transform var(--duration-normal) var(--ease-bounce);">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+              </div>
+              <h3 class="font-medium" style="color: var(--text-primary); font-size: var(--text-lg);">共享資料夾</h3>
+              <p class="mt-1" style="color: var(--text-tertiary); font-size: var(--text-sm);">245 個檔案</p>
+            </div>
+          </button>
+
+          <!-- 安息日資料 -->
+          <button
+            @click="handleQuickAction('sabbath')"
+            class="action-card group"
+            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth);"
+          >
+            <div class="flex flex-col items-center text-center">
+              <div class="icon-wrapper mb-4" style="width: 64px; height: 64px; background: var(--color-success); background: linear-gradient(135deg, var(--color-success) 0%, #4CD964 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; transition: transform var(--duration-normal) var(--ease-bounce);">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+              </div>
+              <h3 class="font-medium" style="color: var(--text-primary); font-size: var(--text-lg);">安息日資料</h3>
+              <p class="mt-1" style="color: var(--text-tertiary); font-size: var(--text-sm);">128 個檔案</p>
+            </div>
+          </button>
+
+          <!-- 所有檔案 -->
+          <button
+            @click="handleQuickAction('files')"
+            class="action-card group"
+            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth);"
+          >
+            <div class="flex flex-col items-center text-center">
+              <div class="icon-wrapper mb-4" style="width: 64px; height: 64px; background: var(--color-warning); background: linear-gradient(135deg, var(--color-warning) 0%, #FFAC33 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; transition: transform var(--duration-normal) var(--ease-bounce);">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
+              </div>
+              <h3 class="font-medium" style="color: var(--text-primary); font-size: var(--text-lg);">所有檔案</h3>
+              <p class="mt-1" style="color: var(--text-tertiary); font-size: var(--text-sm);">瀏覽全部</p>
+            </div>
           </button>
         </div>
-        <div class="p-6">
-          <p class="text-gray-600 dark:text-gray-400 text-center">收藏功能正在開發中...</p>
+
+        <!-- 最近檔案 - 極簡列表 -->
+        <div class="recent-files mb-12">
+          <div class="section-header flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-light" style="color: var(--text-primary);">最近使用</h2>
+            <router-link 
+              to="/files" 
+              class="text-sm hover:underline"
+              style="color: var(--color-primary);"
+            >
+              查看全部 →
+            </router-link>
+          </div>
+          
+          <div class="files-grid grid gap-4">
+            <div 
+              v-if="recentFiles.length === 0"
+              class="empty-state text-center py-12"
+              style="background: var(--bg-elevated); border-radius: var(--radius-lg);"
+            >
+              <p style="color: var(--text-tertiary);">尚無最近檔案</p>
+            </div>
+            
+            <div
+              v-for="file in recentFiles"
+              :key="file.id"
+              class="file-item flex items-center p-4 hover-lift cursor-pointer"
+              style="background: var(--bg-elevated); border-radius: var(--radius-lg); transition: all var(--duration-normal) var(--ease-smooth);"
+            >
+              <div class="file-icon mr-4">
+                <div 
+                  class="icon-box"
+                  style="width: 48px; height: 48px; background: var(--bg-tertiary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;"
+                >
+                  <svg class="w-6 h-6" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="file-info flex-1">
+                <h4 class="font-medium" style="color: var(--text-primary);">{{ file.name }}</h4>
+                <p class="text-sm" style="color: var(--text-tertiary);">{{ file.updatedAt }}</p>
+              </div>
+              <div class="file-size text-sm" style="color: var(--text-secondary);">
+                {{ formatFileSize(file.size) }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 儲存空間 - 極簡視覺化 -->
+        <div class="storage-widget" style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md);">
+          <div class="widget-header flex items-center justify-between mb-6">
+            <h3 class="text-xl font-light" style="color: var(--text-primary);">儲存空間</h3>
+            <span class="text-sm" style="color: var(--text-secondary);">6.5 GB / 10 GB</span>
+          </div>
+          
+          <div class="storage-bar" style="height: 8px; background: var(--bg-tertiary); border-radius: var(--radius-full); overflow: hidden;">
+            <div 
+              class="storage-fill"
+              :style="{
+                width: storagePercent + '%',
+                height: '100%',
+                background: 'linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-light) 100%)',
+                transition: 'width var(--duration-slow) var(--ease-smooth)'
+              }"
+            ></div>
+          </div>
+          
+          <div class="storage-details mt-6 grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div class="text-2xl font-light" style="color: var(--text-primary);">{{ storagePercent }}%</div>
+              <div class="text-sm" style="color: var(--text-tertiary);">已使用</div>
+            </div>
+            <div>
+              <div class="text-2xl font-light" style="color: var(--text-primary);">3.5 GB</div>
+              <div class="text-sm" style="color: var(--text-tertiary);">可用</div>
+            </div>
+            <div>
+              <div class="text-2xl font-light" style="color: var(--text-primary);">10 GB</div>
+              <div class="text-sm" style="color: var(--text-tertiary);">總容量</div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-    
-    <!-- 訪問記錄模態框 -->
-    <div
-      v-if="showAccessHistory"
-      class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4"
-      @click="showAccessHistory = false"
-    >
-      <div @click.stop class="bg-white dark:bg-gray-800 rounded-win11 shadow-win11 max-w-4xl w-full max-h-96 overflow-hidden">
-        <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">訪問記錄</h3>
-          <button
-            @click="showAccessHistory = false"
-            class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-        <div class="h-96 overflow-y-auto">
-          <AppAccessHistory @file-selected="handleFileSelected" />
-        </div>
-      </div>
-    </div>
+    </main>
   </div>
 </template>
+
+<style scoped>
+/* 動畫定義 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.animate-fade-in-delay {
+  animation: fadeIn 0.6s ease-out 0.2s both;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s ease-out 0.4s both;
+}
+
+/* 互動效果 */
+.action-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+}
+
+.action-card:hover .icon-wrapper {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* 過渡效果 */
+.action-card,
+.file-item {
+  transition: all var(--duration-normal) var(--ease-smooth);
+}
+
+/* 工具函數 */
+.formatFileSize {
+  @apply text-sm text-gray-500;
+}
+</style>

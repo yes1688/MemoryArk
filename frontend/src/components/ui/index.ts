@@ -1,5 +1,6 @@
 // UI Components Export
 export { default as AppButton } from './button/AppButton.vue'
+export { default as MinimalButton } from './button/MinimalButton.vue'
 export { default as AppCard } from './card/AppCard.vue'
 export { default as AppInput } from './input/AppInput.vue'
 export { default as AppDialog } from './dialog/AppDialog.vue'
@@ -30,6 +31,9 @@ export { default as SlideTransition } from './transitions/SlideTransition.vue'
 export { default as SkeletonLoader } from './loading/SkeletonLoader.vue'
 export { default as ProgressIndicator } from './loading/ProgressIndicator.vue'
 export { default as RippleEffect } from './effects/RippleEffect.vue'
+
+// Navigation
+export { default as MinimalSidebar } from './navigation/MinimalSidebar.vue'
 
 // Accessibility & Theme
 export { default as KeyboardNav } from './accessibility/KeyboardNav.vue'

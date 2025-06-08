@@ -1,4 +1,5 @@
-/* 匯入動畫系統 */
+/* 匯入設計系統 */
+@import '../styles/design-system.scss';
 @import '../styles/animations.scss';
 
 @tailwind base;
