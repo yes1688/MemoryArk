@@ -1,5 +1,5 @@
 # 後端建構階段
-FROM golang:1.22-alpine AS backend-builder
+FROM docker.io/golang:1.22-alpine AS backend-builder
 WORKDIR /app
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
@@ -7,7 +7,7 @@ COPY backend/ ./
 RUN go build -o server ./cmd/server
 
 # 最終運行階段
-FROM alpine:latest
+FROM docker.io/alpine:latest
 RUN apk add --no-cache ca-certificates
 WORKDIR /app
 

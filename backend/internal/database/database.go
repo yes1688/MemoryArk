@@ -76,9 +76,21 @@ func createDefaultAdmin(db *gorm.DB) error {
 		return nil
 	}
 	
+	// 從環境變數讀取管理員資訊
+	adminEmail := os.Getenv("ROOT_ADMIN_EMAIL")
+	adminName := os.Getenv("ROOT_ADMIN_NAME")
+	
+	// 設定預設值
+	if adminEmail == "" {
+		adminEmail = "admin@memoryark.org"
+	}
+	if adminName == "" {
+		adminName = "系統管理員"
+	}
+	
 	admin := models.User{
-		Email:  "admin@tjc.org",
-		Name:   "系統管理員",
+		Email:  adminEmail,
+		Name:   adminName,
 		Role:   "admin",
 		Status: "approved",
 	}

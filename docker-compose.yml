@@ -57,7 +57,7 @@ services:
         max-file: "7"
 
   nginx:
-    image: nginx:alpine
+    image: docker.io/nginx:alpine
     ports:
       - "7001:80"
     volumes:
