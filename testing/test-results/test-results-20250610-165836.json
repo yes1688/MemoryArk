@@ -1,0 +1,33 @@
+{
+  "start_time": "2025-06-10T16:58:36.537962",
+  "api_base_url": "http://localhost:7001",
+  "tests": [
+    {
+      "test_name": "Health Check",
+      "status": "passed",
+      "timestamp": "2025-06-10T16:58:36.540024",
+      "response": {
+        "status_code": 200,
+        "headers": {
+          "Server": "nginx/1.27.5",
+          "Date": "Tue, 10 Jun 2025 08:58:36 GMT",
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Length": "99",
+          "Connection": "keep-alive",
+          "Access-Control-Allow-Credentials": "true",
+          "Access-Control-Allow-Headers": "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With",
+          "Access-Control-Allow-Methods": "POST, OPTIONS, GET, PUT, DELETE, PATCH",
+          "Access-Control-Allow-Origin": "*"
+        },
+        "elapsed_ms": 1.461
+      }
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  "end_time": "2025-06-10T16:58:36.540045"
+}

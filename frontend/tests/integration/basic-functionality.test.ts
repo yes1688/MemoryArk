@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createMemoryHistory } from 'vue-router'
 
 // 導入主要組件
 import App from '@/App.vue'
@@ -20,9 +20,9 @@ import {
   RippleEffect
 } from '@/components/ui'
 
-// 創建測試路由
+// 創建測試路由 - 使用 memory history 以避免 window 依賴
 const router = createRouter({
-  history: createWebHistory(),
+  history: createMemoryHistory(),
   routes: [
     { path: '/', component: HomeView },
     { path: '/files', component: FilesView }

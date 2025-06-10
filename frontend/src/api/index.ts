@@ -4,6 +4,11 @@ import type { ApiResponse } from '@/types/api'
 
 // API 基本配置 - 動態根據當前域名設置
 const getApiBaseUrl = () => {
+  // 檢查是否在測試環境中
+  if (typeof window === 'undefined') {
+    return 'http://localhost:7001/api'
+  }
+  
   // 如果是透過 Cloudflare Tunnel 訪問
   if (window.location.hostname === 'files.94work.net') {
     return 'https://files.94work.net/api'
@@ -46,18 +51,26 @@ apiClient.interceptors.response.use(
     
     if (error.response?.status === 401) {
       // Cloudflare Access 認證失敗，重定向到 Cloudflare 登入
-      window.location.href = '/cloudflare-auth'
+      if (typeof window !== 'undefined') {
+        window.location.href = '/cloudflare-auth'
+      }
     } else if (error.response?.status === 403) {
       const errorCode = errorData?.error?.code
       if (errorCode === 'USER_NOT_REGISTERED') {
         // 用戶需要註冊
-        window.location.href = '/register'
+        if (typeof window !== 'undefined') {
+          window.location.href = '/register'
+        }
       } else if (errorCode === 'USER_NOT_APPROVED') {
         // 用戶等待審核
-        window.location.href = '/pending-approval'
+        if (typeof window !== 'undefined') {
+          window.location.href = '/pending-approval'
+        }
       } else if (errorCode === 'INSUFFICIENT_PERMISSIONS' || errorCode === 'ACCESS_DENIED') {
         // 權限不足
-        window.location.href = '/access-denied'
+        if (typeof window !== 'undefined') {
+          window.location.href = '/access-denied'
+        }
       }
     }
     return Promise.reject(error)

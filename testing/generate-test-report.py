@@ -176,8 +176,8 @@ HTML_TEMPLATE = """
                 <div class="test-details">
                     <div>時間: {{ test.timestamp }}</div>
                     {% if test.response %}
-                    <div>狀態碼: {{ test.response.status_code }} | 
-                         回應時間: <span class="response-time">{{ "%.0f"|format(test.response.elapsed_ms) }}ms</span>
+                    <div>狀態碼: {{ test.response.status_code }}{% if test.response.elapsed_ms %} | 
+                         回應時間: <span class="response-time">{{ "%.0f"|format(test.response.elapsed_ms) }}ms</span>{% endif %}
                     </div>
                     {% endif %}
                     {% if test.error %}
@@ -202,7 +202,7 @@ HTML_TEMPLATE = """
 def generate_report():
     """產生 HTML 測試報告"""
     # 找到最新的測試結果
-    results_dir = '/app/test-results'
+    results_dir = './test-results'
     json_files = glob.glob(os.path.join(results_dir, 'test-results-*.json'))
     
     if not json_files:

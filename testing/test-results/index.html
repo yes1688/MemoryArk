@@ -1,0 +1,1172 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MemoryArk 2.0 測試報告</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1e3a8a;
+            margin-bottom: 30px;
+        }
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .summary-card {
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            color: white;
+        }
+        .summary-card h2 {
+            margin: 0 0 10px 0;
+            font-size: 36px;
+        }
+        .summary-card p {
+            margin: 0;
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        .total { background: #6366f1; }
+        .passed { background: #10b981; }
+        .failed { background: #ef4444; }
+        .skipped { background: #f59e0b; }
+        
+        .test-results {
+            margin-top: 30px;
+        }
+        .test-item {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            padding: 20px;
+        }
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .test-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        .test-status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .status-passed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status-failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .status-skipped {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .test-details {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+            color: #991b1b;
+        }
+        .metadata {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            font-size: 14px;
+            color: #4b5563;
+        }
+        .metadata div {
+            margin-bottom: 5px;
+        }
+        .response-time {
+            color: #059669;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 MemoryArk 2.0 整合測試報告</h1>
+        
+        <div class="metadata">
+            <div><strong>測試時間：</strong> 2025-06-10 16:59:13 - 2025-06-10 16:59:20</div>
+            <div><strong>目標伺服器：</strong> http://localhost:7001</div>
+            <div><strong>執行時間：</strong> 7.7 秒</div>
+        </div>
+        
+        <div class="summary">
+            <div class="summary-card total">
+                <h2>54</h2>
+                <p>總測試數</p>
+            </div>
+            <div class="summary-card passed">
+                <h2>28</h2>
+                <p>通過</p>
+            </div>
+            <div class="summary-card failed">
+                <h2>26</h2>
+                <p>失敗</p>
+            </div>
+            <div class="summary-card skipped">
+                <h2>0</h2>
+                <p>跳過</p>
+            </div>
+        </div>
+        
+        <div class="test-results">
+            <h2>測試詳情</h2>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Health Check</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:13.117272</div>
+                    
+                    <div>狀態碼: 200 | 
+                         回應時間: <span class="response-time">1ms</span>
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Auth Status Check</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:13.619547</div>
+                    
+                    <div>狀態碼: 200 | 
+                         回應時間: <span class="response-time">1ms</span>
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">File List API</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:14.121373</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x773d982c85f0>: Failed to establish a new connection: [Errno 111] Connection refused'))
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Categories API</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:14.622927</div>
+                    
+                    <div>狀態碼: 200 | 
+                         回應時間: <span class="response-time">1ms</span>
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Response Time Test</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.125322</div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">File Upload Test</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.653252</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: HTTP 錯誤: 201 - {"data":{"id":4,"name":"test-upload-1749545955.txt","original_name":"test-upload-1749545955.txt","file_path":"uploads/files/f2/f109e357-5046-4643-8132-6ffccbed7032","virtual_path":"/test-upload-1749545955.txt","sha256_hash":"f289739208a71818e9c3e5f632a5592d21982c6ee563f41d8f762722a3498cea","file_size":1062,"mime_type":"text/plain","thumbnail_url":"","parent_id":null,"category_id":null,"uploaded_by":1,"download_count":0,"is_directory":false,"is_deleted":false,"deleted_at":null,"deleted_by":null,"description":"","tags":"","content_type":"","speaker":"","sermon_title":"","bible_reference":"","like_count":0,"created_at":"2025-06-10T08:59:15.627963587Z","updated_at":"2025-06-10T08:59:15.627963587Z","uploader":{"id":0,"email":"","name":"","phone":"","role":"","status":"","avatar_url":"","created_at":"0001-01-01T00:00:00Z","updated_at":"0001-01-01T00:00:00Z","last_login_at":null,"approved_by":null,"approved_at":null}},"message":"檔案上傳成功","success":true}
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Large File Upload Test</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.678087</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: HTTP 錯誤: 201
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Unauthenticated Access: 取得用戶資訊</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.680019</div>
+                    
+                    <div>狀態碼: 200
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Unauthenticated Access: 檔案列表</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.680820</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x773d982ca360>: Failed to establish a new connection: [Errno 111] Connection refused'))
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Unauthenticated Access: 檔案上傳</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.681466</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外的狀態碼: 400
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Unauthenticated Access: 分類列表</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.682030</div>
+                    
+                    <div>狀態碼: 200
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Unauthenticated Access: 建立分類</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.682516</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外的狀態碼: 400
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Unauthenticated Access: 管理員用戶列表</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.683239</div>
+                    
+                    <div>狀態碼: 200
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Unauthenticated Access: 管理員統計</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.683912</div>
+                    
+                    <div>狀態碼: 200
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Invalid Auth: 無效 email</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.684478</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外的回應: 200
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Invalid Auth: 空 email</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.685036</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外的回應: 200
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Invalid Auth: 格式錯誤 email</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.685540</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外的回應: 200
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Invalid Auth: 錯誤 header 名稱</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.686040</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外的回應: 200
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Admin Access: 用戶管理</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.686549</div>
+                    
+                    <div>狀態碼: 200
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Admin Access: 系統統計</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.687105</div>
+                    
+                    <div>狀態碼: 200
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Admin Access: 活動日誌</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.687657</div>
+                    
+                    <div>狀態碼: 200
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Admin Access: 修改用戶角色</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.688131</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外狀態碼: 400
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Admin Access: 註冊申請列表</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.688661</div>
+                    
+                    <div>狀態碼: 200
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">User Denied: 用戶管理</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.689160</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 權限控制失效
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">User Denied: 系統統計</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.689700</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 權限控制失效
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Authentication Consistency</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.690937</div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Header Case: CF-Access-Authenticated-User-Email</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.691385</div>
+                    
+                    <div>狀態碼: 200
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Header Case: cf-access-authenticated-user-email</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.691921</div>
+                    
+                    <div>狀態碼: 200
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Header Case: Cf-Access-Authenticated-User-Email</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.692351</div>
+                    
+                    <div>狀態碼: 200
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Header Case: CF-ACCESS-AUTHENTICATED-USER-EMAIL</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.692820</div>
+                    
+                    <div>狀態碼: 200
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">User Registration Flow</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.693375</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 註冊被拒絕: {'error': {'code': 'INVALID_REQUEST', 'details': "Key: 'RegisterRequest.Phone' Error:Field validation for 'Phone' failed on the 'required' tag", 'message': '請求格式不正確'}, 'success': False}
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Malformed Request: Invalid JSON Body</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.695642</div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Malformed Request: Missing Content-Type</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.699971</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 預期狀態碼 400，實際 201
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Malformed Request: Empty Request Body</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.700460</div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Malformed Request: Oversized Request Body</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.704317</div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Path Traversal: ../../../etc/passwd...</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.708559</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外回應: 201
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Path Traversal: ..\..\..\windows\sys...</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.712845</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外回應: 201
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Path Traversal: /etc/passwd...</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.717284</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外回應: 201
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Path Traversal: ../../../../usr/bin/...</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.721666</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外回應: 201
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Path Traversal: ..%2F..%2F..%2Fetc%2...</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.726164</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外回應: 201
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Path Traversal: ....//....//....//et...</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.730540</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外回應: 201
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Path Traversal: ..\..\..\..\..\..\.....</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.734823</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外回應: 201
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">SQL Injection: '; DROP TABLE users;...</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.735711</div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">SQL Injection: 1' OR '1'='1...</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.736260</div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">SQL Injection: admin'--...</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.736868</div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">SQL Injection: 1' UNION SELECT * FR...</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.737395</div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">SQL Injection: '; INSERT INTO users...</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.737912</div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Concurrent Requests Test</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.743276</div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Large Pagination Request</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.744078</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/?limit=999999&page=1 (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x773d982ca030>: Failed to establish a new connection: [Errno 111] Connection refused'))
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Invalid Upload: Empty File</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.748985</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外狀態碼: 201
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Invalid Upload: Extremely Long Filename</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.753228</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外狀態碼: 201
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Invalid Upload: Special Characters in Filename</div>
+                    <div class="test-status status-failed">
+                        ❌ 失敗
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.757195</div>
+                    
+                    
+                    <div class="error-message">
+                        錯誤: 意外狀態碼: 201
+                    </div>
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Invalid Upload: Null Bytes in Filename</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:15.757830</div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">Rate Limiting Test</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T16:59:20.816840</div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</body>
+</html>

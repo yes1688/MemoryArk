@@ -16,12 +16,35 @@ from colorama import init, Fore, Style
 # 匯入專門的測試模組
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 try:
-    from file_upload_tests import FileUploadTester
-    from auth_permission_tests import AuthPermissionTester
-    from error_edge_case_tests import ErrorEdgeCaseTester
+    # 動態匯入檔案名稱包含連字符的模組
+    import importlib.util
+    
+    # 載入 file-upload-tests.py
+    spec = importlib.util.spec_from_file_location("file_upload_tests", "file-upload-tests.py")
+    file_upload_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(file_upload_module)
+    FileUploadTester = file_upload_module.FileUploadTester
+    
+    # 載入 auth-permission-tests.py
+    spec = importlib.util.spec_from_file_location("auth_permission_tests", "auth-permission-tests.py")
+    auth_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(auth_module)
+    AuthPermissionTester = auth_module.AuthPermissionTester
+    
+    # 載入 error-edge-case-tests.py
+    spec = importlib.util.spec_from_file_location("error_edge_case_tests", "error-edge-case-tests.py")
+    error_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(error_module)
+    ErrorEdgeCaseTester = error_module.ErrorEdgeCaseTester
+    
     print(f"{Fore.BLUE}已載入專門測試模組")
 except ImportError as e:
     print(f"{Fore.YELLOW}警告: 無法載入專門測試模組: {e}")
+    FileUploadTester = None
+    AuthPermissionTester = None
+    ErrorEdgeCaseTester = None
+except Exception as e:
+    print(f"{Fore.YELLOW}警告: 載入測試模組時發生錯誤: {e}")
     FileUploadTester = None
     AuthPermissionTester = None
     ErrorEdgeCaseTester = None
@@ -70,11 +93,12 @@ class APITester:
             assert response.status_code == 200, f"預期狀態碼 200，實際 {response.status_code}"
             
             data = response.json()
-            assert data.get('success') == True, "回應中缺少 success: true"
-            assert 'data' in data, "回應中缺少 data 欄位"
-            assert data['data'].get('status') == 'healthy', "服務狀態不是 healthy"
+            # 健康檢查端點使用特殊格式，不同於其他API
+            assert data.get('status') == 'healthy', "服務狀態不是 healthy"
+            assert 'service' in data, "回應中缺少 service 欄位"
+            assert 'version' in data, "回應中缺少 version 欄位"
             
-            print(f"{Fore.GREEN}✅ 通過: 服務正常運行")
+            print(f"{Fore.GREEN}✅ 通過: 服務正常運行 - {data.get('service')} v{data.get('version')}")
             return self._success_result(test_name, response)
             
         except Exception as e:
@@ -292,10 +316,21 @@ def run_all_tests():
     ]
     
     for test_func in basic_tests:
-        result = test_func()
-        test_results['tests'].append(result)
-        update_summary(result)
-        time.sleep(0.5)
+        try:
+            result = test_func()
+            test_results['tests'].append(result)
+            update_summary(result)
+            time.sleep(0.5)
+        except Exception as e:
+            print(f"{Fore.RED}❌ 測試 {test_func.__name__} 發生異常: {str(e)}")
+            error_result = {
+                'test_name': test_func.__name__,
+                'status': 'failed',
+                'error': str(e),
+                'timestamp': datetime.now().isoformat()
+            }
+            test_results['tests'].append(error_result)
+            update_summary(error_result)
     
     # 2. 執行檔案上傳/下載測試
     if FileUploadTester:
@@ -331,6 +366,9 @@ def run_all_tests():
         for result in error_results:
             test_results['tests'].append(result)
             update_summary(result)
+    
+    # 顯示最終結果並保存
+    show_final_summary()
 
 def update_summary(result):
     """更新測試統計"""
@@ -344,7 +382,9 @@ def update_summary(result):
     
     # 結束時間
     test_results['end_time'] = datetime.now().isoformat()
-    
+
+def show_final_summary():
+    """顯示最終測試總結並儲存結果"""
     # 顯示總結
     print(f"\n{Fore.BLUE}{Style.BRIGHT}=== 測試總結 ===")
     print(f"總測試數: {test_results['summary']['total']}")
@@ -353,7 +393,7 @@ def update_summary(result):
     print(f"{Fore.YELLOW}跳過: {test_results['summary']['skipped']}")
     
     # 儲存結果
-    results_dir = '/app/test-results'
+    results_dir = './test-results'
     os.makedirs(results_dir, exist_ok=True)
     
     result_file = os.path.join(results_dir, f"test-results-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json")
