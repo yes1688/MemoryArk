@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # 整合測試容器 - 對生產環境進行測試
+  integration-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.integration-test
+    environment:
+      # 測試目標伺服器
+      - API_BASE_URL=http://host.docker.internal:7001
+      - TEST_ENVIRONMENT=integration
+      # 測試用戶憑證
+      - TEST_ADMIN_EMAIL=94work.net@gmail.com
+      - TEST_USER_EMAIL=test-user@example.com
+      # 測試設定
+      - TEST_TIMEOUT=30
+      - TEST_PARALLEL=false
+    volumes:
+      - ./testing:/app/testing
+      - ./testing/test-results:/app/test-results
+    extra_hosts:
+      # 讓容器可以訪問主機的 localhost
+      - "host.docker.internal:host-gateway"
+    command: |
+      sh -c "
+        echo '🧪 開始執行整合測試...'
+        echo '🎯 目標伺服器: ${API_BASE_URL}'
+        echo '⏳ 等待伺服器就緒...'
+        
+        # 等待服務就緒
+        until curl -s ${API_BASE_URL}/api/health > /dev/null; do
+          echo '等待服務啟動...'
+          sleep 2
+        done
+        
+        echo '✅ 服務已就緒，開始測試'
+        
+        # 執行測試
+        cd /app/testing
+        python3 run-integration-tests.py
+        
+        # 產生測試報告
+        echo '📊 產生測試報告...'
+        python3 generate-test-report.py
+        
+        echo '✅ 測試完成！報告已儲存至 /app/test-results/'
+      "
+    networks:
+      - test-network
+
+  # 測試報告檢視服務
+  test-report-viewer:
+    image: nginx:alpine
+    ports:
+      - "8081:80"
+    volumes:
+      - ./testing/test-results:/usr/share/nginx/html:ro
+    profiles:
+      - report
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
