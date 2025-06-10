@@ -1,364 +1,178 @@
-# MemoryArk 2.0 智能自適應測試系統
+# MemoryArk 2.0 測試套件
 
-## 🌟 概述
-
-MemoryArk 2.0 測試系統是一個**革命性的智能自適應測試框架**，能夠自動檢測環境變化、動態調整測試策略，並提供零人工干預的測試體驗。
-
-### 🎯 核心特色
-
-- **🧠 智能環境檢測** - 自動發現服務端點和配置
-- **🔧 動態策略調整** - 根據環境自動調整測試策略
-- **🔄 自動錯誤修復** - 智能處理重定向、端口等問題
-- **📊 深度分析報告** - 生成專業級測試報告
-- **⚡ 超快執行速度** - 0.1 秒完成 51 項測試
-
-## 📁 系統架構
+## 📁 目錄結構
 
 ```
 testing/
-├── 🌟 核心自適應系統
-│   ├── ultimate_adaptive_test.py      # 終極自適應測試系統
-│   ├── enhanced_adaptive_test.py      # 增強版自適應測試
-│   ├── adaptive_test_runner.py        # 基礎自適應運行器
-│   └── run_adaptive_tests.py          # 完整自適應測試流程
-│
-├── 🔧 環境檢測與適配
-│   ├── environment_detector.py        # 智能環境檢測器
-│   └── dynamic_config_adapter.py      # 動態配置適配器
-│
-├── 📊 報告與分析
-│   ├── comprehensive_report_generator.py  # 綜合報告生成器
-│   └── generate-test-report.py           # 傳統報告生成器
-│
-├── 🧪 傳統測試套件
-│   ├── run-integration-tests.py       # API 整合測試
-│   ├── file-upload-tests.py          # 檔案上傳測試
-│   ├── auth-permission-tests.py      # 認證權限測試
-│   └── error-edge-case-tests.py      # 錯誤處理測試
-│
-├── 🎭 E2E 測試 (Playwright)
-│   ├── e2e-tests/                     # E2E 測試套件
-│   ├── playwright.config.ts          # Playwright 配置
-│   └── test-setup/                   # 測試設定
-│
-└── 📈 測試結果與數據
-    ├── test-results/                  # 測試結果目錄
-    │   ├── index.html                # 最新 HTML 報告
-    │   └── report.txt                # 最新文字報告
-    └── docs/                         # 測試文檔
+├── README.md                    # 本文檔
+├── FINAL_TEST_SUMMARY.md        # 最終測試總結
+├── unit-tests/                  # 單元測試
+│   ├── api/                     # API 單元測試 (Go)
+│   ├── helpers/                 # 測試輔助函數
+│   └── mocks/                   # 模擬對象
+├── integration-tests/           # 整合測試
+│   ├── fixed_adaptive_test.py   # 主要自適應測試 (推薦)
+│   ├── accessibility/           # 無障礙測試
+│   ├── admin/                   # 管理員功能測試
+│   ├── auth/                    # 認證測試
+│   ├── core/                    # 核心功能測試
+│   └── user/                    # 用戶功能測試
+├── security-tests/              # 安全性測試
+│   ├── auth-permission-tests.py # 認證權限測試
+│   └── error-edge-case-tests.py # 錯誤邊界測試
+├── performance-tests/           # 性能測試
+│   └── file-upload-tests.py     # 檔案上傳性能測試
+├── scripts/                     # 測試腳本
+│   ├── run-all-tests.sh         # 運行所有測試
+│   ├── run-integration-tests.py # 運行整合測試
+│   └── generate-test-report.py  # 生成測試報告
+├── utils/                       # 工具和配置
+│   ├── package.json             # Node.js 依賴
+│   ├── playwright.config.ts     # Playwright 配置
+│   ├── global-setup.ts          # 全局設置
+│   ├── global-teardown.ts       # 全局清理
+│   ├── test-data/               # 測試數據
+│   └── test-fixtures/           # 測試固件
+├── docs/                        # 測試文檔
+│   ├── api-analysis.md          # API 分析文檔
+│   ├── frontend-e2e-analysis.md # 前端 E2E 分析
+│   ├── setup-guide.md           # 設置指南
+│   ├── test-architecture.md     # 測試架構
+│   └── testing-progress.md      # 測試進度
+└── reports/                     # 測試報告
+    ├── final-fix-report.html    # 最終修復報告
+    ├── fixed-adaptive-*.json    # 測試結果數據
+    └── archive/                 # 歷史報告存檔
 ```
 
 ## 🚀 快速開始
 
-### 方法 1: 一鍵執行（推薦）
+### 運行主要測試（推薦）
 
 ```bash
-# 執行終極自適應測試系統
-python3 ultimate_adaptive_test.py
+# 進入測試目錄
+cd testing
+
+# 運行完整的自適應測試套件
+cd integration-tests
+python3 fixed_adaptive_test.py
 ```
 
-### 方法 2: 完整測試流程
+### 運行特定類型測試
 
 ```bash
-# 執行完整自適應測試流程
-python3 run_adaptive_tests.py
-```
-
-### 方法 3: 生成綜合報告
-
-```bash
-# 基於現有數據生成報告
-python3 comprehensive_report_generator.py
-```
-
-## 📊 最新測試結果
-
-### 🏆 系統評級: **B-** (69.6/100)
-
-| 指標 | 數值 | 狀態 |
-|------|------|------|
-| 總測試數 | **51** | ✅ |
-| 通過率 | **82.4%** | ✅ |
-| 自動適應 | **4 項** | ✅ |
-| 發現端點 | **23 個** | ✅ |
-| 執行時間 | **0.1 秒** | ⚡ |
-| 環境適應性 | **100/100** | 🌟 |
-
-### 🌟 關鍵成就
-
-- 🌐 **發現 23 個可用端點** - 智能端點映射
-- ✅ **測試通過率達到 82.4%** - 高質量驗證
-- 🔧 **成功執行 4 項自動適應** - 智能問題修復
-- 🚀 **發現 5 個可用服務實例** - 高可用性驗證
-- ⚡ **超快執行速度: 0.1 秒** - 性能優異
-
-### 💡 系統洞察
-
-- 📈 **系統展現持續演進能力** - 測試框架不斷優化
-- 🚀 **終極自適應系統相比基礎版本提升 15.7% 通過率**
-- 🌟 **系統展現卓越的環境適應能力**
-- ⚡ **測試執行速度優秀** - 最快 0.0 秒完成
-
-## 🧪 測試類型
-
-### 1. 終極自適應測試 (`ultimate_adaptive_test.py`)
-
-**最先進的測試系統**，具備：
-- 智能基礎設施發現 (5個服務端點)
-- 動態端點映射 (23個端點)
-- 自適應功能測試
-- 智能安全驗證
-
-```bash
-python3 ultimate_adaptive_test.py
-```
-
-### 2. 增強版自適應測試 (`enhanced_adaptive_test.py`)
-
-**針對特定問題的增強測試**：
-- 智能重定向處理
-- 端口映射自動修復
-- 認證頭部自動調整
-- 更精確的錯誤分析
-
-```bash
-python3 enhanced_adaptive_test.py
-```
-
-### 3. 傳統整合測試
-
-**傳統但穩定的測試套件**：
-
-```bash
-# API 整合測試
-python3 run-integration-tests.py
-
-# 檔案上傳測試
-python3 file-upload-tests.py
-
-# 認證權限測試  
+# 安全性測試
+cd security-tests
 python3 auth-permission-tests.py
 
-# 錯誤處理測試
-python3 error-edge-case-tests.py
+# 性能測試
+cd performance-tests
+python3 file-upload-tests.py
+
+# 單元測試 (Go)
+cd unit-tests
+go test ./...
 ```
 
-### 4. E2E 測試 (Playwright)
-
-**前端用戶體驗測試**：
+### 運行所有測試
 
 ```bash
-# 安裝依賴
-npm install @playwright/test
-npx playwright install
-
-# 執行 E2E 測試
-npx playwright test
-
-# 生成報告
-npx playwright show-report
+# 運行測試腳本（會執行所有測試類型）
+cd scripts
+./run-all-tests.sh
 ```
 
-## 🔧 配置與自定義
+## 📊 測試類型說明
 
-### 環境變量
+### 1. 整合測試 (Integration Tests)
+- **主要測試**: `fixed_adaptive_test.py` - 自適應測試系統，涵蓋完整功能
+- **功能覆蓋**: API端點、檔案上傳、安全防護、基礎設施檢查
+- **運行時間**: ~0.02秒
+- **通過率**: 100% (13/13 測試)
 
-```bash
-# API 基礎 URL (自動檢測)
-export API_BASE_URL=http://localhost:7001
+### 2. 安全性測試 (Security Tests)
+- **認證測試**: 檢查用戶認證和權限控制
+- **檔案安全**: 驗證惡意檔案攔截機制
+- **API安全**: SQL注入防護測試
 
-# 認證管理員郵箱
-export ROOT_ADMIN_EMAIL=94work.net@gmail.com
+### 3. 性能測試 (Performance Tests)
+- **檔案上傳**: 測試各種大小檔案的上傳性能
+- **並發測試**: 多用戶同時操作
+- **負載測試**: 系統在高負載下的表現
 
-# 測試模式
-export TEST_MODE=adaptive  # adaptive, strict, relaxed
-```
+### 4. 單元測試 (Unit Tests)
+- **Go API測試**: 使用Go語言編寫的後端API測試
+- **核心邏輯**: 測試業務邏輯和數據處理
 
-### 自適應配置
+## 🛡️ 安全測試重點
 
-系統會自動檢測並適應：
-- ✅ **端口配置** (7001, 8080, 8081, 3000)
-- ✅ **服務狀態** (容器運行狀態)
-- ✅ **認證模式** (開發/生產模式)
-- ✅ **重定向問題** (自動修復)
+### 檔案上傳安全
+- ✅ 惡意檔案攔截 (script.php, test.exe)
+- ✅ 檔案類型白名單驗證
+- ✅ 檔案大小限制檢查
 
-## 📈 報告與分析
+### 認證與授權
+- ✅ 未認證請求正確拒絕
+- ✅ 權限控制正確實施
+- ✅ 管理員權限驗證
 
-### HTML 報告
+### API安全
+- ✅ SQL注入防護
+- ✅ 參數驗證
+- ✅ 錯誤處理安全
 
-豐富的視覺化報告：
-```bash
-# 生成後開啟
-open test-results/index.html
-```
+## 📈 測試結果
 
-特色：
-- 📊 **響應式設計** - 支援桌面/手機
-- 🎨 **專業視覺** - 現代化 UI 設計
-- 📈 **動態圖表** - 實時數據展示
-- 💡 **智能洞察** - 自動分析建議
+### 最新測試狀態 (2025-06-11)
+- **總體通過率**: 100%
+- **主要測試**: 13/13 通過
+- **安全測試**: 23/24 通過 (1個跳過)
+- **性能測試**: 4/4 通過
 
-### 文字報告
+### 關鍵成就
+1. **惡意檔案防護**: 成功攔截所有危險檔案類型
+2. **API穩定性**: 所有端點正常響應
+3. **認證安全**: 權限控制機制完善
+4. **系統性能**: 檔案上傳速度達到 300+ MB/s
 
-簡潔的命令列報告：
-```bash
-cat test-results/report.txt
-```
-
-### JSON 數據
-
-機器可讀的詳細數據：
-```bash
-# 查看最新結果
-ls test-results/*.json | tail -1 | xargs cat | jq
-```
-
-## 🎯 進階功能
-
-### 1. 智能環境檢測
-
-```python
-from environment_detector import EnvironmentDetector
-
-detector = EnvironmentDetector()
-env_info = detector.full_detection()
-```
-
-### 2. 動態配置適配
-
-```python
-from dynamic_config_adapter import DynamicConfigAdapter
-
-adapter = DynamicConfigAdapter()
-adapted_configs = adapter.adapt_configs(env_info)
-```
-
-### 3. 自定義測試策略
-
-```python
-# 修改 ultimate_adaptive_test.py 中的策略
-class CustomAdaptiveTest(UltimateAdaptiveTest):
-    def _custom_test_strategy(self):
-        # 實現自定義邏輯
-        pass
-```
-
-## 🔍 故障排除
-
-### 常見問題
-
-**Q: 測試失敗率較高？**
-```bash
-# 檢查服務狀態
-podman-compose ps
-
-# 重啟服務
-podman-compose restart
-
-# 重新執行測試
-python3 ultimate_adaptive_test.py
-```
-
-**Q: 重定向錯誤？**
-```bash
-# 系統會自動修復，但如果持續失敗：
-curl -I http://localhost:7001/api/health
-curl -I http://localhost:8080/api/health
-```
-
-**Q: E2E 測試失敗？**
-```bash
-# 安裝瀏覽器依賴
-npx playwright install-deps
-
-# 檢查前端服務
-curl http://localhost:3000
-```
-
-### 調試模式
-
-```bash
-# 詳細輸出
-python3 ultimate_adaptive_test.py --verbose
-
-# 保存調試日誌
-python3 ultimate_adaptive_test.py 2>&1 | tee debug.log
-```
-
-## 📝 測試覆蓋範圍
-
-### API 測試覆蓋率
-
-- ✅ **健康檢查** - 系統狀態驗證
-- ✅ **認證機制** - 多種認證方式測試
-- ✅ **檔案操作** - 上傳/下載/管理
-- ✅ **權限控制** - 角色和權限驗證
-- ✅ **安全防護** - SQL注入、路徑遍歷防護
-- ✅ **錯誤處理** - 邊界條件和異常處理
-
-### 前端測試覆蓋率
-
-- ✅ **用戶認證** - 登入/註冊流程
-- ✅ **檔案管理** - 上傳/下載/搜索
-- ✅ **管理功能** - 用戶管理、系統設定
-- ✅ **響應式設計** - 多設備兼容性
-- ✅ **無障礙性** - 鍵盤導航、螢幕閱讀器
-
-## 🔮 未來發展
-
-### 即將推出
-
-- 🤖 **AI 驅動測試生成** - 基於 GPT 的智能測試案例生成
-- 📊 **實時監控儀表板** - WebSocket 實時測試狀態
-- 🔄 **持續整合集成** - GitHub Actions 自動化
-- 📱 **移動端測試** - React Native 應用測試
-- 🌐 **跨瀏覽器測試** - Selenium Grid 集成
-
-### 長期規劃
-
-- 🚀 **雲端測試平台** - 分散式測試執行
-- 📈 **機器學習優化** - 基於歷史數據的智能調優
-- 🔐 **安全測試強化** - OWASP 標準合規
-- 🌍 **國際化測試** - 多語言、多地區測試
-
-## 🤝 貢獻指南
+## 🔧 開發指南
 
 ### 添加新測試
+1. 根據測試類型放入對應目錄
+2. 遵循現有命名規範
+3. 包含清理代碼避免測試數據污染
+4. 更新本README文檔
 
-1. 在適當的檔案中添加測試方法
-2. 更新測試配置
-3. 執行測試驗證
-4. 更新文檔
+### 測試環境要求
+- Python 3.7+
+- Go 1.19+
+- Node.js 16+
+- 系統服務運行在 localhost:7001
 
-### 改進自適應邏輯
+### 最佳實踐
+- 測試應該是獨立的，不依賴執行順序
+- 包含適當的錯誤處理和清理代碼
+- 使用描述性的測試名稱和輸出
+- 每次修改後運行相關測試確保無回歸
 
-1. 修改 `ultimate_adaptive_test.py`
-2. 添加新的適應規則
-3. 測試各種環境場景
-4. 提交 PR
+## 📋 維護清單
 
-## 📞 支援與聯繫
+- [ ] 定期運行完整測試套件
+- [x] 保持測試文檔更新
+- [x] 清理過時的測試檔案
+- [ ] 監控測試覆蓋率
+- [ ] 更新測試數據和固件
 
-- 📧 **技術支援**: 94work.net@gmail.com
-- 📚 **文檔**: [MemoryArk 2.0 文檔](../README.md)
-- 🐛 **問題回報**: [GitHub Issues](../../issues)
-- 💬 **討論**: [GitHub Discussions](../../discussions)
+## 🎯 測試目標
+
+MemoryArk 2.0 測試套件旨在確保：
+1. **系統穩定性** - 核心功能正常運作
+2. **安全性** - 防護機制有效
+3. **性能** - 滿足用戶期望
+4. **可靠性** - 長期穩定運行
 
 ---
 
-## 🏆 總結
-
-MemoryArk 2.0 智能自適應測試系統代表了測試技術的**重大突破**：
-
-- 🎯 **零人工干預** - 完全自動化的測試體驗
-- 🧠 **智能適應** - 自動檢測和調整環境
-- ⚡ **超高性能** - 0.1 秒完成 51 項測試
-- 📊 **專業報告** - 企業級測試報告
-- 🔮 **持續演進** - 不斷學習和優化的系統
-
-**這不僅僅是一個測試框架，而是一個智能測試生態系統！** 🌟
-
----
-
-*🤖 Generated with MemoryArk 2.0 智能自適應測試系統*  
-*📅 最後更新: 2025-06-11*
+**最後更新**: 2025-06-11  
+**測試框架版本**: v2.0  
+**維護者**: MemoryArk 開發團隊
