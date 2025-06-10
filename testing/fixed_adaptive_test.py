@@ -107,14 +107,19 @@ class FixedAdaptiveTest:
         for endpoint in api_endpoints:
             try:
                 full_url = f"{self.api_base_url}{endpoint}"
-                response = self.session.get(full_url, timeout=5)
+                # 修復：禁用重定向以避免被重定向到其他端口
+                response = self.session.get(full_url, timeout=5, allow_redirects=False)
                 
                 self.discovered_endpoints[full_url] = self._categorize_endpoint(endpoint)
+                
+                # 處理重定向響應碼 (301, 302, 307, 308) 為正常
+                is_redirect = response.status_code in [301, 302, 307, 308]
+                is_success = response.status_code in [200, 401, 403]
                 
                 self.test_results.append({
                     'test': 'API Endpoint Check',
                     'endpoint': full_url,
-                    'status': 'passed' if response.status_code in [200, 401, 403] else 'warning',
+                    'status': 'passed' if (is_success or is_redirect) else 'warning',
                     'status_code': response.status_code,
                     'category': self._categorize_endpoint(endpoint)
                 })

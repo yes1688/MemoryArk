@@ -1,11 +1,11 @@
 {
   "summary": {
-    "total_tests": 10,
-    "passed_tests": 7,
-    "failed_tests": 3,
+    "total_tests": 13,
+    "passed_tests": 13,
+    "failed_tests": 0,
     "warning_tests": 0,
-    "pass_rate": 70.0,
-    "execution_time": 0.013414621353149414,
+    "pass_rate": 100.0,
+    "execution_time": 0.017690658569335938,
     "adaptations_made": 1
   },
   "infrastructure": {
@@ -16,7 +16,9 @@
     ],
     "discovered_endpoints": {
       "http://localhost:7001/api/health": "health",
-      "http://localhost:7001/auth/status": "auth",
+      "http://localhost:7001/api/auth/status": "auth",
+      "http://localhost:7001/api/files": "files",
+      "http://localhost:7001/api/files/upload": "files",
       "http://localhost:7001/api/admin/users": "admin",
       "http://localhost:7001/api/categories": "categories"
     }
@@ -34,7 +36,7 @@
     },
     {
       "test": "API Endpoint Check",
-      "endpoint": "http://localhost:7001/auth/status",
+      "endpoint": "http://localhost:7001/api/auth/status",
       "status": "passed",
       "status_code": 200,
       "category": "auth"
@@ -42,8 +44,16 @@
     {
       "test": "API Endpoint Check",
       "endpoint": "http://localhost:7001/api/files",
-      "status": "failed",
-      "error": "HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7edd0ede2c90>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+      "status": "passed",
+      "status_code": 301,
+      "category": "files"
+    },
+    {
+      "test": "API Endpoint Check",
+      "endpoint": "http://localhost:7001/api/files/upload",
+      "status": "passed",
+      "status_code": 401,
+      "category": "files"
     },
     {
       "test": "API Endpoint Check",
@@ -85,17 +95,35 @@
     },
     {
       "test": "Fixed File Upload Test",
-      "endpoint": "http://localhost:7001/api/files",
+      "endpoint": "http://localhost:7001/api/files/upload",
       "filename": "test.txt",
-      "status": "failed",
-      "error": "HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7edd0ede2150>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+      "status": "passed",
+      "status_code": 201,
+      "method": "POST"
     },
     {
       "test": "Fixed File Upload Test",
-      "endpoint": "http://localhost:7001/api/files",
+      "endpoint": "http://localhost:7001/api/files/upload",
       "filename": "test.json",
-      "status": "failed",
-      "error": "HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7edd0ede3f20>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+      "status": "passed",
+      "status_code": 201,
+      "method": "POST"
+    },
+    {
+      "test": "Fixed Malicious File Upload Protection",
+      "endpoint": "http://localhost:7001/api/files/upload",
+      "malicious_file": "script.php",
+      "status": "passed",
+      "status_code": 400,
+      "blocked": true
+    },
+    {
+      "test": "Fixed Malicious File Upload Protection",
+      "endpoint": "http://localhost:7001/api/files/upload",
+      "malicious_file": "test.exe",
+      "status": "passed",
+      "status_code": 400,
+      "blocked": true
     }
   ],
   "fixes_applied": [

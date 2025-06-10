@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -25,6 +26,107 @@ import (
 type FileHandler struct {
 	db  *gorm.DB
 	cfg *config.Config
+}
+
+// 允許的檔案擴展名白名單 (教會數位資產管理系統適用)
+var allowedExtensions = map[string]bool{
+	// 影像檔案
+	".jpg":  true,
+	".jpeg": true,
+	".png":  true,
+	".gif":  true,
+	".bmp":  true,
+	".webp": true,
+	".svg":  true,
+	".tiff": true,
+	".ico":  true,
+	
+	// 影片檔案
+	".mp4":  true,
+	".avi":  true,
+	".mov":  true,
+	".wmv":  true,
+	".flv":  true,
+	".mkv":  true,
+	".m4v":  true,
+	".3gp":  true,
+	".webm": true,
+	
+	// 音訊檔案
+	".mp3":  true,
+	".wav":  true,
+	".flac": true,
+	".aac":  true,
+	".ogg":  true,
+	".wma":  true,
+	".m4a":  true,
+	
+	// 文件檔案
+	".pdf":  true,
+	".doc":  true,
+	".docx": true,
+	".xls":  true,
+	".xlsx": true,
+	".ppt":  true,
+	".pptx": true,
+	".txt":  true,
+	".rtf":  true,
+	".odt":  true,
+	".ods":  true,
+	".odp":  true,
+	
+	// 壓縮檔案
+	".zip":  true,
+	".rar":  true,
+	".7z":   true,
+	".tar":  true,
+	".gz":   true,
+	
+	// 其他常見檔案
+	".json": true,
+	".xml":  true,
+	".csv":  true,
+	".bin":  true,
+	".dat":  true,
+}
+
+// 危險檔案擴展名黑名單
+var dangerousExtensions = map[string]bool{
+	// 可執行檔案
+	".exe": true,
+	".bat": true,
+	".cmd": true,
+	".com": true,
+	".scr": true,
+	".msi": true,
+	".dll": true,
+	
+	// 腳本檔案
+	".php": true,
+	".asp": true,
+	".jsp": true,
+	".js":  true,
+	".vbs": true,
+	".ps1": true,
+	".sh":  true,
+	
+	// 系統檔案
+	".sys": true,
+	".reg": true,
+	".inf": true,
+}
+
+// isValidFileExtension 檢查檔案擴展名是否被允許
+func isValidFileExtension(filename string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	
+	// 檢查是否在危險名單中
+	if dangerousExtensions[ext] {
+		return false
+	}
+	
+	// 檢查是否在允許名單中
+	return allowedExtensions[ext]
 }
 
 // NewFileHandler 創建檔案處理器
@@ -157,6 +259,19 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 			"error": gin.H{
 				"code": "NO_FILE",
 				"message": "沒有選擇檔案",
+			},
+		})
+		return
+	}
+	
+	// 檢查檔案類型安全性
+	if !isValidFileExtension(file.Filename) {
+		ext := strings.ToLower(filepath.Ext(file.Filename))
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "INVALID_FILE_TYPE",
+				"message": fmt.Sprintf("不允許上傳 '%s' 類型的檔案，基於安全考量", ext),
 			},
 		})
 		return

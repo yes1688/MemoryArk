@@ -1,7 +1,0 @@
-{
-  "environment": "unknown",
-  "config": {
-    "backend_port": 8081,
-    "frontend_port": 3000,
-    "nginx_port": 7001,
-    "environment": 
