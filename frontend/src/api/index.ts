@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { AxiosResponse } from 'axios'
+import type { ApiResponse } from '@/types/api'
 
 // API 基本配置 - 動態根據當前域名設置
 const getApiBaseUrl = () => {
@@ -41,19 +42,20 @@ apiClient.interceptors.response.use(
     return response
   },
   (error) => {
-    const errorData = error.response?.data
+    const errorData = error.response?.data as ApiResponse
     
     if (error.response?.status === 401) {
       // Cloudflare Access 認證失敗，重定向到 Cloudflare 登入
       window.location.href = '/cloudflare-auth'
     } else if (error.response?.status === 403) {
-      if (errorData?.error === 'USER_NOT_REGISTERED') {
+      const errorCode = errorData?.error?.code
+      if (errorCode === 'USER_NOT_REGISTERED') {
         // 用戶需要註冊
         window.location.href = '/register'
-      } else if (errorData?.error === 'USER_NOT_APPROVED') {
+      } else if (errorCode === 'USER_NOT_APPROVED') {
         // 用戶等待審核
         window.location.href = '/pending-approval'
-      } else if (errorData?.error === 'INSUFFICIENT_PERMISSIONS') {
+      } else if (errorCode === 'INSUFFICIENT_PERMISSIONS' || errorCode === 'ACCESS_DENIED') {
         // 權限不足
         window.location.href = '/access-denied'
       }
@@ -62,29 +64,33 @@ apiClient.interceptors.response.use(
   }
 )
 
-// API 響應通用介面
-export interface ApiResponse<T = any> {
-  success: boolean
-  message: string
-  data: T
-}
+// Re-export API types for convenience
+export type { ApiResponse, ApiError, ErrorCode } from '@/types/api'
 
-// 通用 API 請求函數
+// 通用 API 請求函數 - 處理統一的響應格式
 export const apiRequest = {
-  get: <T>(url: string, params?: any): Promise<ApiResponse<T>> =>
-    apiClient.get(url, { params }).then(res => res.data),
+  get: async <T>(url: string, params?: any): Promise<ApiResponse<T>> => {
+    const response = await apiClient.get(url, { params })
+    return response.data
+  },
     
-  post: <T>(url: string, data?: any): Promise<ApiResponse<T>> =>
-    apiClient.post(url, data).then(res => res.data),
+  post: async <T>(url: string, data?: any): Promise<ApiResponse<T>> => {
+    const response = await apiClient.post(url, data)
+    return response.data
+  },
     
-  put: <T>(url: string, data?: any): Promise<ApiResponse<T>> =>
-    apiClient.put(url, data).then(res => res.data),
+  put: async <T>(url: string, data?: any): Promise<ApiResponse<T>> => {
+    const response = await apiClient.put(url, data)
+    return response.data
+  },
     
-  delete: <T>(url: string): Promise<ApiResponse<T>> =>
-    apiClient.delete(url).then(res => res.data),
+  delete: async <T>(url: string): Promise<ApiResponse<T>> => {
+    const response = await apiClient.delete(url)
+    return response.data
+  },
     
-  upload: <T>(url: string, formData: FormData, onProgress?: (progress: number) => void): Promise<ApiResponse<T>> =>
-    apiClient.post(url, formData, {
+  upload: async <T>(url: string, formData: FormData, onProgress?: (progress: number) => void): Promise<ApiResponse<T>> => {
+    const response = await apiClient.post(url, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -94,7 +100,9 @@ export const apiRequest = {
           onProgress(progress)
         }
       },
-    }).then(res => res.data),
+    })
+    return response.data
+  },
 }
 
 // 儲存空間統計介面

@@ -17,6 +17,7 @@ import (
 
 	"memoryark/internal/config"
 	"memoryark/internal/models"
+	"memoryark/pkg/api"
 	"memoryark/pkg/utils"
 )
 
@@ -38,25 +39,13 @@ func NewFileHandler(db *gorm.DB, cfg *config.Config) *FileHandler {
 func (h *FileHandler) GetFiles(c *gin.Context) {
 	userIDValue, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code": "UNAUTHORIZED",
-				"message": "未授權訪問",
-			},
-		})
+		api.Unauthorized(c, "未授權訪問")
 		return
 	}
 	
 	userID, ok := userIDValue.(uint)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code": "INVALID_USER_ID",
-				"message": "無效的用戶ID",
-			},
-		})
+		api.Error(c, http.StatusInternalServerError, api.ErrInvalidUserID, "無效的用戶ID")
 		return
 	}
 	
@@ -107,13 +96,7 @@ func (h *FileHandler) GetFiles(c *gin.Context) {
 	
 	// 計算總數
 	if err := query.Count(&total).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code": "DATABASE_ERROR",
-				"message": "查詢檔案失敗",
-			},
-		})
+		api.Error(c, http.StatusInternalServerError, api.ErrDatabaseError, "查詢檔案失敗")
 		return
 	}
 	
@@ -122,27 +105,14 @@ func (h *FileHandler) GetFiles(c *gin.Context) {
 		Order("is_directory DESC, name ASC").
 		Offset(offset).Limit(limit).
 		Find(&files).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code": "DATABASE_ERROR",
-				"message": "查詢檔案失敗",
-			},
-		})
+		api.Error(c, http.StatusInternalServerError, api.ErrDatabaseError, "查詢檔案失敗")
 		return
 	}
 	
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"files": files,
-			"pagination": gin.H{
-				"page":  page,
-				"limit": limit,
-				"total": total,
-			},
-		},
-	})
+	// 使用統一的響應格式
+	api.SuccessWithPagination(c, gin.H{
+		"files": files,
+	}, page, limit, total)
 }
 
 // GetFileDetails 獲取檔案詳情
@@ -162,35 +132,20 @@ func (h *FileHandler) GetFileDetails(c *gin.Context) {
 		return
 	}
 	
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": file,
-	})
+	api.Success(c, file)
 }
 
 // UploadFile 上傳檔案 - 重寫支援 SHA256 去重和純虛擬路徑
 func (h *FileHandler) UploadFile(c *gin.Context) {
 	userIDValue, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code": "UNAUTHORIZED",
-				"message": "未授權訪問",
-			},
-		})
+		api.Unauthorized(c, "未授權訪問")
 		return
 	}
 
 	userID, ok := userIDValue.(uint)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code": "INVALID_USER_ID",
-				"message": "無效的用戶ID",
-			},
-		})
+		api.Error(c, http.StatusInternalServerError, api.ErrInvalidUserID, "無效的用戶ID")
 		return
 	}
 	
