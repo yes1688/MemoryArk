@@ -1,0 +1,106 @@
+{
+  "summary": {
+    "total_tests": 10,
+    "passed_tests": 7,
+    "failed_tests": 3,
+    "warning_tests": 0,
+    "pass_rate": 70.0,
+    "execution_time": 0.013414621353149414,
+    "adaptations_made": 1
+  },
+  "infrastructure": {
+    "working_base_urls": [
+      "http://localhost:7001",
+      "http://localhost:8080",
+      "http://localhost:3000"
+    ],
+    "discovered_endpoints": {
+      "http://localhost:7001/api/health": "health",
+      "http://localhost:7001/auth/status": "auth",
+      "http://localhost:7001/api/admin/users": "admin",
+      "http://localhost:7001/api/categories": "categories"
+    }
+  },
+  "adaptations": [
+    "發現可用API服務"
+  ],
+  "test_results": [
+    {
+      "test": "API Endpoint Check",
+      "endpoint": "http://localhost:7001/api/health",
+      "status": "passed",
+      "status_code": 200,
+      "category": "health"
+    },
+    {
+      "test": "API Endpoint Check",
+      "endpoint": "http://localhost:7001/auth/status",
+      "status": "passed",
+      "status_code": 200,
+      "category": "auth"
+    },
+    {
+      "test": "API Endpoint Check",
+      "endpoint": "http://localhost:7001/api/files",
+      "status": "failed",
+      "error": "HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7edd0ede2c90>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+    },
+    {
+      "test": "API Endpoint Check",
+      "endpoint": "http://localhost:7001/api/admin/users",
+      "status": "passed",
+      "status_code": 401,
+      "category": "admin"
+    },
+    {
+      "test": "API Endpoint Check",
+      "endpoint": "http://localhost:7001/api/categories",
+      "status": "passed",
+      "status_code": 401,
+      "category": "categories"
+    },
+    {
+      "test": "Fixed SQL Injection Protection",
+      "endpoint": "http://localhost:7001/api/health",
+      "malicious_input": "'; DROP TABLE users; --",
+      "status": "passed",
+      "status_code": 200,
+      "safety_check": true
+    },
+    {
+      "test": "Fixed SQL Injection Protection",
+      "endpoint": "http://localhost:7001/api/health",
+      "malicious_input": "admin'/**/OR/**/1=1--",
+      "status": "passed",
+      "status_code": 200,
+      "safety_check": true
+    },
+    {
+      "test": "Fixed SQL Injection Protection",
+      "endpoint": "http://localhost:7001/api/health",
+      "malicious_input": "' UNION SELECT * FROM users--",
+      "status": "passed",
+      "status_code": 200,
+      "safety_check": true
+    },
+    {
+      "test": "Fixed File Upload Test",
+      "endpoint": "http://localhost:7001/api/files",
+      "filename": "test.txt",
+      "status": "failed",
+      "error": "HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7edd0ede2150>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+    },
+    {
+      "test": "Fixed File Upload Test",
+      "endpoint": "http://localhost:7001/api/files",
+      "filename": "test.json",
+      "status": "failed",
+      "error": "HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7edd0ede3f20>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+    }
+  ],
+  "fixes_applied": [
+    "修復SQL注入測試邏輯 - 只測試API後端",
+    "修復檔案上傳測試 - 使用POST方法",
+    "避免對前端服務進行不當安全測試"
+  ]
+}

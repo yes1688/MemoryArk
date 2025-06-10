@@ -1,0 +1,49 @@
+{
+  "detection_time": "2025-06-11 01:22:12",
+  "services": [
+    {
+      "name": "frontend",
+      "running": true,
+      "port": 3000,
+      "health": null,
+      "url": null
+    },
+    {
+      "name": "api_gateway",
+      "running": true,
+      "port": 7001,
+      "health": null,
+      "url": null
+    },
+    {
+      "name": "api_gateway",
+      "running": true,
+      "port": 8080,
+      "health": null,
+      "url": null
+    }
+  ],
+  "detected_ports": {
+    "api": 7001,
+    "frontend": 3000
+  },
+  "config_mode": "unknown",
+  "auth_config": {
+    "auth_endpoint_accessible": true,
+    "current_auth_status": {
+      "data": {
+        "authenticated": false
+      },
+      "success": true
+    },
+    "admin_email": "unknown"
+  },
+  "base_urls": {
+    "api": "http://localhost:7001",
+    "frontend": "http://localhost:3000"
+  },
+  "recommendations": [
+    "✅ API服務運行在端口 7001",
+    "❓ 無法確定配置模式，將使用預設測試策略"
+  ]
+}

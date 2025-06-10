@@ -1,0 +1,335 @@
+{
+  "environment_detection": {
+    "services": [
+      {
+        "name": "frontend",
+        "running": true,
+        "port": 3000,
+        "health": null,
+        "url": null
+      },
+      {
+        "name": "api_gateway",
+        "running": true,
+        "port": 7001,
+        "health": null,
+        "url": null
+      },
+      {
+        "name": "api_gateway",
+        "running": true,
+        "port": 8080,
+        "health": null,
+        "url": null
+      }
+    ],
+    "detected_ports": {
+      "api": 7001,
+      "frontend": 3000
+    },
+    "config_mode": "unknown",
+    "auth_config": {
+      "auth_endpoint_accessible": true,
+      "current_auth_status": {
+        "data": {
+          "authenticated": false
+        },
+        "success": true
+      },
+      "admin_email": "unknown"
+    },
+    "base_urls": {
+      "api": "http://localhost:7001",
+      "frontend": "http://localhost:3000"
+    },
+    "recommendations": [
+      "✅ API服務運行在端口 7001",
+      "❓ 無法確定配置模式，將使用預設測試策略"
+    ]
+  },
+  "test_plan": {
+    "total_tests": 8,
+    "critical_tests": 5,
+    "important_tests": 3,
+    "optional_tests": 0,
+    "strategies": {
+      "strict": 4,
+      "relaxed": 0,
+      "adaptive": 4
+    },
+    "estimated_duration": 320,
+    "configs": [
+      {
+        "name": "Health Check",
+        "endpoint": "http://localhost:7001/api/health",
+        "method": "GET",
+        "headers": {},
+        "data": null,
+        "expected_status": [
+          200
+        ],
+        "timeout": 10,
+        "retry_count": 3,
+        "priority": "critical",
+        "strategy": "adaptive",
+        "skip_conditions": [],
+        "adaptation_rules": {}
+      },
+      {
+        "name": "Auth Status Check",
+        "endpoint": "http://localhost:7001/api/auth/status",
+        "method": "GET",
+        "headers": {},
+        "data": null,
+        "expected_status": [
+          200
+        ],
+        "timeout": 10,
+        "retry_count": 3,
+        "priority": "critical",
+        "strategy": "adaptive",
+        "skip_conditions": [],
+        "adaptation_rules": {}
+      },
+      {
+        "name": "File List API",
+        "endpoint": "http://localhost:7001/api/files",
+        "method": "GET",
+        "headers": {},
+        "data": null,
+        "expected_status": [
+          200,
+          301,
+          401,
+          403
+        ],
+        "timeout": 10,
+        "retry_count": 3,
+        "priority": "important",
+        "strategy": "adaptive",
+        "skip_conditions": [],
+        "adaptation_rules": {
+          "development": {
+            "expected_status": [
+              200
+            ]
+          },
+          "production": {
+            "expected_status": [
+              401,
+              403
+            ]
+          },
+          "redirect_detected": {
+            "expected_status": [
+              301,
+              302
+            ]
+          }
+        }
+      },
+      {
+        "name": "File Upload Test",
+        "endpoint": "http://localhost:7001/api/files",
+        "method": "POST",
+        "headers": {},
+        "data": null,
+        "expected_status": [
+          201,
+          401,
+          403
+        ],
+        "timeout": 10,
+        "retry_count": 3,
+        "priority": "important",
+        "strategy": "adaptive",
+        "skip_conditions": [],
+        "adaptation_rules": {
+          "development": {
+            "expected_status": [
+              201
+            ]
+          },
+          "production": {
+            "expected_status": [
+              401,
+              403
+            ]
+          },
+          "auth_bypass": {
+            "expected_status": [
+              201
+            ]
+          }
+        }
+      },
+      {
+        "name": "Admin Users API",
+        "endpoint": "http://localhost:7001/api/admin/users",
+        "method": "GET",
+        "headers": {
+          "CF-Access-Authenticated-User-Email": "unknown"
+        },
+        "data": null,
+        "expected_status": [
+          200,
+          401,
+          403
+        ],
+        "timeout": 10,
+        "retry_count": 3,
+        "priority": "important",
+        "strategy": "strict",
+        "skip_conditions": [],
+        "adaptation_rules": {
+          "development": {
+            "expected_status": [
+              200
+            ]
+          },
+          "production": {
+            "expected_status": [
+              200
+            ],
+            "require_auth": true
+          },
+          "auth_bypass": {
+            "expected_status": [
+              200
+            ],
+            "headers": {}
+          }
+        }
+      },
+      {
+        "name": "Unauthorized Access Test",
+        "endpoint": "http://localhost:7001/api/admin/users",
+        "method": "GET",
+        "headers": {},
+        "data": null,
+        "expected_status": [
+          401,
+          403
+        ],
+        "timeout": 10,
+        "retry_count": 3,
+        "priority": "critical",
+        "strategy": "strict",
+        "skip_conditions": [
+          "development",
+          "auth_bypass"
+        ],
+        "adaptation_rules": {}
+      },
+      {
+        "name": "SQL Injection Protection",
+        "endpoint": "http://localhost:7001/api/auth/status",
+        "method": "GET",
+        "headers": {
+          "CF-Access-Authenticated-User-Email": "unknown"
+        },
+        "data": null,
+        "expected_status": [
+          400,
+          401,
+          403
+        ],
+        "timeout": 10,
+        "retry_count": 3,
+        "priority": "critical",
+        "strategy": "strict",
+        "skip_conditions": [],
+        "adaptation_rules": {}
+      },
+      {
+        "name": "Path Traversal Protection",
+        "endpoint": "http://localhost:7001/api/files",
+        "method": "POST",
+        "headers": {},
+        "data": {
+          "virtualPath": "../../../etc/passwd"
+        },
+        "expected_status": [
+          201,
+          400
+        ],
+        "timeout": 10,
+        "retry_count": 3,
+        "priority": "critical",
+        "strategy": "strict",
+        "skip_conditions": [],
+        "adaptation_rules": {
+          "security_enabled": {
+            "expected_status": [
+              400
+            ]
+          },
+          "safe_handling": {
+            "expected_status": [
+              201
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "test_execution": {
+    "environment": "unknown",
+    "config": {
+      "backend_port": 8081,
+      "frontend_port": 3000,
+      "nginx_port": 7001,
+      "environment": "unknown",
+      "development_mode": false,
+      "auth_bypass": false,
+      "admin_email": "94work.net@gmail.com",
+      "base_url": "http://localhost:7001"
+    },
+    "tests": [
+      {
+        "test_name": "Adaptive Health Check",
+        "status": "passed",
+        "endpoint": "http://localhost:7001/api/health",
+        "adapted": false,
+        "note": "使用預設 http://localhost:7001/api/health"
+      },
+      {
+        "test_name": "Strict Authentication",
+        "status": "passed",
+        "note": "生產模式：認證正確執行"
+      },
+      {
+        "test_name": "Authenticated File Upload",
+        "status": "failed",
+        "error": "HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7f8bc2436cf0>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+      }
+    ],
+    "summary": {
+      "total": 3,
+      "passed": 2,
+      "failed": 1,
+      "adapted": 0,
+      "pass_rate": 66.66666666666666
+    }
+  },
+  "auto_fixes": {
+    "attempted_fixes": 1,
+    "fixes": [
+      {
+        "issue": "Port Configuration",
+        "action": "Redetected ports",
+        "success": true,
+        "new_config": "http://localhost:7001"
+      }
+    ]
+  },
+  "retry_results": [
+    {
+      "test_name": "Authenticated File Upload",
+      "original_status": "failed",
+      "retry_status": "attempted",
+      "improvement": "partial"
+    }
+  ],
+  "execution_time": 0.18914175033569336
+}

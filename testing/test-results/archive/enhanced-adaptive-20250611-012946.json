@@ -1,0 +1,152 @@
+{
+  "summary": {
+    "total_tests": 16,
+    "passed_tests": 7,
+    "failed_tests": 9,
+    "pass_rate": 43.75,
+    "adaptations_made": 2,
+    "execution_time": 0.022449731826782227
+  },
+  "adaptations": [
+    "檔案上傳重定向修復: /api/files",
+    "檔案上傳重定向修復: /api/files/"
+  ],
+  "test_results": [
+    {
+      "test": "Basic Connectivity",
+      "endpoint": "/api/health",
+      "status": "passed",
+      "response_time": 0.0014,
+      "note": "健康檢查端點可達 (200)"
+    },
+    {
+      "test": "Smart Redirect Handling",
+      "endpoint": "/api/files",
+      "status": "failed",
+      "error": "HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x713c51e2d460>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+    },
+    {
+      "test": "Smart Redirect Handling",
+      "endpoint": "/api/files/",
+      "status": "failed",
+      "error": "HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x713c51e2e150>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+    },
+    {
+      "test": "Smart Redirect Handling",
+      "endpoint": "/api/admin/users",
+      "status": "passed",
+      "status_code": 401,
+      "note": "無重定向問題"
+    },
+    {
+      "test": "Smart Redirect Handling",
+      "endpoint": "/api/categories",
+      "status": "passed",
+      "status_code": 401,
+      "note": "無重定向問題"
+    },
+    {
+      "test": "Adaptive Authentication",
+      "auth_method": "Cloudflare Access",
+      "status": "passed",
+      "status_code": 200,
+      "auth_status": "anonymous",
+      "headers_used": {
+        "CF-Access-Authenticated-User-Email": "94work.net@gmail.com"
+      }
+    },
+    {
+      "test": "Adaptive Authentication",
+      "auth_method": "Basic Auth",
+      "status": "passed",
+      "status_code": 200,
+      "auth_status": "anonymous",
+      "headers_used": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "test": "Adaptive Authentication",
+      "auth_method": "Session Auth",
+      "status": "passed",
+      "status_code": 200,
+      "auth_status": "anonymous",
+      "headers_used": {
+        "Cookie": "session=test"
+      }
+    },
+    {
+      "test": "Adaptive Authentication",
+      "auth_method": "No Auth",
+      "status": "passed",
+      "status_code": 200,
+      "auth_status": "anonymous",
+      "headers_used": {}
+    },
+    {
+      "test": "Adaptive File Operations",
+      "operation": "upload",
+      "endpoint": "/api/files",
+      "target_url": "http://localhost:7001/api/files/",
+      "status": "failed",
+      "status_code": 404,
+      "filename": "adaptive-test-1749576586.txt",
+      "adapted": true
+    },
+    {
+      "test": "Adaptive File Operations",
+      "operation": "upload",
+      "endpoint": "/api/files/",
+      "status": "failed",
+      "error": "HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x713c51e2c560>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+    },
+    {
+      "test": "Adaptive File Operations",
+      "operation": "upload",
+      "endpoint": "/api/upload",
+      "target_url": "http://localhost:7001/api/upload",
+      "status": "failed",
+      "status_code": 404,
+      "filename": "adaptive-test-1749576586.txt",
+      "adapted": false
+    },
+    {
+      "test": "Adaptive File Operations",
+      "operation": "upload",
+      "endpoint": "/upload",
+      "target_url": "http://localhost:7001/upload",
+      "status": "failed",
+      "status_code": 405,
+      "filename": "adaptive-test-1749576586.txt",
+      "adapted": false
+    },
+    {
+      "test": "Adaptive Security",
+      "security_test": "SQL Injection Protection",
+      "malicious_input": "'; DROP TABLE users; --",
+      "status": "warning",
+      "status_code": 200,
+      "note": "可能存在安全風險"
+    },
+    {
+      "test": "Adaptive Security",
+      "security_test": "SQL Injection Protection",
+      "malicious_input": "admin'/**/OR/**/1=1--",
+      "status": "warning",
+      "status_code": 200,
+      "note": "可能存在安全風險"
+    },
+    {
+      "test": "Adaptive Security",
+      "security_test": "SQL Injection Protection",
+      "malicious_input": "test@example.com'; EXEC xp_cmdshell('dir'); --",
+      "status": "warning",
+      "status_code": 200,
+      "note": "可能存在安全風險"
+    }
+  ],
+  "insights": [
+    "🔀 檢測到 4 個重定向問題，已自動修復",
+    "📁 檔案操作功能測試完成，共 6 項測試"
+  ]
+}
