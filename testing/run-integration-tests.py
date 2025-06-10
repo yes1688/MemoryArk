@@ -145,8 +145,10 @@ class APITester:
         
         try:
             headers = self.auth_headers.copy()
+            # 使用不帶尾部斜線的 URL
+            full_url = f"{self.base_url}/api/files"
             response = self.session.get(
-                f"{self.base_url}/api/files",
+                full_url,
                 headers=headers,
                 timeout=TEST_TIMEOUT
             )

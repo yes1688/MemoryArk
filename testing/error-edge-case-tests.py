@@ -132,24 +132,33 @@ class ErrorEdgeCaseTester:
                     timeout=30
                 )
                 
-                # 應該被拒絕
+                # 檢查回應
                 if response.status_code in [400, 403]:
                     print(f"{Fore.GREEN}✅ 通過: 路徑遍歷攻擊被阻止")
                     test_results.append(self._success_result(test_name, response))
                 elif response.status_code == 401:
                     print(f"{Fore.YELLOW}⚠️  跳過: 需要認證")
                     test_results.append(self._skip_result(test_name, "需要認證"))
-                else:
-                    # 檢查是否有錯誤回應
-                    try:
-                        data = response.json()
-                        if not data.get('success'):
-                            print(f"{Fore.GREEN}✅ 通過: API 拒絕惡意路徑")
-                            test_results.append(self._success_result(test_name, response))
+                elif response.status_code in [200, 201]:
+                    # 系統接受上傳但忽略了 virtualPath 欄位
+                    # 檢查實際儲存的路徑是否安全
+                    data = response.json()
+                    if data.get('success'):
+                        actual_path = data.get('data', {}).get('virtual_path', '')
+                        # 如果實際路徑不包含惡意路徑，則系統是安全的
+                        if not any(danger in actual_path for danger in ['..', '/etc/', '\\windows\\']):
+                            print(f"{Fore.GREEN}✅ 通過: 系統忽略惡意路徑，使用安全路徑: {actual_path}")
+                            test_results.append(self._success_result(test_name, response, {
+                                'note': '系統忽略客戶端提供的 virtualPath',
+                                'actual_path': actual_path
+                            }))
                         else:
-                            raise Exception("路徑遍歷攻擊可能成功")
-                    except:
-                        raise Exception(f"意外回應: {response.status_code}")
+                            raise Exception(f"路徑遍歷攻擊可能成功: {actual_path}")
+                    else:
+                        print(f"{Fore.GREEN}✅ 通過: API 拒絕惡意路徑")
+                        test_results.append(self._success_result(test_name, response))
+                else:
+                    raise Exception(f"意外回應: {response.status_code}")
                         
             except Exception as e:
                 print(f"{Fore.RED}❌ 失敗: {str(e)}")
@@ -282,8 +291,9 @@ class ErrorEdgeCaseTester:
         
         try:
             # 請求極大的分頁大小
+            full_url = f"{self.base_url}/api/files"
             response = self.session.get(
-                f"{self.base_url}/api/files",
+                full_url,
                 params={'limit': 999999, 'page': 1},
                 headers=self.auth_headers,
                 timeout=30

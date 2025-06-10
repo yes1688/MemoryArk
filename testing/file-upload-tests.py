@@ -59,8 +59,8 @@ class FileUploadTester:
                 print(f"{Fore.YELLOW}⚠️  跳過: 需要認證")
                 return self._skip_result(test_name, "需要認證")
             
-            # 檢查回應
-            if response.status_code == 200:
+            # 檢查回應 - 201 Created 是正確的狀態碼
+            if response.status_code in [200, 201]:
                 result = response.json()
                 if result.get('success'):
                     file_id = result.get('data', {}).get('id')
@@ -212,17 +212,31 @@ class FileUploadTester:
                 result = response.json()
                 if result.get('success'):
                     file_data = result.get('data', {})
-                    required_fields = ['id', 'name', 'size', 'virtualPath', 'createdAt']
+                    # 支援兩種命名風格 (camelCase 和 snake_case)
+                    required_fields = [
+                        ('id', 'id'),
+                        ('name', 'name'),
+                        ('file_size', 'size'),
+                        ('virtual_path', 'virtualPath'),
+                        ('created_at', 'createdAt')
+                    ]
                     
-                    missing_fields = [field for field in required_fields if field not in file_data]
+                    missing_fields = []
+                    for snake_case, camel_case in required_fields:
+                        if snake_case not in file_data and camel_case not in file_data:
+                            missing_fields.append(f"{snake_case}/{camel_case}")
                     
                     if missing_fields:
                         raise Exception(f"缺少必要欄位: {missing_fields}")
                     
+                    # 取得欄位值（支援兩種命名）
+                    file_size = file_data.get('file_size') or file_data.get('size')
+                    virtual_path = file_data.get('virtual_path') or file_data.get('virtualPath')
+                    
                     print(f"{Fore.GREEN}✅ 通過: 檔案資訊完整")
                     print(f"    檔案名稱: {file_data.get('name')}")
-                    print(f"    檔案大小: {file_data.get('size')} bytes")
-                    print(f"    虛擬路徑: {file_data.get('virtualPath')}")
+                    print(f"    檔案大小: {file_size} bytes")
+                    print(f"    虛擬路徑: {virtual_path}")
                     
                     return self._success_result(test_name, response, file_data)
                 else:
@@ -281,7 +295,7 @@ class FileUploadTester:
             
             upload_time = time.time() - start_time
             
-            if response.status_code == 200:
+            if response.status_code in [200, 201]:  # 201 Created 是正確的狀態碼
                 result = response.json()
                 if result.get('success'):
                     file_id = result.get('data', {}).get('id')

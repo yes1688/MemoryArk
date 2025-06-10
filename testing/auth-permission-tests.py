@@ -39,11 +39,29 @@ class AuthPermissionTester:
             print(f"\n{Fore.CYAN}🧪 測試: {test_name}")
             
             try:
+                # 使用完整 URL 並禁用自動重定向
+                full_url = f"{self.base_url}{endpoint}"
                 response = self.session.request(
                     method,
-                    f"{self.base_url}{endpoint}",
-                    timeout=30
+                    full_url,
+                    timeout=30,
+                    allow_redirects=False
                 )
+                
+                # 如果收到重定向，手動處理
+                if response.status_code in [301, 302, 303, 307, 308]:
+                    location = response.headers.get('Location', '')
+                    # 如果 Location 是相對 URL，加上 base URL
+                    if location.startswith('/'):
+                        location = self.base_url + location
+                    # 如果重定向丟失端口，修正它
+                    elif 'localhost' in location and ':7001' not in location:
+                        location = location.replace('localhost', 'localhost:7001')
+                    response = self.session.request(
+                        method,
+                        location,
+                        timeout=30
+                    )
                 
                 # 應該返回 401 Unauthorized
                 if response.status_code == 401:
