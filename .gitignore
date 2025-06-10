@@ -94,3 +94,15 @@ coverage/
 # 臨時文件
 *.tmp
 *.temp
+
+# Python 相關
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# 測試相關
+testing/debug_*.py
+testing/*_debug.py
+testing/final_test.py
