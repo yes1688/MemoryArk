@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -59,6 +61,8 @@ func (h *FileHandler) GetFiles(c *gin.Context) {
 	}
 	
 	parentID := c.DefaultQuery("parent_id", "")
+	categoryID := c.DefaultQuery("category_id", "")
+	virtualPath := c.DefaultQuery("virtual_path", "")
 	showDeleted := c.DefaultQuery("show_deleted", "false")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
@@ -78,10 +82,18 @@ func (h *FileHandler) GetFiles(c *gin.Context) {
 	query = query.Where("uploaded_by = ?", userID)
 	
 	// 篩選條件
-	if parentID == "" {
+	if virtualPath != "" {
+		// 使用虛擬路徑查詢
+		query = query.Where("virtual_path LIKE ?", virtualPath+"%")
+	} else if parentID == "" {
 		query = query.Where("parent_id IS NULL")
 	} else {
 		query = query.Where("parent_id = ?", parentID)
+	}
+
+	// 分類篩選
+	if categoryID != "" {
+		query = query.Where("category_id = ?", categoryID)
 	}
 	
 	if showDeleted == "true" {
@@ -106,7 +118,7 @@ func (h *FileHandler) GetFiles(c *gin.Context) {
 	}
 	
 	// 獲取檔案列表
-	if err := query.Preload("Uploader").Preload("DeletedByUser").
+	if err := query.Preload("Uploader").Preload("DeletedByUser").Preload("Category").
 		Order("is_directory DESC, name ASC").
 		Offset(offset).Limit(limit).
 		Find(&files).Error; err != nil {
@@ -156,15 +168,27 @@ func (h *FileHandler) GetFileDetails(c *gin.Context) {
 	})
 }
 
-// UploadFile 上傳檔案
+// UploadFile 上傳檔案 - 重寫支援 SHA256 去重和純虛擬路徑
 func (h *FileHandler) UploadFile(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	userIDValue, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"error": gin.H{
 				"code": "UNAUTHORIZED",
 				"message": "未授權訪問",
+			},
+		})
+		return
+	}
+
+	userID, ok := userIDValue.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "INVALID_USER_ID",
+				"message": "無效的用戶ID",
 			},
 		})
 		return
@@ -195,35 +219,105 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 		})
 		return
 	}
-	
-	// 使用 UUID 作為安全的檔案名稱，但保留副檔名
-	ext := filepath.Ext(file.Filename)
-	fileUUID := uuid.New().String()
-	filename := fmt.Sprintf("%s%s", fileUUID, ext)
-	
-	// 創建儲存目錄 - 根據父資料夾ID創建實體目錄結構
-	uploadDir := filepath.Join(h.cfg.Upload.UploadPath, "files")
-	
-	// 如果有父資料夾，獲取完整路徑
-	parentIDStr := c.PostForm("parent_id")
-	fmt.Printf("[UploadFile] 接收到的 parent_id 參數: '%s'\n", parentIDStr)
-	
-	parentID, _ := strconv.ParseUint(parentIDStr, 10, 32)
-	fmt.Printf("[UploadFile] 轉換後的 parent_id: %d\n", parentID)
-	
-	if parentID > 0 {
-		// 獲取父資料夾路徑
-		var parentFolder models.File
-		if err := h.db.First(&parentFolder, parentID).Error; err == nil && parentFolder.IsDirectory {
-			// 使用父資料夾的路徑
-			fmt.Printf("[UploadFile] 找到父資料夾: %s, 路徑: %s\n", parentFolder.Name, parentFolder.FilePath)
-			uploadDir = parentFolder.FilePath
-		} else {
-			fmt.Printf("[UploadFile] 無法找到父資料夾 ID: %d, 錯誤: %v\n", parentID, err)
-		}
-	} else {
-		fmt.Printf("[UploadFile] parent_id 為 0 或無效，使用根目錄\n")
+
+	// 開啟上傳的檔案以計算 SHA256
+	uploadedFile, err := file.Open()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "FILE_READ_ERROR",
+				"message": "無法讀取上傳檔案",
+			},
+		})
+		return
 	}
+	defer uploadedFile.Close()
+
+	// 計算 SHA256 雜湊值
+	hash := sha256.New()
+	if _, err := io.Copy(hash, uploadedFile); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "HASH_CALCULATION_ERROR",
+				"message": "計算檔案雜湊值失敗",
+			},
+		})
+		return
+	}
+	sha256Hash := fmt.Sprintf("%x", hash.Sum(nil))
+
+	// 檢查是否已存在相同雜湊值的檔案（去重機制）
+	var existingFile models.File
+	if err := h.db.Where("sha256_hash = ? AND is_deleted = ?", sha256Hash, false).First(&existingFile).Error; err == nil {
+		// 檔案已存在，創建新的檔案記錄但指向相同的實體檔案
+		
+		// 處理父資料夾和虛擬路徑
+		parentIDStr := c.PostForm("parent_id")
+		categoryIDStr := c.PostForm("category_id")
+		
+		var parentIDPtr *uint
+		if parentIDStr != "" {
+			if parentID, err := strconv.ParseUint(parentIDStr, 10, 32); err == nil && parentID > 0 {
+				id := uint(parentID)
+				parentIDPtr = &id
+			}
+		}
+
+		var categoryIDPtr *uint
+		if categoryIDStr != "" {
+			if categoryID, err := strconv.ParseUint(categoryIDStr, 10, 32); err == nil && categoryID > 0 {
+				id := uint(categoryID)
+				categoryIDPtr = &id
+			}
+		}
+
+		// 建立虛擬路徑
+		virtualPath := h.buildVirtualPath(parentIDPtr, file.Filename)
+
+		// 創建新的檔案記錄（去重但允許不同虛擬位置）
+		fileRecord := models.File{
+			Name:         file.Filename,
+			OriginalName: file.Filename,
+			FilePath:     existingFile.FilePath, // 使用相同的實體檔案路徑
+			VirtualPath:  virtualPath,
+			SHA256Hash:   sha256Hash,
+			FileSize:     file.Size,
+			MimeType:     file.Header.Get("Content-Type"),
+			ParentID:     parentIDPtr,
+			CategoryID:   categoryIDPtr,
+			UploadedBy:   userID,
+			IsDirectory:  false,
+			IsDeleted:    false,
+		}
+
+		if err := h.db.Create(&fileRecord).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code": "DATABASE_ERROR",
+					"message": "創建檔案記錄失敗",
+				},
+			})
+			return
+		}
+
+		c.JSON(http.StatusCreated, gin.H{
+			"success": true,
+			"message": "檔案上傳成功（已去重）",
+			"data": fileRecord,
+		})
+		return
+	}
+
+	// 檔案不存在，需要儲存新檔案
+	// 使用 UUID 作為實體檔案名稱（無副檔名，純 UUID）
+	fileUUID := uuid.New().String()
+	
+	// 創建基於 hash 前2位的子目錄結構（提升檔案系統效能）
+	hashPrefix := sha256Hash[:2]
+	uploadDir := filepath.Join(h.cfg.Upload.UploadPath, "files", hashPrefix)
 	
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -236,9 +330,9 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 		return
 	}
 	
-	// 儲存檔案
-	filePath := filepath.Join(uploadDir, filename)
-	if err := c.SaveUploadedFile(file, filePath); err != nil {
+	// 儲存檔案到實體路徑（使用純 UUID 檔名）
+	physicalPath := filepath.Join(uploadDir, fileUUID)
+	if err := c.SaveUploadedFile(file, physicalPath); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error": gin.H{
@@ -248,29 +342,49 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 		})
 		return
 	}
+
+	// 處理父資料夾和分類ID
+	parentIDStr := c.PostForm("parent_id")
+	categoryIDStr := c.PostForm("category_id")
+	
+	var parentIDPtr *uint
+	if parentIDStr != "" {
+		if parentID, err := strconv.ParseUint(parentIDStr, 10, 32); err == nil && parentID > 0 {
+			id := uint(parentID)
+			parentIDPtr = &id
+		}
+	}
+
+	var categoryIDPtr *uint
+	if categoryIDStr != "" {
+		if categoryID, err := strconv.ParseUint(categoryIDStr, 10, 32); err == nil && categoryID > 0 {
+			id := uint(categoryID)
+			categoryIDPtr = &id
+		}
+	}
+
+	// 建立虛擬路徑
+	virtualPath := h.buildVirtualPath(parentIDPtr, file.Filename)
 	
 	// 創建檔案記錄
-	var parentIDPtr *uint
-	if parentID > 0 {
-		id := uint(parentID)
-		parentIDPtr = &id
-	}
-	
 	fileRecord := models.File{
-		Name:         filename,
+		Name:         file.Filename,
 		OriginalName: file.Filename,
-		FilePath:     filePath,
+		FilePath:     physicalPath,
+		VirtualPath:  virtualPath,
+		SHA256Hash:   sha256Hash,
 		FileSize:     file.Size,
 		MimeType:     file.Header.Get("Content-Type"),
 		ParentID:     parentIDPtr,
-		UploadedBy:   userID.(uint),
+		CategoryID:   categoryIDPtr,
+		UploadedBy:   userID,
 		IsDirectory:  false,
 		IsDeleted:    false,
 	}
 	
 	if err := h.db.Create(&fileRecord).Error; err != nil {
 		// 刪除已儲存的檔案
-		os.Remove(filePath)
+		os.Remove(physicalPath)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error": gin.H{
@@ -286,6 +400,27 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 		"message": "檔案上傳成功",
 		"data": fileRecord,
 	})
+}
+
+// buildVirtualPath 建立虛擬路徑
+func (h *FileHandler) buildVirtualPath(parentID *uint, filename string) string {
+	if parentID == nil {
+		return "/" + filename
+	}
+
+	// 遞歸建立完整虛擬路徑
+	var parentFolder models.File
+	if err := h.db.First(&parentFolder, *parentID).Error; err != nil {
+		return "/" + filename
+	}
+
+	if parentFolder.VirtualPath != "" {
+		return parentFolder.VirtualPath + "/" + filename
+	}
+
+	// 如果父資料夾沒有虛擬路徑，遞歸建立
+	parentPath := h.buildVirtualPath(parentFolder.ParentID, parentFolder.Name)
+	return parentPath + "/" + filename
 }
 
 // CreateFolder 創建資料夾
@@ -398,11 +533,15 @@ func (h *FileHandler) CreateFolder(c *gin.Context) {
 	
 	fmt.Printf("[CreateFolder] 資料夾創建成功: %s\n", folderPath)
 	
+	// 建立虛擬路徑
+	virtualPath := h.buildVirtualPath(req.ParentID, req.Name)
+
 	// 創建資料夾記錄
 	folder := models.File{
 		Name:         req.Name,
 		OriginalName: req.Name,
 		FilePath:     folderPath,
+		VirtualPath:  virtualPath,
 		FileSize:     0,
 		MimeType:     "folder",
 		ParentID:     req.ParentID,

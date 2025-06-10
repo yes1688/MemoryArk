@@ -11,7 +11,7 @@
     />
     
     <!-- Folder icon -->
-    <div v-else-if="isFolder" :class="folderIconClasses">
+    <div v-else-if="actualIsFolder" :class="folderIconClasses">
       <svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full">
         <path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z"/>
       </svg>
@@ -48,12 +48,25 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import {
+  FolderIcon,
+  DocumentTextIcon,
+  PhotoIcon,
+  VideoCameraIcon,
+  MusicalNoteIcon,
+  ArchiveBoxIcon,
+  CodeBracketIcon,
+  DocumentIcon as HeroDocumentIcon,
+  PresentationChartBarIcon,
+  TableCellsIcon
+} from '@heroicons/vue/24/outline'
 
 interface Props {
   fileType?: string
   mimeType?: string
   fileName?: string
   thumbnailUrl?: string
+  isDirectory?: boolean  // 兼容舊 FileIcon API
   isFolder?: boolean
   isExpanded?: boolean
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'
@@ -64,11 +77,15 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   isFolder: false,
+  isDirectory: false,
   isExpanded: false,
   size: 'md',
   showThumbnail: true,
   showExtension: true
 })
+
+// 兼容性計算屬性
+const actualIsFolder = computed(() => props.isFolder || props.isDirectory)
 
 const thumbnailLoaded = ref(false)
 const thumbnailError = ref(false)

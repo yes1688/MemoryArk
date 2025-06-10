@@ -41,28 +41,85 @@ type UserRegistrationRequest struct {
 	ProcessedByUser *User          `json:"processed_by_user,omitempty" gorm:"foreignKey:ProcessedBy"`
 }
 
-// File 檔案模型 - 按照規格書定義
+// File 檔案模型 - 擴展支援純虛擬路徑架構
 type File struct {
 	ID            uint           `json:"id" gorm:"primaryKey"`
 	Name          string         `json:"name" gorm:"size:255;not null"`
 	OriginalName  string         `json:"original_name" gorm:"size:255;not null"`
-	FilePath      string         `json:"file_path" gorm:"size:500;not null"`
+	FilePath      string         `json:"file_path" gorm:"size:500;not null"` // 實體檔案路徑（UUID檔名）
+	VirtualPath   string         `json:"virtual_path" gorm:"size:1000;index"` // 虛擬路徑
+	SHA256Hash    string         `json:"sha256_hash" gorm:"size:64;index"` // 檔案雜湊值（去重用）
 	FileSize      int64          `json:"file_size" gorm:"not null"`
 	MimeType      string         `json:"mime_type" gorm:"size:100"`
+	ThumbnailURL  string         `json:"thumbnail_url" gorm:"size:500"` // 縮圖URL
 	ParentID      *uint          `json:"parent_id"`
+	CategoryID    *uint          `json:"category_id" gorm:"index"` // 分類ID
 	UploadedBy    uint           `json:"uploaded_by" gorm:"not null"`
 	DownloadCount int            `json:"download_count" gorm:"default:0"`
 	IsDirectory   bool           `json:"is_directory" gorm:"default:false"`
 	IsDeleted     bool           `json:"is_deleted" gorm:"default:false"`
 	DeletedAt     *time.Time     `json:"deleted_at"`
 	DeletedBy     *uint          `json:"deleted_by"`
+	
+	// 教會特色欄位
+	Description   string         `json:"description" gorm:"type:text"`
+	Tags          string         `json:"tags" gorm:"size:500"`
+	ContentType   string         `json:"content_type" gorm:"size:100"` // 內容類型
+	Speaker       string         `json:"speaker" gorm:"size:255"` // 講員
+	SermonTitle   string         `json:"sermon_title" gorm:"size:500"` // 講道標題
+	BibleReference string        `json:"bible_reference" gorm:"size:255"` // 經文參考
+	LikeCount     int            `json:"like_count" gorm:"default:0"` // 按讚數
+	
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
 	
 	// 關聯
-	Parent       *File          `json:"parent,omitempty" gorm:"foreignKey:ParentID"`
-	Uploader     User           `json:"uploader" gorm:"foreignKey:UploadedBy"`
-	DeletedByUser *User         `json:"deleted_by_user,omitempty" gorm:"foreignKey:DeletedBy"`
+	Parent        *File          `json:"parent,omitempty" gorm:"foreignKey:ParentID"`
+	Category      *Category      `json:"category,omitempty" gorm:"foreignKey:CategoryID"`
+	Uploader      User           `json:"uploader" gorm:"foreignKey:UploadedBy"`
+	DeletedByUser *User          `json:"deleted_by_user,omitempty" gorm:"foreignKey:DeletedBy"`
+}
+
+// Category 分類模型 - 支援檔案分類管理
+type Category struct {
+	ID          uint      `json:"id" gorm:"primaryKey"`
+	Name        string    `json:"name" gorm:"size:255;not null;uniqueIndex"`
+	Description string    `json:"description" gorm:"type:text"`
+	Color       string    `json:"color" gorm:"size:20"` // 分類顏色
+	Icon        string    `json:"icon" gorm:"size:100"` // 分類圖示
+	SortOrder   int       `json:"sort_order" gorm:"default:0"` // 排序順序
+	IsActive    bool      `json:"is_active" gorm:"default:true"` // 是否啟用
+	CreatedBy   uint      `json:"created_by" gorm:"not null"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	
+	// 關聯
+	Creator     User      `json:"creator" gorm:"foreignKey:CreatedBy"`
+	Files       []File    `json:"files,omitempty" gorm:"foreignKey:CategoryID"`
+}
+
+// ExportJob 匯出任務模型 - 支援串流匯出追蹤
+type ExportJob struct {
+	ID                  uint      `json:"id" gorm:"primaryKey"`
+	JobID               string    `json:"job_id" gorm:"size:100;uniqueIndex;not null"`
+	UserID              uint      `json:"user_id" gorm:"not null"`
+	Status              string    `json:"status" gorm:"size:20;default:pending"` // pending, processing, completed, failed
+	Progress            int       `json:"progress" gorm:"default:0"` // 0-100
+	TotalFiles          int       `json:"total_files" gorm:"default:0"`
+	ProcessedFiles      int       `json:"processed_files" gorm:"default:0"`
+	TotalSize           int64     `json:"total_size" gorm:"default:0"`
+	ProcessedSize       int64     `json:"processed_size" gorm:"default:0"`
+	ExportFormat        string    `json:"export_format" gorm:"size:10;default:zip"` // zip, tar
+	DownloadPath        string    `json:"download_path" gorm:"size:500"`
+	Error               string    `json:"error" gorm:"type:text"`
+	EstimatedCompletion *time.Time `json:"estimated_completion"`
+	CompletedAt         *time.Time `json:"completed_at"`
+	ExpiresAt           *time.Time `json:"expires_at"` // 下載連結過期時間
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
+	
+	// 關聯
+	User                User      `json:"user" gorm:"foreignKey:UserID"`
 }
 
 // FileShare 檔案分享模型 - 按照規格書定義
@@ -115,4 +172,12 @@ func (FileShare) TableName() string {
 
 func (ActivityLog) TableName() string {
 	return "activity_logs"
+}
+
+func (Category) TableName() string {
+	return "categories"
+}
+
+func (ExportJob) TableName() string {
+	return "export_jobs"
 }

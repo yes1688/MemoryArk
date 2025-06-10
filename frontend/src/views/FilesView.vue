@@ -14,7 +14,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 // UI 組件
-import { MinimalButton } from '@/components/ui'
+import { MinimalButton, AppFileIcon } from '@/components/ui'
 import UploadModal from '@/components/UploadModal.vue'
 import CreateFolderModal from '@/components/CreateFolderModal.vue'
 
@@ -94,31 +94,7 @@ const formatDate = (dateString: string): string => {
   })
 }
 
-const getFileIcon = (file: FileInfo) => {
-  if (file.isDirectory) {
-    return `<svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z"/>
-    </svg>`
-  }
-  
-  const ext = file.name.split('.').pop()?.toLowerCase()
-  const iconMap: Record<string, string> = {
-    pdf: 'text-red-500',
-    doc: 'text-blue-500',
-    docx: 'text-blue-500',
-    mp4: 'text-purple-500',
-    mp3: 'text-green-500',
-    jpg: 'text-yellow-500',
-    png: 'text-yellow-500',
-    zip: 'text-gray-500'
-  }
-  
-  const color = iconMap[ext || ''] || 'text-gray-400'
-  
-  return `<svg class="w-8 h-8 ${color}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-  </svg>`
-}
+// 已移除 getFileIcon 函數，改用 AppFileIcon 組件
 
 // 監聽路由變化
 watch(() => [props.folderId, route.params.folderId], 
@@ -314,7 +290,15 @@ onMounted(async () => {
             boxShadow: hoveredFile?.id === file.id ? 'var(--shadow-lg)' : 'var(--shadow-sm)'
           }"
         >
-          <div class="file-icon mb-3 text-center" v-html="getFileIcon(file)"></div>
+          <div class="file-icon mb-3 text-center">
+            <AppFileIcon 
+              :mime-type="file.mimeType"
+              :file-name="file.name"
+              :is-directory="file.isDirectory"
+              :thumbnail-url="file.thumbnailUrl"
+              size="lg"
+            />
+          </div>
           <h4 class="file-name text-sm font-medium truncate" style="color: var(--text-primary);" :title="file.name">
             {{ file.name }}
           </h4>
@@ -364,7 +348,15 @@ onMounted(async () => {
           "
           :class="{ 'hover:bg-gray-50 dark:hover:bg-gray-800': true }"
         >
-          <div class="file-icon mr-4" v-html="getFileIcon(file)"></div>
+          <div class="file-icon mr-4">
+            <AppFileIcon 
+              :mime-type="file.mimeType"
+              :file-name="file.name"
+              :is-directory="file.isDirectory"
+              :thumbnail-url="file.thumbnailUrl"
+              size="md"
+            />
+          </div>
           <div class="file-info flex-1">
             <h4 class="text-sm font-medium" style="color: var(--text-primary);">{{ file.name }}</h4>
             <p class="text-xs" style="color: var(--text-tertiary);">

@@ -1,7 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { fileApi as filesApi } from '@/api/files'
-import type { FileInfo, FileShare, BreadcrumbItem, FileUploadRequest } from '@/types/files'
+import type { 
+  FileInfo, 
+  FileShare, 
+  BreadcrumbItem, 
+  FileUploadRequest,
+  Category,
+  StreamExportRequest,
+  ExportJob,
+  DuplicateFile
+} from '@/types/files'
 
 export const useFilesStore = defineStore('files', () => {
   // 狀態
@@ -13,6 +22,18 @@ export const useFilesStore = defineStore('files', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const uploadProgress = ref(0)
+  
+  // 分類相關狀態
+  const categories = ref<Category[]>([])
+  const currentCategoryId = ref<number | null>(null)
+  
+  // 串流匯出相關狀態
+  const exportJobs = ref<ExportJob[]>([])
+  const isExporting = ref(false)
+  
+  // 檔案去重相關狀態
+  const duplicateFiles = ref<DuplicateFile[]>([])
+  const isDuplicateScanning = ref(false)
 
   // 計算屬性
   const canPaste = computed(() => clipboard.value !== null)
@@ -436,6 +457,165 @@ export const useFilesStore = defineStore('files', () => {
     error.value = null
   }
 
+  // 分類管理方法
+  const fetchCategories = async (): Promise<void> => {
+    try {
+      // TODO: 實作分類 API 呼叫
+      // const response = await categoriesApi.getCategories()
+      // categories.value = response.data
+      
+      // 暫時使用預設分類
+      categories.value = [
+        { id: 1, name: '安息日聚會', description: '安息日聚會相關檔案', createdAt: '', updatedAt: '' },
+        { id: 2, name: '青年團契', description: '青年團契活動檔案', createdAt: '', updatedAt: '' },
+        { id: 3, name: '主日學', description: '主日學教材和記錄', createdAt: '', updatedAt: '' },
+        { id: 4, name: '講道錄音', description: '講道和教學錄音', createdAt: '', updatedAt: '' },
+        { id: 5, name: '教會活動', description: '各種教會活動檔案', createdAt: '', updatedAt: '' }
+      ]
+    } catch (err: any) {
+      error.value = err.message || '載入分類失敗'
+    }
+  }
+
+  const createCategory = async (categoryData: { name: string; description?: string }): Promise<void> => {
+    try {
+      // TODO: 實作分類建立 API
+      // const response = await categoriesApi.createCategory(categoryData)
+      // categories.value.push(response.data)
+      
+      // 暫時模擬
+      const newCategory: Category = {
+        id: Date.now(),
+        name: categoryData.name,
+        description: categoryData.description || '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      categories.value.push(newCategory)
+    } catch (err: any) {
+      error.value = err.message || '建立分類失敗'
+      throw err
+    }
+  }
+
+  // 串流匯出方法
+  const streamExport = async (exportRequest: StreamExportRequest): Promise<string> => {
+    try {
+      isExporting.value = true
+      
+      // 建立匯出任務
+      const jobId = `export_${Date.now()}`
+      const newJob: ExportJob = {
+        id: jobId,
+        status: 'pending',
+        progress: 0,
+        createdAt: new Date().toISOString()
+      }
+      exportJobs.value.push(newJob)
+
+      // TODO: 實作串流匯出 API
+      // const response = await filesApi.streamExport(exportRequest)
+      // return response.downloadUrl
+      
+      // 模擬串流匯出進度
+      const job = exportJobs.value.find(j => j.id === jobId)
+      if (job) {
+        job.status = 'processing'
+        
+        // 模擬進度更新
+        const progressInterval = setInterval(() => {
+          if (job.progress < 100) {
+            job.progress += 10
+          } else {
+            clearInterval(progressInterval)
+            job.status = 'completed'
+            job.downloadUrl = `/api/export/download/${jobId}`
+            isExporting.value = false
+          }
+        }, 500)
+      }
+
+      return `/api/export/download/${jobId}`
+    } catch (err: any) {
+      isExporting.value = false
+      error.value = err.message || '匯出失敗'
+      throw err
+    }
+  }
+
+  const quickStreamExport = async (type: 'this-month' | 'last-sabbath' | 'all-photos'): Promise<void> => {
+    try {
+      let exportRequest: StreamExportRequest = {}
+      
+      switch (type) {
+        case 'this-month':
+          const now = new Date()
+          const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+          exportRequest = {
+            dateFrom: firstDay.toISOString(),
+            dateTo: now.toISOString()
+          }
+          break
+        case 'last-sabbath':
+          exportRequest = {
+            categoryIds: [1] // 安息日聚會分類
+          }
+          break
+        case 'all-photos':
+          // TODO: 根據檔案類型篩選照片
+          break
+      }
+
+      // 直接開始下載
+      window.open(`/api/export/quick?type=${type}`, '_blank')
+    } catch (err: any) {
+      error.value = err.message || '快速匯出失敗'
+    }
+  }
+
+  // 檔案去重方法
+  const scanDuplicates = async (): Promise<void> => {
+    try {
+      isDuplicateScanning.value = true
+      
+      // TODO: 實作檔案去重掃描 API
+      // const response = await filesApi.scanDuplicates()
+      // duplicateFiles.value = response.data
+      
+      // 暫時模擬去重掃描
+      setTimeout(() => {
+        duplicateFiles.value = [
+          {
+            hash: 'abc123',
+            files: files.value.slice(0, 2),
+            totalSize: 1024000,
+            duplicateCount: 2
+          }
+        ]
+        isDuplicateScanning.value = false
+      }, 2000)
+    } catch (err: any) {
+      isDuplicateScanning.value = false
+      error.value = err.message || '掃描重複檔案失敗'
+    }
+  }
+
+  const removeDuplicate = async (hash: string, keepFileId: number): Promise<void> => {
+    try {
+      // TODO: 實作刪除重複檔案 API
+      // await filesApi.removeDuplicate(hash, keepFileId)
+      
+      // 從本地狀態移除
+      duplicateFiles.value = duplicateFiles.value.filter(dup => dup.hash !== hash)
+      
+      // 重新載入檔案列表
+      await fetchFiles(currentFolderId.value)
+    } catch (err: any) {
+      error.value = err.message || '移除重複檔案失敗'
+      throw err
+    }
+  }
+
   return {
     // 狀態
     files,
@@ -446,13 +626,19 @@ export const useFilesStore = defineStore('files', () => {
     isLoading,
     error,
     uploadProgress,
+    categories,
+    currentCategoryId,
+    exportJobs,
+    isExporting,
+    duplicateFiles,
+    isDuplicateScanning,
     
     // 計算屬性
     canPaste,
     hasSelection,
     currentFolderId,
     
-    // 方法
+    // 檔案管理方法
     fetchFiles,
     uploadFile,
     createFolder,
@@ -470,6 +656,18 @@ export const useFilesStore = defineStore('files', () => {
     clearSelection,
     navigateToFolder,
     navigateUp,
-    clearError
+    clearError,
+    
+    // 分類管理方法
+    fetchCategories,
+    createCategory,
+    
+    // 串流匯出方法
+    streamExport,
+    quickStreamExport,
+    
+    // 檔案去重方法
+    scanDuplicates,
+    removeDuplicate
   }
 })

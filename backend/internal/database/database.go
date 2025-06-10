@@ -40,12 +40,30 @@ func Initialize(dbPath string) (*gorm.DB, error) {
 
 // autoMigrate 自動遷移數據庫表
 func autoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(
+	// 首先執行 SQL 遷移腳本
+	if err := RunMigrations(db); err != nil {
+		log.Printf("Warning: SQL migrations failed: %v", err)
+	}
+
+	// 然後執行 GORM AutoMigrate 確保所有模型同步
+	if err := db.AutoMigrate(
 		&models.User{},
 		&models.UserRegistrationRequest{},
 		&models.File{},
+		&models.Category{},
+		&models.ExportJob{},
+		&models.FileShare{},
 		&models.ActivityLog{},
-	)
+	); err != nil {
+		return err
+	}
+
+	// 為現有檔案填充虛擬路徑
+	if err := PopulateVirtualPaths(db); err != nil {
+		log.Printf("Warning: Failed to populate virtual paths: %v", err)
+	}
+
+	return nil
 }
 
 // createDefaultAdmin 創建默認管理員用戶

@@ -17,10 +17,38 @@ services:
       - DEV_AUTO_LOGIN_EMAIL=${DEV_AUTO_LOGIN_EMAIL:-}
       - DEV_BYPASS_AUTH=${DEV_BYPASS_AUTH:-false}
       - DEV_CORS_ENABLED=${DEV_CORS_ENABLED:-false}
+      # 檔案處理和串流匯出配置
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-104857600}  # 100MB
+      - MAX_UPLOAD_MEMORY=${MAX_UPLOAD_MEMORY:-33554432}  # 32MB
+      - DEDUPLICATION_ENABLED=${DEDUPLICATION_ENABLED:-true}
+      - STREAMING_EXPORT_ENABLED=${STREAMING_EXPORT_ENABLED:-true}
+      - EXPORT_CLEANUP_INTERVAL=${EXPORT_CLEANUP_INTERVAL:-24h}
+      - VIRTUAL_PATH_ENABLED=${VIRTUAL_PATH_ENABLED:-true}
+      # 效能優化配置
+      - GOMEMLIMIT=${GOMEMLIMIT:-512MiB}
+      - GOGC=${GOGC:-100}
+      - GOMAXPROCS=${GOMAXPROCS:-2}
     volumes:
       - ./data:/app/data
       - ./uploads:/app/uploads
       - ./logs:/app/logs
+      - ./backend/migrations:/app/migrations:ro  # 只讀掛載遷移腳本
+    # 資源限制（適合生產環境）
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    # 健康檢查
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
     logging:
       driver: "json-file"

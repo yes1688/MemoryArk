@@ -6,7 +6,9 @@ export interface FileInfo {
   mimeType?: string
   isDirectory: boolean
   parentId?: number
-  path: string
+  path: string  // 已廢棄，保留兼容性
+  virtualPath?: string  // 新增：純虛擬路徑（可選，向後兼容）
+  hash?: string  // 新增：SHA256 檔案雜湊值（可選，向後兼容）
   description?: string
   tags?: string
   uploaderId: number
@@ -23,7 +25,8 @@ export interface FileInfo {
   children?: FileInfo[]
   
   // 教會特色欄位
-  categoryId?: number
+  categoryId?: number  // 保持可選以維持兼容性
+  categoryName?: string  // 新增：分類名稱
   contentType?: string
   speaker?: string
   sermonTitle?: string
@@ -81,6 +84,7 @@ export interface FileShareRequest {
 
 export interface FileUploadRequest {
   parentId?: number
+  categoryId?: number  // 保持可選以維持兼容性
   description?: string
   tags?: string
 }
@@ -110,4 +114,50 @@ export interface RecentFile extends FileInfo {
 export interface AccessHistoryItem extends FileInfo {
   lastAccessedAt: string
   lastAction: 'view' | 'download' | 'edit'
+}
+
+// 分類管理型別
+export interface Category {
+  id: number
+  name: string
+  description?: string
+  color?: string
+  icon?: string
+  fileCount?: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CategoryCreateRequest {
+  name: string
+  description?: string
+  color?: string
+  icon?: string
+}
+
+// 串流匯出型別
+export interface StreamExportRequest {
+  categoryIds?: number[]
+  dateFrom?: string
+  dateTo?: string
+  includeSubfolders?: boolean
+  format?: 'zip' | 'tar'
+}
+
+export interface ExportJob {
+  id: string
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  progress: number
+  downloadUrl?: string
+  error?: string
+  createdAt: string
+  estimatedCompletionTime?: string
+}
+
+// 檔案去重相關型別
+export interface DuplicateFile {
+  hash: string
+  files: FileInfo[]
+  totalSize: number
+  duplicateCount: number
 }

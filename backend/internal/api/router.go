@@ -25,6 +25,8 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	// 初始化處理器
 	authHandler := handlers.NewAuthHandler(db, cfg)
 	fileHandler := handlers.NewFileHandler(db, cfg)
+	categoryHandler := handlers.NewCategoryHandler(db, cfg)
+	exportHandler := handlers.NewExportHandler(db, cfg)
 	// userHandler := handlers.NewUserHandler(db, cfg)
 	adminHandler := handlers.NewAdminHandler(db, cfg)
 	
@@ -64,6 +66,21 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		protected.POST("/folders", fileHandler.CreateFolder)
 		protected.PUT("/folders/:id/move", fileHandler.MoveFile)
 		protected.PUT("/folders/:id/rename", fileHandler.RenameFile)
+		
+		// 分類管理
+		protected.GET("/categories", categoryHandler.GetCategories)
+		protected.GET("/categories/:id", categoryHandler.GetCategory)
+		protected.POST("/categories", categoryHandler.CreateCategory)
+		protected.PUT("/categories/:id", categoryHandler.UpdateCategory)
+		protected.DELETE("/categories/:id", categoryHandler.DeleteCategory)
+		protected.GET("/categories/:id/files", categoryHandler.GetCategoryFiles)
+		
+		// 匯出功能
+		protected.POST("/export/stream", exportHandler.StreamExport)
+		protected.GET("/export/quick", exportHandler.QuickStreamExport)
+		protected.GET("/export/status/:jobId", exportHandler.GetExportStatus)
+		protected.GET("/export/download/:jobId", exportHandler.DownloadExport)
+		protected.GET("/export/history", exportHandler.GetUserExports)
 	}
 	
 	// 管理員路由 - 根據規格書定義
