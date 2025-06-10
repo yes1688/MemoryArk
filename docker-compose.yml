@@ -7,16 +7,16 @@ services:
       dockerfile: Dockerfile
     environment:
       - GIN_MODE=release
-      - PORT=8080
+      - PORT=8081
       - DATABASE_PATH=/app/data/memoryark.db
       - JWT_SECRET=${JWT_SECRET:-memoryark-secret-key}
       - UPLOAD_PATH=${UPLOAD_PATH:-./uploads}
-      - ROOT_ADMIN_EMAIL=${ROOT_ADMIN_EMAIL:-admin@memoryark.org}
+      - ROOT_ADMIN_EMAIL=${ROOT_ADMIN_EMAIL:-94work.net@gmail.com}
       - ROOT_ADMIN_NAME=${ROOT_ADMIN_NAME:-系統管理員}
-      - DEVELOPMENT_MODE=${DEVELOPMENT_MODE:-false}
-      - DEV_AUTO_LOGIN_EMAIL=${DEV_AUTO_LOGIN_EMAIL:-}
-      - DEV_BYPASS_AUTH=${DEV_BYPASS_AUTH:-false}
-      - DEV_CORS_ENABLED=${DEV_CORS_ENABLED:-false}
+      - DEVELOPMENT_MODE=false
+      - DEV_AUTO_LOGIN_EMAIL=
+      - DEV_BYPASS_AUTH=false
+      - DEV_CORS_ENABLED=false
       # 檔案處理和串流匯出配置
       - MAX_FILE_SIZE=${MAX_FILE_SIZE:-104857600}  # 100MB
       - MAX_UPLOAD_MEMORY=${MAX_UPLOAD_MEMORY:-33554432}  # 32MB
@@ -44,7 +44,7 @@ services:
           cpus: '0.25'
     # 健康檢查
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

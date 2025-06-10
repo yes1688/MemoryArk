@@ -281,11 +281,18 @@ func (h *AdminHandler) ApproveRegistration(c *gin.Context) {
 	
 	// 創建用戶
 	now := time.Now()
+	
+	// 檢查是否為根管理員郵箱
+	role := "user"
+	if registration.Email == h.cfg.Admin.RootEmail {
+		role = "admin"
+	}
+	
 	user := models.User{
 		Email:       registration.Email,
 		Name:        registration.Name,
 		Phone:       registration.Phone,
-		Role:        "user",
+		Role:        role,
 		Status:      "approved",
 		ApprovedBy:  adminUserID.(*uint),
 		ApprovedAt:  &now,

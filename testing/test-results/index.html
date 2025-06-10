@@ -123,22 +123,22 @@
         <h1>🧪 MemoryArk 2.0 整合測試報告</h1>
         
         <div class="metadata">
-            <div><strong>測試時間：</strong> 2025-06-10 16:59:13 - 2025-06-10 16:59:20</div>
+            <div><strong>測試時間：</strong> 2025-06-10 23:38:09 - 2025-06-10 23:38:17</div>
             <div><strong>目標伺服器：</strong> http://localhost:7001</div>
             <div><strong>執行時間：</strong> 7.7 秒</div>
         </div>
         
         <div class="summary">
             <div class="summary-card total">
-                <h2>54</h2>
+                <h2>56</h2>
                 <p>總測試數</p>
             </div>
             <div class="summary-card passed">
-                <h2>28</h2>
+                <h2>40</h2>
                 <p>通過</p>
             </div>
             <div class="summary-card failed">
-                <h2>26</h2>
+                <h2>16</h2>
                 <p>失敗</p>
             </div>
             <div class="summary-card skipped">
@@ -159,7 +159,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:13.117272</div>
+                    <div>時間: 2025-06-10T23:38:09.871943</div>
                     
                     <div>狀態碼: 200 | 
                          回應時間: <span class="response-time">1ms</span>
@@ -179,7 +179,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:13.619547</div>
+                    <div>時間: 2025-06-10T23:38:10.373937</div>
                     
                     <div>狀態碼: 200 | 
                          回應時間: <span class="response-time">1ms</span>
@@ -193,18 +193,18 @@
             <div class="test-item">
                 <div class="test-header">
                     <div class="test-name">File List API</div>
-                    <div class="test-status status-failed">
-                        ❌ 失敗
+                    <div class="test-status status-passed">
+                        ✅ 通過
                         
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:14.121373</div>
+                    <div>時間: 2025-06-10T23:38:10.876311</div>
                     
-                    
-                    <div class="error-message">
-                        錯誤: HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x773d982c85f0>: Failed to establish a new connection: [Errno 111] Connection refused'))
+                    <div>狀態碼: 301 | 
+                         回應時間: <span class="response-time">0ms</span>
                     </div>
+                    
                     
                     
                 </div>
@@ -219,10 +219,10 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:14.622927</div>
+                    <div>時間: 2025-06-10T23:38:11.378846</div>
                     
                     <div>狀態碼: 200 | 
-                         回應時間: <span class="response-time">1ms</span>
+                         回應時間: <span class="response-time">2ms</span>
                     </div>
                     
                     
@@ -239,7 +239,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.125322</div>
+                    <div>時間: 2025-06-10T23:38:11.881115</div>
                     
                     
                     
@@ -249,18 +249,58 @@
             <div class="test-item">
                 <div class="test-header">
                     <div class="test-name">File Upload Test</div>
-                    <div class="test-status status-failed">
-                        ❌ 失敗
+                    <div class="test-status status-passed">
+                        ✅ 通過
                         
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.653252</div>
+                    <div>時間: 2025-06-10T23:38:12.394381</div>
                     
-                    
-                    <div class="error-message">
-                        錯誤: HTTP 錯誤: 201 - {"data":{"id":4,"name":"test-upload-1749545955.txt","original_name":"test-upload-1749545955.txt","file_path":"uploads/files/f2/f109e357-5046-4643-8132-6ffccbed7032","virtual_path":"/test-upload-1749545955.txt","sha256_hash":"f289739208a71818e9c3e5f632a5592d21982c6ee563f41d8f762722a3498cea","file_size":1062,"mime_type":"text/plain","thumbnail_url":"","parent_id":null,"category_id":null,"uploaded_by":1,"download_count":0,"is_directory":false,"is_deleted":false,"deleted_at":null,"deleted_by":null,"description":"","tags":"","content_type":"","speaker":"","sermon_title":"","bible_reference":"","like_count":0,"created_at":"2025-06-10T08:59:15.627963587Z","updated_at":"2025-06-10T08:59:15.627963587Z","uploader":{"id":0,"email":"","name":"","phone":"","role":"","status":"","avatar_url":"","created_at":"0001-01-01T00:00:00Z","updated_at":"0001-01-01T00:00:00Z","last_login_at":null,"approved_by":null,"approved_at":null}},"message":"檔案上傳成功","success":true}
+                    <div>狀態碼: 201 | 
+                         回應時間: <span class="response-time">8ms</span>
                     </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">File Download Test (ID: 149)</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T23:38:12.398841</div>
+                    
+                    <div>狀態碼: 200 | 
+                         回應時間: <span class="response-time">4ms</span>
+                    </div>
+                    
+                    
+                    
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-header">
+                    <div class="test-name">File Info Test (ID: 149)</div>
+                    <div class="test-status status-passed">
+                        ✅ 通過
+                        
+                    </div>
+                </div>
+                <div class="test-details">
+                    <div>時間: 2025-06-10T23:38:12.400162</div>
+                    
+                    <div>狀態碼: 200 | 
+                         回應時間: <span class="response-time">1ms</span>
+                    </div>
+                    
                     
                     
                 </div>
@@ -269,18 +309,18 @@
             <div class="test-item">
                 <div class="test-header">
                     <div class="test-name">Large File Upload Test</div>
-                    <div class="test-status status-failed">
-                        ❌ 失敗
+                    <div class="test-status status-passed">
+                        ✅ 通過
                         
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.678087</div>
+                    <div>時間: 2025-06-10T23:38:12.425171</div>
                     
-                    
-                    <div class="error-message">
-                        錯誤: HTTP 錯誤: 201
+                    <div>狀態碼: 201 | 
+                         回應時間: <span class="response-time">14ms</span>
                     </div>
+                    
                     
                     
                 </div>
@@ -295,7 +335,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.680019</div>
+                    <div>時間: 2025-06-10T23:38:12.435058</div>
                     
                     <div>狀態碼: 200
                     </div>
@@ -314,11 +354,11 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.680820</div>
+                    <div>時間: 2025-06-10T23:38:12.435802</div>
                     
                     
                     <div class="error-message">
-                        錯誤: HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x773d982ca360>: Failed to establish a new connection: [Errno 111] Connection refused'))
+                        錯誤: HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7eebc59d90d0>: Failed to establish a new connection: [Errno 111] Connection refused'))
                     </div>
                     
                     
@@ -334,7 +374,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.681466</div>
+                    <div>時間: 2025-06-10T23:38:12.436415</div>
                     
                     
                     <div class="error-message">
@@ -354,7 +394,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.682030</div>
+                    <div>時間: 2025-06-10T23:38:12.437091</div>
                     
                     <div>狀態碼: 200
                     </div>
@@ -373,7 +413,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.682516</div>
+                    <div>時間: 2025-06-10T23:38:12.437606</div>
                     
                     
                     <div class="error-message">
@@ -393,7 +433,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.683239</div>
+                    <div>時間: 2025-06-10T23:38:12.438166</div>
                     
                     <div>狀態碼: 200
                     </div>
@@ -412,7 +452,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.683912</div>
+                    <div>時間: 2025-06-10T23:38:12.438830</div>
                     
                     <div>狀態碼: 200
                     </div>
@@ -431,7 +471,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.684478</div>
+                    <div>時間: 2025-06-10T23:38:12.439348</div>
                     
                     
                     <div class="error-message">
@@ -451,7 +491,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.685036</div>
+                    <div>時間: 2025-06-10T23:38:12.439886</div>
                     
                     
                     <div class="error-message">
@@ -471,7 +511,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.685540</div>
+                    <div>時間: 2025-06-10T23:38:12.440442</div>
                     
                     
                     <div class="error-message">
@@ -491,7 +531,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.686040</div>
+                    <div>時間: 2025-06-10T23:38:12.441120</div>
                     
                     
                     <div class="error-message">
@@ -511,7 +551,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.686549</div>
+                    <div>時間: 2025-06-10T23:38:12.441919</div>
                     
                     <div>狀態碼: 200
                     </div>
@@ -530,7 +570,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.687105</div>
+                    <div>時間: 2025-06-10T23:38:12.442723</div>
                     
                     <div>狀態碼: 200
                     </div>
@@ -549,7 +589,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.687657</div>
+                    <div>時間: 2025-06-10T23:38:12.443410</div>
                     
                     <div>狀態碼: 200
                     </div>
@@ -568,7 +608,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.688131</div>
+                    <div>時間: 2025-06-10T23:38:12.444014</div>
                     
                     
                     <div class="error-message">
@@ -588,7 +628,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.688661</div>
+                    <div>時間: 2025-06-10T23:38:12.444831</div>
                     
                     <div>狀態碼: 200
                     </div>
@@ -607,7 +647,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.689160</div>
+                    <div>時間: 2025-06-10T23:38:12.445501</div>
                     
                     
                     <div class="error-message">
@@ -627,7 +667,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.689700</div>
+                    <div>時間: 2025-06-10T23:38:12.446206</div>
                     
                     
                     <div class="error-message">
@@ -647,7 +687,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.690937</div>
+                    <div>時間: 2025-06-10T23:38:12.447866</div>
                     
                     
                     
@@ -663,7 +703,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.691385</div>
+                    <div>時間: 2025-06-10T23:38:12.448375</div>
                     
                     <div>狀態碼: 200
                     </div>
@@ -682,7 +722,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.691921</div>
+                    <div>時間: 2025-06-10T23:38:12.448903</div>
                     
                     <div>狀態碼: 200
                     </div>
@@ -701,7 +741,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.692351</div>
+                    <div>時間: 2025-06-10T23:38:12.449406</div>
                     
                     <div>狀態碼: 200
                     </div>
@@ -720,7 +760,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.692820</div>
+                    <div>時間: 2025-06-10T23:38:12.450003</div>
                     
                     <div>狀態碼: 200
                     </div>
@@ -739,7 +779,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.693375</div>
+                    <div>時間: 2025-06-10T23:38:12.450732</div>
                     
                     
                     <div class="error-message">
@@ -759,7 +799,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.695642</div>
+                    <div>時間: 2025-06-10T23:38:12.452952</div>
                     
                     
                     
@@ -775,11 +815,11 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.699971</div>
+                    <div>時間: 2025-06-10T23:38:12.453689</div>
                     
                     
                     <div class="error-message">
-                        錯誤: 預期狀態碼 400，實際 201
+                        錯誤: 預期狀態碼 400，實際 409
                     </div>
                     
                     
@@ -795,7 +835,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.700460</div>
+                    <div>時間: 2025-06-10T23:38:12.454272</div>
                     
                     
                     
@@ -811,7 +851,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.704317</div>
+                    <div>時間: 2025-06-10T23:38:12.459050</div>
                     
                     
                     
@@ -821,18 +861,17 @@
             <div class="test-item">
                 <div class="test-header">
                     <div class="test-name">Path Traversal: ../../../etc/passwd...</div>
-                    <div class="test-status status-failed">
-                        ❌ 失敗
+                    <div class="test-status status-passed">
+                        ✅ 通過
                         
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.708559</div>
+                    <div>時間: 2025-06-10T23:38:12.463409</div>
                     
-                    
-                    <div class="error-message">
-                        錯誤: 意外回應: 201
+                    <div>狀態碼: 201
                     </div>
+                    
                     
                     
                 </div>
@@ -841,18 +880,17 @@
             <div class="test-item">
                 <div class="test-header">
                     <div class="test-name">Path Traversal: ..\..\..\windows\sys...</div>
-                    <div class="test-status status-failed">
-                        ❌ 失敗
+                    <div class="test-status status-passed">
+                        ✅ 通過
                         
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.712845</div>
+                    <div>時間: 2025-06-10T23:38:12.467618</div>
                     
-                    
-                    <div class="error-message">
-                        錯誤: 意外回應: 201
+                    <div>狀態碼: 201
                     </div>
+                    
                     
                     
                 </div>
@@ -861,18 +899,17 @@
             <div class="test-item">
                 <div class="test-header">
                     <div class="test-name">Path Traversal: /etc/passwd...</div>
-                    <div class="test-status status-failed">
-                        ❌ 失敗
+                    <div class="test-status status-passed">
+                        ✅ 通過
                         
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.717284</div>
+                    <div>時間: 2025-06-10T23:38:12.471706</div>
                     
-                    
-                    <div class="error-message">
-                        錯誤: 意外回應: 201
+                    <div>狀態碼: 201
                     </div>
+                    
                     
                     
                 </div>
@@ -881,18 +918,17 @@
             <div class="test-item">
                 <div class="test-header">
                     <div class="test-name">Path Traversal: ../../../../usr/bin/...</div>
-                    <div class="test-status status-failed">
-                        ❌ 失敗
+                    <div class="test-status status-passed">
+                        ✅ 通過
                         
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.721666</div>
+                    <div>時間: 2025-06-10T23:38:12.475837</div>
                     
-                    
-                    <div class="error-message">
-                        錯誤: 意外回應: 201
+                    <div>狀態碼: 201
                     </div>
+                    
                     
                     
                 </div>
@@ -901,18 +937,17 @@
             <div class="test-item">
                 <div class="test-header">
                     <div class="test-name">Path Traversal: ..%2F..%2F..%2Fetc%2...</div>
-                    <div class="test-status status-failed">
-                        ❌ 失敗
+                    <div class="test-status status-passed">
+                        ✅ 通過
                         
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.726164</div>
+                    <div>時間: 2025-06-10T23:38:12.479872</div>
                     
-                    
-                    <div class="error-message">
-                        錯誤: 意外回應: 201
+                    <div>狀態碼: 201
                     </div>
+                    
                     
                     
                 </div>
@@ -921,18 +956,17 @@
             <div class="test-item">
                 <div class="test-header">
                     <div class="test-name">Path Traversal: ....//....//....//et...</div>
-                    <div class="test-status status-failed">
-                        ❌ 失敗
+                    <div class="test-status status-passed">
+                        ✅ 通過
                         
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.730540</div>
+                    <div>時間: 2025-06-10T23:38:12.484060</div>
                     
-                    
-                    <div class="error-message">
-                        錯誤: 意外回應: 201
+                    <div>狀態碼: 201
                     </div>
+                    
                     
                     
                 </div>
@@ -941,18 +975,17 @@
             <div class="test-item">
                 <div class="test-header">
                     <div class="test-name">Path Traversal: ..\..\..\..\..\..\.....</div>
-                    <div class="test-status status-failed">
-                        ❌ 失敗
+                    <div class="test-status status-passed">
+                        ✅ 通過
                         
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.734823</div>
+                    <div>時間: 2025-06-10T23:38:12.488051</div>
                     
-                    
-                    <div class="error-message">
-                        錯誤: 意外回應: 201
+                    <div>狀態碼: 201
                     </div>
+                    
                     
                     
                 </div>
@@ -967,7 +1000,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.735711</div>
+                    <div>時間: 2025-06-10T23:38:12.488629</div>
                     
                     
                     
@@ -983,7 +1016,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.736260</div>
+                    <div>時間: 2025-06-10T23:38:12.489270</div>
                     
                     
                     
@@ -999,7 +1032,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.736868</div>
+                    <div>時間: 2025-06-10T23:38:12.489730</div>
                     
                     
                     
@@ -1015,7 +1048,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.737395</div>
+                    <div>時間: 2025-06-10T23:38:12.490167</div>
                     
                     
                     
@@ -1031,7 +1064,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.737912</div>
+                    <div>時間: 2025-06-10T23:38:12.490610</div>
                     
                     
                     
@@ -1047,7 +1080,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.743276</div>
+                    <div>時間: 2025-06-10T23:38:12.496289</div>
                     
                     
                     
@@ -1063,11 +1096,11 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.744078</div>
+                    <div>時間: 2025-06-10T23:38:12.498256</div>
                     
                     
                     <div class="error-message">
-                        錯誤: HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/?limit=999999&page=1 (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x773d982ca030>: Failed to establish a new connection: [Errno 111] Connection refused'))
+                        錯誤: HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/?limit=999999&page=1&limit=999999&page=1 (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7eebc59ed730>: Failed to establish a new connection: [Errno 111] Connection refused'))
                     </div>
                     
                     
@@ -1083,7 +1116,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.748985</div>
+                    <div>時間: 2025-06-10T23:38:12.502406</div>
                     
                     
                     <div class="error-message">
@@ -1103,7 +1136,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.753228</div>
+                    <div>時間: 2025-06-10T23:38:12.506558</div>
                     
                     
                     <div class="error-message">
@@ -1123,7 +1156,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.757195</div>
+                    <div>時間: 2025-06-10T23:38:12.510643</div>
                     
                     
                     <div class="error-message">
@@ -1143,7 +1176,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:15.757830</div>
+                    <div>時間: 2025-06-10T23:38:12.511408</div>
                     
                     
                     
@@ -1159,7 +1192,7 @@
                     </div>
                 </div>
                 <div class="test-details">
-                    <div>時間: 2025-06-10T16:59:20.816840</div>
+                    <div>時間: 2025-06-10T23:38:17.583026</div>
                     
                     
                     
