@@ -324,3 +324,14 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		"message": "Logout successful",
 	})
 }
+
+// GetFeatureConfig 獲取功能配置（提供給前端控制功能顯示）
+func (h *AuthHandler) GetFeatureConfig(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"enableSharedResources": h.cfg.Features.EnableSharedResources,
+			"enableSabbathData":     h.cfg.Features.EnableSabbathData,
+		},
+	})
+}

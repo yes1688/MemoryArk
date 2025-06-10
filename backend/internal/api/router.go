@@ -39,6 +39,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		public.GET("/health", handlers.HealthCheck)
 		public.GET("/auth/status", authHandler.GetAuthStatus)
 		public.POST("/auth/register", authHandler.Register)
+		public.GET("/features/config", authHandler.GetFeatureConfig)
 	}
 	
 	// 需要認證的路由
@@ -106,6 +107,9 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		admin.GET("/files", adminHandler.GetAllFiles)
 		admin.DELETE("/files/:id", adminHandler.DeleteFile)
 		admin.GET("/files/:id/download", adminHandler.DownloadFile)
+		
+		// 垃圾桶管理（僅限管理員）
+		admin.POST("/trash/empty", fileHandler.EmptyTrash)
 	}
 	
 	// 靜態文件服務

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { featureApi } from '@/api/index'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -128,6 +129,33 @@ router.beforeEach(async (to, from, next) => {
     console.log('👤 管理員權限不足，重定向到 access-denied')
     next('/access-denied')
     return
+  }
+  
+  // 檢查功能是否啟用（僅對特定路由）
+  if (to.path === '/shared' || to.path === '/sabbath') {
+    try {
+      const featureResponse = await featureApi.getConfig()
+      if (featureResponse.success && featureResponse.data) {
+        const config = featureResponse.data
+        if (to.path === '/shared' && !config.enableSharedResources) {
+          console.log('🚫 共享資源功能已隱藏，重定向到首頁')
+          next('/')
+          return
+        }
+        if (to.path === '/sabbath' && !config.enableSabbathData) {
+          console.log('🚫 安息日資料功能已隱藏，重定向到首頁')
+          next('/')
+          return
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check feature config:', error)
+      // 如果無法獲取配置，為安全起見重定向到首頁
+      if (to.path === '/shared' || to.path === '/sabbath') {
+        next('/')
+        return
+      }
+    }
   }
   
   console.log('✅ 路由守衛通過，繼續到目標頁面')

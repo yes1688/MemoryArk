@@ -139,15 +139,10 @@ func NewFileHandler(db *gorm.DB, cfg *config.Config) *FileHandler {
 
 // GetFiles 獲取檔案列表
 func (h *FileHandler) GetFiles(c *gin.Context) {
-	userIDValue, exists := c.Get("user_id")
+	// 驗證用戶已登入（但不限制檔案查看權限，實現共享）
+	_, exists := c.Get("user_id")
 	if !exists {
 		api.Unauthorized(c, "未授權訪問")
-		return
-	}
-	
-	userID, ok := userIDValue.(uint)
-	if !ok {
-		api.Error(c, http.StatusInternalServerError, api.ErrInvalidUserID, "無效的用戶ID")
 		return
 	}
 	
@@ -169,8 +164,8 @@ func (h *FileHandler) GetFiles(c *gin.Context) {
 	
 	query := h.db.Model(&models.File{})
 	
-	// 權限控制：只顯示用戶有權訪問的檔案
-	query = query.Where("uploaded_by = ?", userID)
+	// 教會檔案共享模式：所有用戶都能看到彼此上傳的檔案
+	// 不再限制 uploaded_by，實現檔案共享
 	
 	// 篩選條件
 	if virtualPath != "" {
@@ -801,6 +796,31 @@ func (h *FileHandler) RestoreFile(c *gin.Context) {
 
 // PermanentDeleteFile 永久刪除檔案
 func (h *FileHandler) PermanentDeleteFile(c *gin.Context) {
+	// 檢查管理員權限
+	userID, exists := c.Get("user_id")
+	if !exists {
+		api.Unauthorized(c, "未授權訪問")
+		return
+	}
+	
+	userIDVal, ok := userID.(uint)
+	if !ok {
+		api.Error(c, http.StatusInternalServerError, api.ErrInvalidUserID, "無效的用戶ID")
+		return
+	}
+	
+	// 檢查用戶是否為管理員
+	var user models.User
+	if err := h.db.First(&user, userIDVal).Error; err != nil {
+		api.Error(c, http.StatusInternalServerError, api.ErrDatabaseError, "查詢用戶失敗")
+		return
+	}
+	
+	if user.Role != "admin" {
+		api.Forbidden(c, "只有管理員可以永久刪除檔案")
+		return
+	}
+	
 	fileID := c.Param("id")
 	
 	var file models.File
@@ -1106,5 +1126,74 @@ func (h *FileHandler) RenameFile(c *gin.Context) {
 		"success": true,
 		"message": "檔案重命名成功",
 		"data": file,
+	})
+}
+
+// EmptyTrash 清空垃圾桶（僅限管理員）
+func (h *FileHandler) EmptyTrash(c *gin.Context) {
+	// 檢查管理員權限
+	userID, exists := c.Get("user_id")
+	if !exists {
+		api.Unauthorized(c, "未授權訪問")
+		return
+	}
+	
+	userIDVal, ok := userID.(uint)
+	if !ok {
+		api.Error(c, http.StatusInternalServerError, api.ErrInvalidUserID, "無效的用戶ID")
+		return
+	}
+	
+	// 檢查用戶是否為管理員
+	var user models.User
+	if err := h.db.First(&user, userIDVal).Error; err != nil {
+		api.Error(c, http.StatusInternalServerError, api.ErrDatabaseError, "查詢用戶失敗")
+		return
+	}
+	
+	if user.Role != "admin" {
+		api.Forbidden(c, "只有管理員可以清空垃圾桶")
+		return
+	}
+	
+	// 獲取所有垃圾桶中的檔案
+	var deletedFiles []models.File
+	if err := h.db.Where("is_deleted = ?", true).Find(&deletedFiles).Error; err != nil {
+		api.Error(c, http.StatusInternalServerError, api.ErrDatabaseError, "查詢垃圾桶檔案失敗")
+		return
+	}
+	
+	deletedCount := 0
+	failedCount := 0
+	
+	// 逐一永久刪除每個檔案
+	for _, file := range deletedFiles {
+		// 刪除實體檔案
+		if !file.IsDirectory && file.FilePath != "" {
+			if err := os.Remove(file.FilePath); err != nil {
+				fmt.Printf("Failed to remove file %s: %v\n", file.FilePath, err)
+				failedCount++
+				continue
+			}
+		}
+		
+		// 刪除資料庫記錄
+		if err := h.db.Delete(&file).Error; err != nil {
+			fmt.Printf("Failed to delete file record %d: %v\n", file.ID, err)
+			failedCount++
+			continue
+		}
+		
+		deletedCount++
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": fmt.Sprintf("垃圾桶清空完成，成功刪除 %d 個檔案", deletedCount),
+		"data": gin.H{
+			"deletedCount": deletedCount,
+			"failedCount":  failedCount,
+			"totalCount":   len(deletedFiles),
+		},
 	})
 }

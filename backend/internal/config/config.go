@@ -17,6 +17,7 @@ type Config struct {
 	Cloudflare CloudflareConfig
 	Admin     AdminConfig
 	Development DevelopmentConfig
+	Features  FeatureConfig
 }
 
 // ServerConfig 服務器配置
@@ -72,6 +73,12 @@ type DevelopmentConfig struct {
 	CORSEnabled     bool
 }
 
+// FeatureConfig 功能模組配置
+type FeatureConfig struct {
+	EnableSharedResources bool // 啟用共享資源功能
+	EnableSabbathData     bool // 啟用安息日資料功能
+}
+
 // Load 載入配置
 func Load() (*Config, error) {
 	// 載入 .env 文件（如果存在）
@@ -114,6 +121,10 @@ func Load() (*Config, error) {
 			AutoLoginEmail: getEnv("DEV_AUTO_LOGIN_EMAIL", ""),
 			BypassAuth:     getEnvBool("DEV_BYPASS_AUTH", false),
 			CORSEnabled:    getEnvBool("DEV_CORS_ENABLED", false),
+		},
+		Features: FeatureConfig{
+			EnableSharedResources: getEnvBool("ENABLE_SHARED_RESOURCES", false),
+			EnableSabbathData:     getEnvBool("ENABLE_SABBATH_DATA", false),
 		},
 	}
 	

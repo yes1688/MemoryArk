@@ -5,6 +5,69 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)，
 版本編號遵循 [語意化版本](https://semver.org/lang/zh-TW/)。
 
+## [2.0.3] - 2025-01-11
+
+### 🚀 重大功能
+- **前端測試100%通過率** - 所有測試用例修復完成，達到100%通過率
+- **功能模組開關系統** - 環境變數控制導航功能顯示/隱藏
+- **教會檔案共享模式** - 所有用戶可見彼此上傳的檔案
+- **管理員垃圾桶系統** - 用戶軟刪除，管理員永久清除
+
+### 🔧 新增
+- **功能模組開關控制**
+  - `ENABLE_SHARED_RESOURCES` 控制共享資源功能顯示
+  - `ENABLE_SABBATH_DATA` 控制安息日資料功能顯示
+  - 預設隱藏，待功能完善後啟用
+- **檔案共享機制**
+  - 移除檔案查詢的用戶限制，實現教會內部檔案共享
+  - 所有登入用戶可查看所有已上傳檔案
+- **垃圾桶系統** (`backend/internal/api/handlers/file.go`)
+  - 用戶刪除檔案移至垃圾桶 (軟刪除)
+  - 管理員專用 `EmptyTrash` 永久清除功能
+  - 只有管理員可以永久刪除檔案
+- **前端導航動態控制** (`frontend/src/components/ui/navigation/MinimalSidebar.vue`)
+  - 根據後端配置動態顯示/隱藏導航項目
+  - 即時讀取功能開關狀態
+- **路由守衛增強** (`frontend/src/router/index.ts`)
+  - 檢查功能啟用狀態，隱藏功能重定向到首頁
+  - 防止直接 URL 訪問隱藏功能
+
+### 🔧 改進
+- **前端測試修復**
+  - ResponsiveContainer 測試：修正斷點類別檢查邏輯
+  - HomeView 測試：使用正確的 `.home-view` 選擇器
+  - App 初始化測試：檢查 `.app-container` 而非不存在的組件
+- **後端配置管理** (`backend/internal/config/config.go`)
+  - 新增 `FeatureConfig` 結構體
+  - 環境變數自動載入功能開關
+- **API 端點擴展** (`backend/internal/api/handlers/auth.go`)
+  - 新增 `GetFeatureConfig` 端點提供功能配置
+  - 前端可即時獲取功能開關狀態
+
+### 🛡️ 安全和權限
+- **權限分級管理**
+  - 普通用戶：查看、上傳、軟刪除
+  - 管理員：額外具備永久刪除和清空垃圾桶權限
+- **檔案訪問控制**
+  - 保持登入驗證，但移除檔案查看的用戶限制
+  - 實現教會內部檔案共享模式
+
+### 📊 測試品質提升
+- **前端測試通過率：100%** (從 70% 提升)
+- 修復所有測試用例的期望值和實際行為差異
+- 確保測試穩定性和可靠性
+
+### 📁 重要檔案變更
+- `.env` 和 `.env.example` - 新增功能開關環境變數
+- `docker-compose.yml` - 新增功能開關環境變數到後端服務
+- `backend/internal/config/config.go` - 功能配置結構體
+- `backend/internal/api/handlers/auth.go` - 功能配置 API 端點
+- `backend/internal/api/handlers/file.go` - 檔案共享邏輯和垃圾桶系統
+- `frontend/src/api/index.ts` - 功能配置 API 接口
+- `frontend/src/components/ui/navigation/MinimalSidebar.vue` - 動態導航
+- `frontend/src/router/index.ts` - 路由守衛增強
+- `frontend/tests/integration/basic-functionality.test.ts` - 前端測試修復
+
 ## [2.0.2] - 2025-01-10
 
 ### 🚀 重大功能

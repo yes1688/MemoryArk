@@ -154,3 +154,16 @@ export const storageApi = {
     })
   },
 }
+
+// 功能配置介面
+export interface FeatureConfig {
+  enableSharedResources: boolean
+  enableSabbathData: boolean
+}
+
+// 功能配置 API
+export const featureApi = {
+  getConfig: (): Promise<ApiResponse<FeatureConfig>> => {
+    return apiRequest.get('/features/config')
+  },
+}

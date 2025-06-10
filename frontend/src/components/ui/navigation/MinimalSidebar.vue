@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { featureApi, type FeatureConfig } from '@/api/index'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+
+// 功能配置狀態
+const featureConfig = ref<FeatureConfig>({
+  enableSharedResources: false,
+  enableSabbathData: false
+})
 
 // 導航項目定義
 const navigationItems = [
@@ -56,6 +63,19 @@ const bottomItems = [
   }
 ]
 
+// 根據功能配置過濾導航項目
+const filteredNavigationItems = computed(() => {
+  return navigationItems.filter(item => {
+    if (item.id === 'shared') {
+      return featureConfig.value.enableSharedResources
+    }
+    if (item.id === 'sabbath') {
+      return featureConfig.value.enableSabbathData
+    }
+    return true // 其他項目都顯示
+  })
+})
+
 // 管理員專屬項目
 const adminItems = computed(() => {
   if (authStore.user?.role !== 'admin') return []
@@ -83,6 +103,24 @@ const handleLogout = async () => {
   await authStore.logout()
   router.push('/login')
 }
+
+// 獲取功能配置
+const loadFeatureConfig = async () => {
+  try {
+    const response = await featureApi.getConfig()
+    if (response.success && response.data) {
+      featureConfig.value = response.data
+    }
+  } catch (error) {
+    console.error('Failed to load feature config:', error)
+    // 保持預設值（false），確保功能預設隱藏
+  }
+}
+
+// 組件掛載時獲取功能配置
+onMounted(() => {
+  loadFeatureConfig()
+})
 
 // 圖標組件映射
 const getIconSvg = (icon: string) => {
@@ -142,7 +180,7 @@ const getIconSvg = (icon: string) => {
     <!-- 主導航 -->
     <nav class="flex-1 px-3">
       <ul class="space-y-1">
-        <li v-for="item in navigationItems" :key="item.id">
+        <li v-for="item in filteredNavigationItems" :key="item.id">
           <button
             @click="navigateTo(item.path)"
             class="nav-item w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-200"
