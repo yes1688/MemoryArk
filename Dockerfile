@@ -15,7 +15,7 @@ WORKDIR /app
 COPY --from=backend-builder /app/server ./
 
 # 暴露端口
-EXPOSE 8080
+EXPOSE 8081
 
 # 啟動後端服務
 CMD ["./server"]

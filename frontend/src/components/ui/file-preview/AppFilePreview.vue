@@ -87,7 +87,6 @@
             class="max-w-full max-h-full object-contain rounded-win11"
             @load="handleImageLoad"
             @error="handlePreviewError"
-            crossorigin="use-credentials"
           />
           <div v-else class="text-center">
             <p class="text-gray-600">準備載入圖片...</p>
