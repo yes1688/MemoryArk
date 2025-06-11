@@ -205,6 +205,13 @@ func (h *FileHandler) GetFiles(c *gin.Context) {
 		return
 	}
 	
+	// 為圖片檔案生成縮圖URL
+	for i := range files {
+		if files[i].MimeType != "" && strings.HasPrefix(files[i].MimeType, "image/") && !files[i].IsDirectory {
+			files[i].ThumbnailURL = fmt.Sprintf("/api/files/%d/preview", files[i].ID)
+		}
+	}
+	
 	// 使用統一的響應格式
 	api.SuccessWithPagination(c, gin.H{
 		"files": files,
@@ -226,6 +233,11 @@ func (h *FileHandler) GetFileDetails(c *gin.Context) {
 			},
 		})
 		return
+	}
+	
+	// 為圖片檔案生成縮圖URL
+	if file.MimeType != "" && strings.HasPrefix(file.MimeType, "image/") && !file.IsDirectory {
+		file.ThumbnailURL = fmt.Sprintf("/api/files/%d/preview", file.ID)
 	}
 	
 	api.Success(c, file)

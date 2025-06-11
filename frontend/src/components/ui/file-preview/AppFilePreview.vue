@@ -56,109 +56,114 @@
       </div>
     </template>
     
-    <template #content>
-      <div class="w-full h-full overflow-hidden">
-        <!-- 載入中 -->
-        <div v-if="isLoading" class="flex items-center justify-center h-64">
-          <div class="text-center">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
-            <p class="text-sm text-gray-600">載入中...</p>
-          </div>
-        </div>
-        
-        <!-- 錯誤狀態 -->
-        <div v-else-if="error" class="flex items-center justify-center h-64">
-          <div class="text-center">
-            <svg class="w-16 h-16 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
-            </svg>
-            <p class="text-lg font-medium text-gray-900">無法載入預覽</p>
-            <p class="text-sm text-gray-600 mt-2">{{ error }}</p>
-          </div>
-        </div>
-        
-        <!-- 圖片預覽 -->
-        <div v-else-if="previewType === 'image'" class="flex items-center justify-center h-full bg-gray-50">
-          <img 
-            v-if="previewUrl"
-            :key="`img-${Date.now()}-${previewUrl}`"
-            :src="previewUrl" 
-            :alt="file?.name"
-            class="max-w-full max-h-full object-contain rounded-win11"
-            @load="handleImageLoad"
-            @error="handlePreviewError"
-          />
-          <div v-else class="text-center">
-            <p class="text-gray-600">準備載入圖片...</p>
-          </div>
-        </div>
-        
-        <!-- 影片預覽 -->
-        <div v-else-if="previewType === 'video'" class="flex items-center justify-center h-full bg-black">
-          <video 
-            :src="previewUrl"
-            controls
-            class="max-w-full max-h-full"
-            @error="handlePreviewError"
-          />
-        </div>
-        
-        <!-- 音頻預覽 -->
-        <div v-else-if="previewType === 'audio'" class="flex items-center justify-center h-full">
-          <div class="text-center">
-            <svg class="w-24 h-24 text-primary-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
-            </svg>
-            <audio 
-              :src="previewUrl"
-              controls
-              class="w-full max-w-md"
-              @error="handlePreviewError"
-            />
-          </div>
-        </div>
-        
-        <!-- PDF 預覽 -->
-        <div v-else-if="previewType === 'pdf'" class="h-full">
-          <iframe 
-            :src="previewUrl"
-            class="w-full h-full border-0"
-            @error="handlePreviewError"
-          />
-        </div>
-        
-        <!-- 文字檔案預覽 -->
-        <div v-else-if="previewType === 'text'" class="h-full overflow-auto">
-          <pre class="p-4 text-sm bg-gray-50 rounded-win11 h-full overflow-auto"><code>{{ textContent }}</code></pre>
-        </div>
-        
-        <!-- 不支援的檔案類型 -->
-        <div v-else class="flex items-center justify-center h-64">
-          <div class="text-center">
-            <AppFileIcon 
-              :file-name="file?.name || ''" 
-              :mime-type="file?.mimeType"
-              size="2xl"
-              class="mx-auto mb-4 opacity-50"
-            />
-            <p class="text-lg font-medium text-gray-900">無法預覽此檔案</p>
-            <p class="text-sm text-gray-600 mt-2">請下載檔案以查看內容</p>
-            <AppButton
-              variant="primary"
-              @click="downloadFile"
-              class="mt-4"
-            >
-              <template #icon-left>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                </svg>
-              </template>
-              下載檔案
-            </AppButton>
-          </div>
+    
+    <div class="w-full h-full overflow-hidden min-h-[400px]">
+      <!-- 載入中 -->
+      <div v-if="isLoading" class="flex items-center justify-center h-64">
+        <div class="text-center">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p class="text-sm text-gray-600">載入中...</p>
         </div>
       </div>
-    </template>
+      
+      <!-- 錯誤狀態 -->
+      <div v-else-if="error" class="flex items-center justify-center h-64">
+        <div class="text-center">
+          <svg class="w-16 h-16 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+          </svg>
+          <p class="text-lg font-medium text-gray-900">無法載入預覽</p>
+          <p class="text-sm text-gray-600 mt-2">{{ error }}</p>
+        </div>
+      </div>
+      
+      <!-- 圖片預覽 -->
+      <div v-else-if="previewType === 'image'" class="flex items-center justify-center h-full bg-gray-50 min-h-[400px]">
+        <div v-if="isLoading" class="text-center">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p class="text-gray-600">載入圖片中...</p>
+        </div>
+        <div v-else-if="!previewUrl || previewUrl === ''" class="text-center">
+          <p class="text-gray-600">準備載入圖片...</p>
+          <p class="text-xs text-gray-500 mt-2">Debug: previewUrl = "{{ previewUrl }}"</p>
+        </div>
+        <img 
+          v-else
+          :key="`preview-${file?.id}-${previewUrl}`"
+          :src="previewUrl" 
+          :alt="file?.name"
+          class="max-w-full max-h-full object-contain rounded-win11"
+          @load="handleImageLoad"
+          @error="handlePreviewError"
+        />
+      </div>
+      
+      <!-- 影片預覽 -->
+      <div v-else-if="previewType === 'video'" class="flex items-center justify-center h-full bg-black">
+        <video 
+          :src="previewUrl"
+          controls
+          class="max-w-full max-h-full"
+          @error="handlePreviewError"
+        />
+      </div>
+      
+      <!-- 音頻預覽 -->
+      <div v-else-if="previewType === 'audio'" class="flex items-center justify-center h-full">
+        <div class="text-center">
+          <svg class="w-24 h-24 text-primary-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+          </svg>
+          <audio 
+            :src="previewUrl"
+            controls
+            class="w-full max-w-md"
+            @error="handlePreviewError"
+          />
+        </div>
+      </div>
+      
+      <!-- PDF 預覽 -->
+      <div v-else-if="previewType === 'pdf'" class="h-full">
+        <iframe 
+          :src="previewUrl"
+          class="w-full h-full border-0"
+          @error="handlePreviewError"
+        />
+      </div>
+      
+      <!-- 文字檔案預覽 -->
+      <div v-else-if="previewType === 'text'" class="h-full overflow-auto">
+        <pre class="p-4 text-sm bg-gray-50 rounded-win11 h-full overflow-auto"><code>{{ textContent }}</code></pre>
+      </div>
+      
+      <!-- 不支援的檔案類型 -->
+      <div v-else class="flex items-center justify-center h-64">
+        <div class="text-center">
+          <AppFileIcon 
+            :file-name="file?.name || ''" 
+            :mime-type="file?.mimeType"
+            size="2xl"
+            class="mx-auto mb-4 opacity-50"
+          />
+          <p class="text-lg font-medium text-gray-900">無法預覽此檔案</p>
+          <p class="text-sm text-gray-600 mt-2">請下載檔案以查看內容</p>
+          <AppButton
+            variant="primary"
+            @click="downloadFile"
+            class="mt-4"
+          >
+            <template #icon-left>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+            </template>
+            下載檔案
+          </AppButton>
+        </div>
+      </div>
+    </div>
+    
   </AppDialog>
 </template>
 
@@ -235,25 +240,36 @@ const loadPreview = async () => {
       case 'video':
       case 'audio':
       case 'pdf':
-        // 生產環境始終使用預覽 API（避免 Cloudflare Access 攔截）
-        // 本地開發環境可以使用靜態路由
-        const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        // 統一使用預覽 API 端點（避免認證和路由問題）
+        previewUrl.value = `/api/files/${props.file.id}/preview`
+        console.log('🔗 使用預覽 API:', previewUrl.value)
         
-        if (isDevelopment && props.file.path) {
-          // 本地開發環境：使用靜態路由（性能更好）
-          const cleanPath = props.file.path.replace(/^uploads\//, '')
-          previewUrl.value = `/uploads/${cleanPath}`
-          console.log('📁 [開發] 使用靜態路由:', previewUrl.value)
-        } else {
-          // 生產環境或無路徑：使用預覽 API（需要認證）
-          previewUrl.value = `/api/files/${props.file.id}/preview`
-          console.log('🔗 [生產] 使用預覽 API:', previewUrl.value)
-        }
+        // 對於圖片、影片、音頻，立即結束載入狀態，讓元素自己處理載入
+        isLoading.value = false
         
         // 確保 DOM 更新後再觸發圖片載入
         await nextTick()
         console.log('🔄 DOM 更新完成，圖片應該開始載入')
         console.log('🖼️ 最終圖片 URL:', previewUrl.value)
+        console.log('🔍 響應式檢查:', {
+          previewUrl: previewUrl.value,
+          previewType: previewType.value,
+          isLoading: isLoading.value,
+          error: error.value
+        })
+        
+        // 檢查圖片元素是否正確創建
+        setTimeout(() => {
+          const imgElement = document.querySelector('img[alt="' + props.file?.name + '"]') as HTMLImageElement
+          console.log('🔍 圖片元素檢查:', {
+            found: !!imgElement,
+            src: imgElement?.getAttribute('src'),
+            alt: imgElement?.getAttribute('alt'),
+            complete: imgElement?.complete,
+            naturalWidth: imgElement?.naturalWidth,
+            naturalHeight: imgElement?.naturalHeight
+          })
+        }, 100)
         break
         
       case 'text':
@@ -283,11 +299,13 @@ const handleImageLoad = () => {
   console.log('🎉 圖片載入成功:', previewUrl.value)
 }
 
-const handlePreviewError = () => {
+const handlePreviewError = (event: Event) => {
+  const img = event.target as HTMLImageElement
   console.error('🚫 預覽載入失敗:', { 
     file: props.file?.name, 
     url: previewUrl.value, 
-    previewType: previewType.value 
+    previewType: previewType.value,
+    imgSrc: img?.src
   })
   
   error.value = '載入預覽失敗'
