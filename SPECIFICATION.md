@@ -183,6 +183,61 @@ MemoryArk 2.0 - 教會影音回憶錄系統
 - **備份管理**：系統備份與還原
 - **設定管理**：系統全域設定
 
+### 5. 功能模組管理系統
+
+#### 5.1 功能模組概述
+
+系統採用可配置的功能模組機制，允許管理員透過環境變數動態啟用或停用特定功能，以適應不同部署需求。
+
+#### 5.2 模組開關機制
+
+- **環境變數控制**：透過 `.env` 檔案或容器環境變數控制功能可見性
+- **即時生效**：容器重啟後新設定立即生效
+- **前端同步**：前端透過 API 自動讀取功能配置
+- **路由保護**：停用的功能路由會自動重定向到首頁
+
+#### 5.3 可配置功能模組
+
+**共享資料夾模組**：
+- **環境變數**：`ENABLE_SHARED_RESOURCES`
+- **預設值**：`false`（預設隱藏）
+- **功能範圍**：
+  - 主頁快速操作按鈕
+  - 側邊導航選單項目
+  - `/shared` 路由存取
+  - 共享資源相關 API
+
+**安息日資料模組**：
+- **環境變數**：`ENABLE_SABBATH_DATA`
+- **預設值**：`false`（預設隱藏）
+- **功能範圍**：
+  - 主頁快速操作按鈕
+  - 側邊導航選單項目
+  - `/sabbath` 路由存取
+  - 安息日資料相關功能
+
+#### 5.4 配置 API
+
+**功能配置端點**：
+```typescript
+GET /api/features/config
+// 回應格式
+{
+  "success": true,
+  "data": {
+    "enableSharedResources": boolean,
+    "enableSabbathData": boolean
+  }
+}
+```
+
+#### 5.5 前端實作機制
+
+- **導航過濾**：`MinimalSidebar` 根據配置動態過濾導航項目
+- **路由守衛**：訪問停用功能時自動重定向
+- **條件渲染**：主頁按鈕根據配置條件顯示
+- **API 同步**：組件掛載時自動載入最新配置
+
 ## 用戶界面設計
 
 ### 設計原則
@@ -199,12 +254,17 @@ MemoryArk 2.0 - 教會影音回憶錄系統
 
 #### 4.1 主導航
 
+**核心功能**（永遠顯示）：
 - **首頁**：快速訪問和最近檔案
 - **我的檔案**：個人檔案管理
-- **共享資料夾**：教會共享資源
-- **安息日資料**：專門存放安息日相關影音
-- **垃圾桶**：已刪除檔案管理
 - **設定**：個人和系統設定
+
+**可配置功能**（可透過環境變數隱藏）：
+- **共享資料夾**：教會共享資源（`ENABLE_SHARED_RESOURCES=false` 時隱藏）
+- **安息日資料**：專門存放安息日相關影音（`ENABLE_SABBATH_DATA=false` 時隱藏）
+
+**管理功能**：
+- **系統管理**：僅管理員可見
 
 #### 4.2 檔案瀏覽介面
 
@@ -457,8 +517,22 @@ services:
     volumes:
       - ./backend/data:/app/data
     environment:
+      # 基本配置
       - DATABASE_PATH=/app/data/database.db
       - STORAGE_PATH=/app/data/storage
+      - JWT_SECRET=${JWT_SECRET}
+      - ROOT_ADMIN_EMAIL=${ROOT_ADMIN_EMAIL}
+      - ROOT_ADMIN_NAME=${ROOT_ADMIN_NAME}
+      
+      # 功能模組開關
+      - ENABLE_SHARED_RESOURCES=${ENABLE_SHARED_RESOURCES:-false}
+      - ENABLE_SABBATH_DATA=${ENABLE_SABBATH_DATA:-false}
+      
+      # 檔案處理配置
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-104857600}
+      - MAX_UPLOAD_MEMORY=${MAX_UPLOAD_MEMORY:-33554432}
+      - DEDUPLICATION_ENABLED=${DEDUPLICATION_ENABLED:-true}
+      - STREAMING_EXPORT_ENABLED=${STREAMING_EXPORT_ENABLED:-true}
   
   frontend:
     build: ./frontend
@@ -482,6 +556,56 @@ services:
 - **對外端口**：僅開放 7001 端口
 - **內部網路**：容器間私有網路通訊
 - **SSL/TLS**：透過 Cloudflare 提供 HTTPS
+
+### 環境變數配置
+
+#### 基本配置變數
+
+| 變數名稱 | 預設值 | 說明 | 必填 |
+|---------|--------|------|------|
+| `DATABASE_PATH` | `/app/data/memoryark.db` | SQLite 資料庫檔案路徑 | 否 |
+| `JWT_SECRET` | - | JWT Token 簽署密鑰 | 是 |
+| `ROOT_ADMIN_EMAIL` | - | 根管理員郵箱地址 | 是 |
+| `ROOT_ADMIN_NAME` | - | 根管理員顯示名稱 | 是 |
+| `UPLOAD_PATH` | `./uploads` | 檔案上傳存放路徑 | 否 |
+
+#### 功能模組開關變數
+
+| 變數名稱 | 預設值 | 說明 | 影響範圍 |
+|---------|--------|------|----------|
+| `ENABLE_SHARED_RESOURCES` | `false` | 是否啟用共享資料夾功能 | 主頁按鈕、導航選單、路由存取 |
+| `ENABLE_SABBATH_DATA` | `false` | 是否啟用安息日資料功能 | 主頁按鈕、導航選單、路由存取 |
+
+#### 檔案處理配置變數
+
+| 變數名稱 | 預設值 | 說明 | 單位 |
+|---------|--------|------|------|
+| `MAX_FILE_SIZE` | `104857600` | 單檔案上傳大小限制 | Bytes (100MB) |
+| `MAX_UPLOAD_MEMORY` | `33554432` | 上傳記憶體緩衝區大小 | Bytes (32MB) |
+| `DEDUPLICATION_ENABLED` | `true` | 是否啟用檔案去重功能 | - |
+| `STREAMING_EXPORT_ENABLED` | `true` | 是否啟用串流匯出功能 | - |
+
+#### 開發模式配置變數
+
+| 變數名稱 | 預設值 | 說明 | 僅開發環境 |
+|---------|--------|------|-----------|
+| `DEVELOPMENT_MODE` | `false` | 是否啟用開發模式 | 是 |
+| `DEV_AUTO_LOGIN_EMAIL` | - | 開發模式自動登入郵箱 | 是 |
+| `DEV_BYPASS_AUTH` | `false` | 是否略過認證檢查 | 是 |
+| `DEV_CORS_ENABLED` | `false` | 是否啟用 CORS | 是 |
+
+#### 配置管理最佳實踐
+
+**生產環境**：
+- 使用 `.env` 檔案管理敏感資訊
+- `JWT_SECRET` 必須使用強隨機字串
+- 功能模組預設隱藏，需要時再啟用
+- 開發模式變數必須設為 `false`
+
+**開發環境**：
+- 可使用開發模式變數簡化測試
+- 建議啟用所有功能模組進行完整測試
+- 注意不要將開發設定部署到生產環境
 
 ## AI 任務執行規範
 

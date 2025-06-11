@@ -183,7 +183,7 @@ const formatFileSize = (bytes: number): string => {
     <main class="main-content relative -mt-20 z-20">
       <div class="max-w-7xl mx-auto px-6">
         <!-- 快速操作卡片 - 極簡風格 -->
-        <div class="quick-actions grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div class="quick-actions grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
           <!-- 上傳檔案 -->
           <button
             @click="handleQuickAction('upload')"
@@ -201,8 +201,8 @@ const formatFileSize = (bytes: number): string => {
             </div>
           </button>
 
-          <!-- 共享資料夾 -->
-          <button
+          <!-- 共享資料夾 (已隱藏 - ENABLE_SHARED_RESOURCES=false) -->
+          <!-- <button
             @click="handleQuickAction('shared')"
             class="action-card group"
             style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth);"
@@ -216,10 +216,10 @@ const formatFileSize = (bytes: number): string => {
               <h3 class="font-medium" style="color: var(--text-primary); font-size: var(--text-lg);">共享資料夾</h3>
               <p class="mt-1" style="color: var(--text-tertiary); font-size: var(--text-sm);">{{ fileStore.files.filter(f => f.categoryId === 2).length || 0 }} 個檔案</p>
             </div>
-          </button>
+          </button> -->
 
-          <!-- 安息日資料 -->
-          <button
+          <!-- 安息日資料 (已隱藏 - ENABLE_SABBATH_DATA=false) -->
+          <!-- <button
             @click="handleQuickAction('sabbath')"
             class="action-card group"
             style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth);"
@@ -233,7 +233,7 @@ const formatFileSize = (bytes: number): string => {
               <h3 class="font-medium" style="color: var(--text-primary); font-size: var(--text-lg);">安息日資料</h3>
               <p class="mt-1" style="color: var(--text-tertiary); font-size: var(--text-sm);">{{ fileStore.files.filter(f => f.categoryId === 1).length || 0 }} 個檔案</p>
             </div>
-          </button>
+          </button> -->
 
           <!-- 所有檔案 -->
           <button
