@@ -1,0 +1,30 @@
+{
+  "report_metadata": {
+    "generated_at": "2025-06-11T15:09:37.637218",
+    "version": "MemoryArk 2.0.3",
+    "test_environment": "http://localhost:7001"
+  },
+  "overall_results": {
+    "total_tests": 6,
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "success_rate": 100.0
+  },
+  "test_types": {
+    "unknown": {
+      "total_tests": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "success_rate": 0
+    },
+    "static_analysis": {
+      "total_tests": 6,
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "success_rate": 100.0
+    }
+  }
+}
