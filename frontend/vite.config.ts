@@ -5,6 +5,12 @@ import { fileURLToPath, URL } from 'node:url'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [vue()],
+  define: {
+    // 強制所有環境都使用相對路徑，防止 HTTP URL 洩漏
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('/api'),
+    __DEV_API_URL__: JSON.stringify('/api'),
+    __PROD_API_URL__: JSON.stringify('/api')
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

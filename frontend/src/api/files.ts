@@ -61,7 +61,7 @@ export const fileApi = {
 
   // 下載檔案
   downloadFile: (fileId: number) => {
-    return `${import.meta.env.VITE_API_BASE_URL}/files/${fileId}/download`
+    return `/api/files/${fileId}/download`
   },
 
   // 創建分享連結

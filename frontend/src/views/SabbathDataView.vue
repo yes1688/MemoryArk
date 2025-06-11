@@ -267,6 +267,7 @@ import SabbathFileCard from '@/components/SabbathFileCard.vue'
 import SabbathFileItem from '@/components/SabbathFileItem.vue'
 import { useFilesStore } from '@/stores/files'
 import type { FileInfo } from '@/types/files'
+import { fileApi } from '@/api/files'
 
 const filesStore = useFilesStore()
 
@@ -451,7 +452,7 @@ const onContentTypeChange = () => {
 }
 
 const downloadFile = (file: any) => {
-  const url = `/api/files/${file.id}/download`
+  const url = fileApi.downloadFile(file.id)
   window.open(url, '_blank')
 }
 

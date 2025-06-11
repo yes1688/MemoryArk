@@ -159,8 +159,34 @@ export const useFilesStore = defineStore('files', () => {
         throw new Error(response.message || '創建資料夾失敗')
       }
     } catch (err: any) {
-      error.value = err.message || '網路連線錯誤'
-      throw err
+      // 檢查是否為 axios 錯誤並包含響應數據
+      if (err.response?.data?.error) {
+        const apiError = err.response.data.error
+        // 根據錯誤碼提供更友好的錯誤訊息
+        let errorMessage = apiError.message || '創建資料夾失敗'
+        
+        // 根據不同的錯誤碼提供具體的錯誤訊息
+        switch (apiError.code) {
+          case 'FOLDER_EXISTS':
+            errorMessage = '同名資料夾已存在，請使用其他名稱'
+            break
+          case 'INVALID_REQUEST':
+            errorMessage = '資料夾名稱無效，請檢查後重試'
+            break
+          case 'PERMISSION_DENIED':
+            errorMessage = '您沒有在此位置建立資料夾的權限'
+            break
+          case 'BASE_DIR_ERROR':
+            errorMessage = '系統錯誤：無法建立基礎目錄'
+            break
+        }
+        
+        error.value = errorMessage
+        throw new Error(errorMessage)
+      } else {
+        error.value = err.message || '網路連線錯誤'
+        throw err
+      }
     }
   }
 

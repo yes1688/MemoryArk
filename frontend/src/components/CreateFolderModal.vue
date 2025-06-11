@@ -187,13 +187,8 @@ const createFolder = async () => {
     emit('created', newFolder.id)
     close()
   } catch (err: any) {
-    if (err.message.includes('already exists')) {
-      error.value = '此位置已存在同名資料夾'
-    } else if (err.message.includes('permission')) {
-      error.value = '您沒有在此位置建立資料夾的權限'
-    } else {
-      error.value = err.message || '建立資料夾失敗'
-    }
+    // 直接使用從 store 傳遞過來的錯誤訊息
+    error.value = err.message || '建立資料夾失敗'
   } finally {
     creating.value = false
   }

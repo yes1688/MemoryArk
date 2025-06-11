@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useFilesStore } from '@/stores/files'
 import { useAuthStore } from '@/stores/auth'
 import type { FileInfo } from '@/types/files'
+import { fileApi } from '@/api/files'
 
 // Props
 interface Props {
@@ -60,7 +61,7 @@ const openFile = (file: FileInfo) => {
 }
 
 const downloadFile = (file: FileInfo) => {
-  const url = `/api/files/${file.id}/download`
+  const url = fileApi.downloadFile(file.id)
   window.open(url, '_blank')
 }
 

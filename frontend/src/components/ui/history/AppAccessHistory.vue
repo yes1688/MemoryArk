@@ -234,6 +234,7 @@ import { AppButton, AppDialog } from '@/components/ui'
 import AppFileIcon from '@/components/ui/file-icon/AppFileIcon.vue'
 import { useFilesStore } from '@/stores/files'
 import type { AccessHistoryItem } from '@/types/files'
+import { fileApi } from '@/api/files'
 
 interface TimeGroup {
   label: string
@@ -354,7 +355,7 @@ const openFile = (file: AccessHistoryItem) => {
 }
 
 const downloadFile = (file: AccessHistoryItem) => {
-  window.open(`/api/files/${file.id}/download`, '_blank')
+  window.open(fileApi.downloadFile(file.id), '_blank')
   recordAccess(file.id, 'download')
 }
 

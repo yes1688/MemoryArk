@@ -171,6 +171,7 @@ import { ref, computed, onMounted } from 'vue'
 import AppFileIcon from '@/components/ui/file-icon/AppFileIcon.vue'
 import { useFilesStore } from '@/stores/files'
 import type { RecentFile } from '@/types/files'
+import { fileApi } from '@/api/files'
 
 interface Emits {
   (e: 'file-selected', file: RecentFile): void
@@ -281,7 +282,7 @@ const openFile = (file: RecentFile) => {
 }
 
 const downloadFile = (file: RecentFile) => {
-  window.open(`/api/files/${file.id}/download`, '_blank')
+  window.open(fileApi.downloadFile(file.id), '_blank')
   recordAccess(file.id, 'download')
 }
 

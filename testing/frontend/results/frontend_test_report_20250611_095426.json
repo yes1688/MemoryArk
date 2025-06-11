@@ -1,0 +1,121 @@
+{
+  "test_session": {
+    "start_time": "2025-06-11T09:54:26.553402",
+    "end_time": "2025-06-11T09:54:26.565901",
+    "duration_seconds": 0.012485265731811523,
+    "base_url": "http://localhost:7001"
+  },
+  "summary": {
+    "total_tests": 13,
+    "passed": 9,
+    "failed": 3,
+    "skipped": 1,
+    "success_rate": 69.23076923076923
+  },
+  "test_results": [
+    {
+      "test_id": "TC001",
+      "test_name": "基本連接性測試",
+      "status": "PASS",
+      "timestamp": "2025-06-11T09:54:26.555085",
+      "details": "HTTP 200",
+      "error": ""
+    },
+    {
+      "test_id": "TC002",
+      "test_name": "前端頁面載入測試",
+      "status": "PASS",
+      "timestamp": "2025-06-11T09:54:26.555964",
+      "details": "通過 5/5 項檢查",
+      "error": ""
+    },
+    {
+      "test_id": "TC003",
+      "test_name": "API 端點測試 - 健康檢查",
+      "status": "PASS",
+      "timestamp": "2025-06-11T09:54:26.556971",
+      "details": "HTTP 200",
+      "error": ""
+    },
+    {
+      "test_id": "TC003",
+      "test_name": "API 端點測試 - 檔案列表",
+      "status": "FAIL",
+      "timestamp": "2025-06-11T09:54:26.557956",
+      "details": "",
+      "error": "HTTPConnectionPool(host='localhost', port=80): Max retries exceeded with url: /api/files/ (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7a932cc76e40>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+    },
+    {
+      "test_id": "TC003",
+      "test_name": "API 端點測試 - 認證狀態",
+      "status": "PASS",
+      "timestamp": "2025-06-11T09:54:26.558973",
+      "details": "HTTP 200",
+      "error": ""
+    },
+    {
+      "test_id": "TC003",
+      "test_name": "API 端點測試 - 管理員統計",
+      "status": "PASS",
+      "timestamp": "2025-06-11T09:54:26.559822",
+      "details": "HTTP 401",
+      "error": ""
+    },
+    {
+      "test_id": "TC004",
+      "test_name": "靜態資源載入測試",
+      "status": "PASS",
+      "timestamp": "2025-06-11T09:54:26.562018",
+      "details": "載入 2/2 個資源",
+      "error": ""
+    },
+    {
+      "test_id": "TC005",
+      "test_name": "HTTPS 重定向測試",
+      "status": "SKIP",
+      "timestamp": "2025-06-11T09:54:26.562464",
+      "details": "HTTPS 端口未開放",
+      "error": ""
+    },
+    {
+      "test_id": "TC006",
+      "test_name": "錯誤處理測試 - 404 頁面",
+      "status": "PASS",
+      "timestamp": "2025-06-11T09:54:26.563103",
+      "details": "SPA 路由處理",
+      "error": ""
+    },
+    {
+      "test_id": "TC006",
+      "test_name": "錯誤處理測試 - API 404",
+      "status": "PASS",
+      "timestamp": "2025-06-11T09:54:26.563892",
+      "details": "正確返回 404",
+      "error": ""
+    },
+    {
+      "test_id": "TC006",
+      "test_name": "錯誤處理測試 - 檔案 404",
+      "status": "PASS",
+      "timestamp": "2025-06-11T09:54:26.564503",
+      "details": "SPA 路由處理",
+      "error": ""
+    },
+    {
+      "test_id": "TC007",
+      "test_name": "響應式設計測試",
+      "status": "FAIL",
+      "timestamp": "2025-06-11T09:54:26.565143",
+      "details": "僅通過 1/5 項響應式檢查",
+      "error": ""
+    },
+    {
+      "test_id": "TC008",
+      "test_name": "安全標頭測試",
+      "status": "FAIL",
+      "timestamp": "2025-06-11T09:54:26.565853",
+      "details": "僅發現 0/5 個安全標頭",
+      "error": ""
+    }
+  ]
+}

@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import type { FileInfo } from '@/types/files'
 import AppTagManager, { type Tag } from '@/components/ui/tag-manager/AppTagManager.vue'
 import { AppButton } from '@/components/ui'
+import { fileApi } from '@/api/files'
 
 interface Props {
   file: FileInfo
@@ -58,7 +59,7 @@ const formatDate = (dateString: string) => {
 }
 
 const handleDownload = () => {
-  window.open(`/api/files/${props.file.id}/download`, '_blank')
+  window.open(fileApi.downloadFile(props.file.id), '_blank')
 }
 
 const handleDelete = () => {

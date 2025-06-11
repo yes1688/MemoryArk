@@ -1,0 +1,121 @@
+{
+  "test_session": {
+    "start_time": "2025-06-11T10:11:20.807070",
+    "end_time": "2025-06-11T10:11:20.818386",
+    "duration_seconds": 0.011303186416625977,
+    "base_url": "http://localhost:7001"
+  },
+  "summary": {
+    "total_tests": 13,
+    "passed": 11,
+    "failed": 1,
+    "skipped": 1,
+    "success_rate": 84.61538461538461
+  },
+  "test_results": [
+    {
+      "test_id": "TC001",
+      "test_name": "基本連接性測試",
+      "status": "PASS",
+      "timestamp": "2025-06-11T10:11:20.808441",
+      "details": "HTTP 200",
+      "error": ""
+    },
+    {
+      "test_id": "TC002",
+      "test_name": "前端頁面載入測試",
+      "status": "PASS",
+      "timestamp": "2025-06-11T10:11:20.809356",
+      "details": "通過 5/5 項檢查",
+      "error": ""
+    },
+    {
+      "test_id": "TC003",
+      "test_name": "API 端點測試 - 健康檢查",
+      "status": "PASS",
+      "timestamp": "2025-06-11T10:11:20.810401",
+      "details": "HTTP 200",
+      "error": ""
+    },
+    {
+      "test_id": "TC003",
+      "test_name": "API 端點測試 - 檔案列表",
+      "status": "FAIL",
+      "timestamp": "2025-06-11T10:11:20.811137",
+      "details": "unexpected HTTP 301",
+      "error": ""
+    },
+    {
+      "test_id": "TC003",
+      "test_name": "API 端點測試 - 認證狀態",
+      "status": "PASS",
+      "timestamp": "2025-06-11T10:11:20.812070",
+      "details": "HTTP 200",
+      "error": ""
+    },
+    {
+      "test_id": "TC003",
+      "test_name": "API 端點測試 - 管理員統計",
+      "status": "PASS",
+      "timestamp": "2025-06-11T10:11:20.812817",
+      "details": "HTTP 401",
+      "error": ""
+    },
+    {
+      "test_id": "TC004",
+      "test_name": "靜態資源載入測試",
+      "status": "PASS",
+      "timestamp": "2025-06-11T10:11:20.814846",
+      "details": "載入 2/2 個資源",
+      "error": ""
+    },
+    {
+      "test_id": "TC005",
+      "test_name": "HTTPS 重定向測試",
+      "status": "SKIP",
+      "timestamp": "2025-06-11T10:11:20.815290",
+      "details": "HTTPS 端口未開放",
+      "error": ""
+    },
+    {
+      "test_id": "TC006",
+      "test_name": "錯誤處理測試 - 404 頁面",
+      "status": "PASS",
+      "timestamp": "2025-06-11T10:11:20.815913",
+      "details": "SPA 路由處理",
+      "error": ""
+    },
+    {
+      "test_id": "TC006",
+      "test_name": "錯誤處理測試 - API 404",
+      "status": "PASS",
+      "timestamp": "2025-06-11T10:11:20.816746",
+      "details": "正確返回 404",
+      "error": ""
+    },
+    {
+      "test_id": "TC006",
+      "test_name": "錯誤處理測試 - 檔案 404",
+      "status": "PASS",
+      "timestamp": "2025-06-11T10:11:20.817317",
+      "details": "SPA 路由處理",
+      "error": ""
+    },
+    {
+      "test_id": "TC007",
+      "test_name": "響應式設計測試",
+      "status": "PASS",
+      "timestamp": "2025-06-11T10:11:20.817847",
+      "details": "通過 5/5 項響應式檢查: viewport meta: ✅, Vue SPA framework: ✅, Modern CSS framework: ✅, ES modules: ✅, UTF-8 charset: ✅",
+      "error": ""
+    },
+    {
+      "test_id": "TC008",
+      "test_name": "安全標頭測試",
+      "status": "PASS",
+      "timestamp": "2025-06-11T10:11:20.818346",
+      "details": "發現 5/5 個安全標頭: X-Content-Type-Options: ✅, X-Frame-Options: ✅, X-XSS-Protection: ✅, Content-Security-Policy: ✅, Referrer-Policy: ✅",
+      "error": ""
+    }
+  ]
+}

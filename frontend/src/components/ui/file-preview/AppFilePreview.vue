@@ -160,6 +160,7 @@
 import { ref, computed, watch } from 'vue'
 import { AppDialog, AppButton, AppFileIcon } from '@/components/ui'
 import type { FileInfo } from '@/types/files'
+import { fileApi } from '@/api/files'
 
 interface Props {
   visible: boolean
@@ -218,18 +219,16 @@ const loadPreview = async () => {
   error.value = null
   
   try {
-    const baseUrl = `/api/files/${props.file.id}`
-    
     switch (previewType.value) {
       case 'image':
       case 'video':
       case 'audio':
       case 'pdf':
-        previewUrl.value = `${baseUrl}/download`
+        previewUrl.value = fileApi.downloadFile(props.file.id)
         break
         
       case 'text':
-        const response = await fetch(`${baseUrl}/preview`)
+        const response = await fetch(`/api/files/${props.file.id}/preview`)
         if (response.ok) {
           textContent.value = await response.text()
         } else {

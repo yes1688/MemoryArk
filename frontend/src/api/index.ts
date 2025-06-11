@@ -2,44 +2,14 @@ import axios from 'axios'
 import type { AxiosResponse } from 'axios'
 import type { ApiResponse } from '@/types/api'
 
-// API 基本配置 - 動態根據當前域名設置
-const getApiBaseUrl = () => {
-  // 檢查是否在測試環境中
-  if (typeof window === 'undefined') {
-    return 'http://localhost:7001/api'
-  }
-  
-  // 如果是透過 Cloudflare Tunnel 訪問
-  if (window.location.hostname === 'files.94work.net') {
-    return 'https://files.94work.net/api'
-  }
-  
-  // 否則使用環境變數或預設值
-  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:7001/api'
-}
-
-const API_BASE_URL = getApiBaseUrl()
-
-// 創建 axios 實例
+// 🌐 簡潔統一的 API 配置
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: '/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
 })
-
-// 請求攔截器 - 不再需要手動添加 token，Cloudflare Access 會自動處理
-apiClient.interceptors.request.use(
-  (config) => {
-    // Cloudflare Access 會自動注入 CF-Access-Authenticated-User-Email 等標頭
-    // 前端不需要手動管理 token
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
 
 // 響應攔截器 - 處理通用錯誤
 apiClient.interceptors.response.use(
