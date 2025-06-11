@@ -80,11 +80,18 @@
         <!-- 圖片預覽 -->
         <div v-else-if="previewType === 'image'" class="flex items-center justify-center h-full bg-gray-50">
           <img 
+            v-if="previewUrl"
+            :key="`img-${Date.now()}-${previewUrl}`"
             :src="previewUrl" 
             :alt="file?.name"
             class="max-w-full max-h-full object-contain rounded-win11"
+            @load="handleImageLoad"
             @error="handlePreviewError"
+            crossorigin="use-credentials"
           />
+          <div v-else class="text-center">
+            <p class="text-gray-600">準備載入圖片...</p>
+          </div>
         </div>
         
         <!-- 影片預覽 -->
@@ -157,7 +164,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { AppDialog, AppButton, AppFileIcon } from '@/components/ui'
 import type { FileInfo } from '@/types/files'
 import { fileApi } from '@/api/files'
@@ -179,7 +186,7 @@ const isLoading = ref(false)
 const error = ref<string | null>(null)
 const isFullscreen = ref(false)
 const textContent = ref('')
-const previewUrl = ref('')
+const previewUrl = ref<string>('')
 
 const previewType = computed(() => {
   if (!props.file?.mimeType) return 'unknown'
@@ -213,7 +220,12 @@ const dialogSize = computed(() => {
 })
 
 const loadPreview = async () => {
-  if (!props.file || props.file.isDirectory) return
+  if (!props.file || props.file.isDirectory) {
+    console.log('❌ loadPreview 退出:', { file: props.file?.name, isDirectory: props.file?.isDirectory })
+    return
+  }
+  
+  console.log('🎬 loadPreview 開始:', { file: props.file.name, previewType: previewType.value, path: props.file.path })
   
   isLoading.value = true
   error.value = null
@@ -224,10 +236,29 @@ const loadPreview = async () => {
       case 'video':
       case 'audio':
       case 'pdf':
-        previewUrl.value = fileApi.downloadFile(props.file.id)
+        // 生產環境始終使用預覽 API（避免 Cloudflare Access 攔截）
+        // 本地開發環境可以使用靜態路由
+        const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        
+        if (isDevelopment && props.file.path) {
+          // 本地開發環境：使用靜態路由（性能更好）
+          const cleanPath = props.file.path.replace(/^uploads\//, '')
+          previewUrl.value = `/uploads/${cleanPath}`
+          console.log('📁 [開發] 使用靜態路由:', previewUrl.value)
+        } else {
+          // 生產環境或無路徑：使用預覽 API（需要認證）
+          previewUrl.value = `/api/files/${props.file.id}/preview`
+          console.log('🔗 [生產] 使用預覽 API:', previewUrl.value)
+        }
+        
+        // 確保 DOM 更新後再觸發圖片載入
+        await nextTick()
+        console.log('🔄 DOM 更新完成，圖片應該開始載入')
+        console.log('🖼️ 最終圖片 URL:', previewUrl.value)
         break
         
       case 'text':
+        console.log('📄 載入文字檔案預覽')
         const response = await fetch(`/api/files/${props.file.id}/preview`)
         if (response.ok) {
           textContent.value = await response.text()
@@ -237,17 +268,29 @@ const loadPreview = async () => {
         break
         
       default:
-        // 不支援的檔案類型
+        console.log('❓ 不支援的檔案類型:', previewType.value)
         break
     }
   } catch (err: any) {
+    console.error('❌ loadPreview 錯誤:', err)
     error.value = err.message || '載入預覽失敗'
   } finally {
     isLoading.value = false
+    console.log('✅ loadPreview 完成:', { previewUrl: previewUrl.value, error: error.value })
   }
 }
 
+const handleImageLoad = () => {
+  console.log('🎉 圖片載入成功:', previewUrl.value)
+}
+
 const handlePreviewError = () => {
+  console.error('🚫 預覽載入失敗:', { 
+    file: props.file?.name, 
+    url: previewUrl.value, 
+    previewType: previewType.value 
+  })
+  
   error.value = '載入預覽失敗'
 }
 
@@ -290,9 +333,16 @@ const getFileTypeLabel = (mimeType?: string): string => {
   return '檔案'
 }
 
+// 監聽 previewUrl 變化
+watch(previewUrl, (newUrl, oldUrl) => {
+  console.log('🔗 previewUrl 變化:', { from: oldUrl, to: newUrl })
+})
+
 // 監聽 file 變化，載入預覽
 watch([() => props.file, () => props.visible], ([file, visible]) => {
+  console.log('👀 AppFilePreview watch triggered:', { file: file?.name, visible, previewType: previewType.value })
   if (file && visible) {
+    console.log('🚀 Starting loadPreview for:', file.name)
     loadPreview()
   }
 }, { immediate: true })

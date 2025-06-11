@@ -19,7 +19,6 @@ import (
 	"memoryark/internal/config"
 	"memoryark/internal/models"
 	"memoryark/pkg/api"
-	"memoryark/pkg/utils"
 )
 
 // FileHandler 檔案處理器
@@ -530,82 +529,20 @@ func (h *FileHandler) CreateFolder(c *gin.Context) {
 		return
 	}
 	
-	// 正規化基礎上傳路徑
-	basePath := utils.NormalizePath(h.cfg.Upload.UploadPath)
-	
-	// 確保 files 目錄存在
-	filesDir := filepath.Join(basePath, "files")
-	if err := utils.EnsureDir(filesDir); err != nil {
-		fmt.Printf("[CreateFolder] 創建files目錄失敗: %v\n", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code": "BASE_DIR_ERROR",
-				"message": fmt.Sprintf("創建基礎目錄失敗: %v", err),
-			},
-		})
-		return
-	}
-	
-	// 建立實體資料夾路徑
-	var folderPath string
-	
-	// 如果有父資料夾，獲取父資料夾路徑
-	if req.ParentID != nil {
-		var parentFolder models.File
-		if err := h.db.First(&parentFolder, *req.ParentID).Error; err == nil && parentFolder.IsDirectory {
-			if parentFolder.FilePath != "" {
-				folderPath = filepath.Join(parentFolder.FilePath, req.Name)
-			} else {
-				// 如果父資料夾沒有路徑，使用父資料夾名稱建立路徑
-				folderPath = filepath.Join(filesDir, parentFolder.Name, req.Name)
-			}
-		}
-	} else {
-		// 根級資料夾直接在 files 目錄下創建
-		folderPath = filepath.Join(filesDir, req.Name)
-	}
-	
-	// 記錄路徑信息用於調試
-	fmt.Printf("[CreateFolder] 配置路徑: %s, 計算路徑: %s\n", h.cfg.Upload.UploadPath, folderPath)
-	
-	// 在檔案系統中創建實體目錄
-	if err := os.MkdirAll(folderPath, 0755); err != nil {
-		// 記錄詳細錯誤信息
-		fmt.Printf("[CreateFolder] 創建目錄失敗: %s, 錯誤: %v\n", folderPath, err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code": "FILESYSTEM_ERROR",
-				"message": fmt.Sprintf("創建實體資料夾失敗: %v", err),
-			},
-		})
-		return
-	}
-	
-	// 驗證目錄是否真的創建成功
-	if _, err := os.Stat(folderPath); os.IsNotExist(err) {
-		fmt.Printf("[CreateFolder] 資料夾創建驗證失敗: %s\n", folderPath)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code": "FILESYSTEM_VERIFICATION_FAILED",
-				"message": "資料夾創建驗證失敗",
-			},
-		})
-		return
-	}
-	
-	fmt.Printf("[CreateFolder] 資料夾創建成功: %s\n", folderPath)
+	// MemoryArk 2.0+ 虛擬資料夾系統
+	// 不再創建實體目錄，完全基於數據庫的虛擬路徑管理
+	fmt.Printf("[CreateFolder] 創建虛擬資料夾: %s (父資料夾ID: %v)\n", req.Name, req.ParentID)
 	
 	// 建立虛擬路徑
 	virtualPath := h.buildVirtualPath(req.ParentID, req.Name)
 
-	// 創建資料夾記錄
+	// 創建虛擬資料夾記錄 (v2.0+ 設計)
+	// 不設置 FilePath，因為虛擬資料夾不需要實體路徑
+	// 匯出時使用串流 ZIP 技術動態建構資料夾結構
 	folder := models.File{
 		Name:         req.Name,
 		OriginalName: req.Name,
-		FilePath:     folderPath,
+		FilePath:     "", // 虛擬資料夾無實體路徑
 		VirtualPath:  virtualPath,
 		FileSize:     0,
 		MimeType:     "folder",
@@ -616,13 +553,11 @@ func (h *FileHandler) CreateFolder(c *gin.Context) {
 	}
 	
 	if err := h.db.Create(&folder).Error; err != nil {
-		// 如果資料庫創建失敗，刪除已創建的實體目錄
-		os.RemoveAll(folderPath)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error": gin.H{
 				"code": "DATABASE_ERROR",
-				"message": "創建資料夾失敗",
+				"message": "創建虛擬資料夾失敗",
 			},
 		})
 		return
@@ -630,7 +565,7 @@ func (h *FileHandler) CreateFolder(c *gin.Context) {
 	
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
-		"message": "資料夾創建成功",
+		"message": "虛擬資料夾創建成功",
 		"data": folder,
 	})
 }
@@ -933,6 +868,45 @@ func (h *FileHandler) DownloadFile(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", file.OriginalName))
 	c.Header("Content-Type", file.MimeType)
 	c.Header("Content-Length", fmt.Sprintf("%d", file.FileSize))
+	
+	c.File(file.FilePath)
+}
+
+// PreviewFile 預覽檔案（內聯顯示，不強制下載）
+func (h *FileHandler) PreviewFile(c *gin.Context) {
+	fileID := c.Param("id")
+	
+	var file models.File
+	if err := h.db.First(&file, fileID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "FILE_NOT_FOUND",
+				"message": "檔案不存在",
+			},
+		})
+		return
+	}
+
+	// 檢查檔案權限（如有需要）
+	// TODO: 根據需求添加權限檢查邏輯
+
+	// 檢查實體檔案是否存在
+	if _, err := os.Stat(file.FilePath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "PHYSICAL_FILE_NOT_FOUND",
+				"message": "實體檔案不存在",
+			},
+		})
+		return
+	}
+	
+	// 設定回應標頭（內聯顯示）
+	c.Header("Content-Type", file.MimeType)
+	c.Header("Content-Length", fmt.Sprintf("%d", file.FileSize))
+	c.Header("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", file.OriginalName))
 	
 	c.File(file.FilePath)
 }

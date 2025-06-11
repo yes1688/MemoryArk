@@ -58,6 +58,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		protected.POST("/files/:id/restore", fileHandler.RestoreFile)
 		protected.DELETE("/files/:id/permanent", fileHandler.PermanentDeleteFile)
 		protected.GET("/files/:id/download", fileHandler.DownloadFile)
+		protected.GET("/files/:id/preview", fileHandler.PreviewFile)
 		protected.POST("/files/:id/share", fileHandler.CreateShareLink)
 		
 		// 儲存空間統計

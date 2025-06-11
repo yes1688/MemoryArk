@@ -256,12 +256,20 @@
       @close="showUploadModal = false"
       @uploaded="onSabbathFileUploaded"
     />
+    
+    <!-- 檔案預覽 -->
+    <AppFilePreview
+      :visible="showFilePreview"
+      :file="selectedFile"
+      @update:visible="handlePreviewClose"
+      @download="handlePreviewDownload"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { AppButton, AppDialog } from '@/components/ui'
+import { AppButton, AppDialog, AppFilePreview } from '@/components/ui'
 import UploadModal from '@/components/UploadModal.vue'
 import SabbathFileCard from '@/components/SabbathFileCard.vue'
 import SabbathFileItem from '@/components/SabbathFileItem.vue'
@@ -279,6 +287,8 @@ const selectedContentType = ref('')
 const viewMode = ref<'grid' | 'list'>('grid')
 const isLoading = ref(false)
 const showUploadModal = ref(false)
+const showFilePreview = ref(false)
+const selectedFile = ref<FileInfo | null>(null)
 
 // 安息日資料介面
 interface SabbathData {
@@ -456,8 +466,18 @@ const downloadFile = (file: any) => {
   window.open(url, '_blank')
 }
 
-const previewFile = (file: any) => {
-  console.log('Preview sabbath file:', file.name)
+const previewFile = (file: FileInfo) => {
+  selectedFile.value = file
+  showFilePreview.value = true
+}
+
+const handlePreviewClose = () => {
+  showFilePreview.value = false
+  selectedFile.value = null
+}
+
+const handlePreviewDownload = (file: FileInfo) => {
+  downloadFile(file)
 }
 
 const onSabbathFileUploaded = () => {

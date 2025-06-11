@@ -1,3 +1,5 @@
+# MemoryArk 2.0 開發環境 (統一配置版本)
+# 使用: podman-compose up
 version: '3.8'
 
 services:
@@ -6,37 +8,53 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      - GIN_MODE=release
-      - PORT=8081
+      # 基本配置
+      - GIN_MODE=${GIN_MODE:-release}
+      - PORT=${PORT:-8081}
+      
+      # 資料庫配置
       - DATABASE_PATH=/app/data/memoryark.db
-      - JWT_SECRET=${JWT_SECRET:-memoryark-secret-key}
+      
+      # JWT 配置 (生產環境請務必更改)
+      - JWT_SECRET=${JWT_SECRET:-ccb020fd03f8899d33d82efc854fb7f5736e431392aeaca49470c1b80702ebe0}
+      
+      # 檔案上傳配置
       - UPLOAD_PATH=${UPLOAD_PATH:-./uploads}
+      
+      # 管理員配置
       - ROOT_ADMIN_EMAIL=${ROOT_ADMIN_EMAIL:-94work.net@gmail.com}
-      - ROOT_ADMIN_NAME=${ROOT_ADMIN_NAME:-系統管理員}
-      - DEVELOPMENT_MODE=false
-      - DEV_AUTO_LOGIN_EMAIL=
-      - DEV_BYPASS_AUTH=false
-      - DEV_CORS_ENABLED=false
-      # 檔案處理和串流匯出配置
-      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-104857600}  # 100MB
+      - ROOT_ADMIN_NAME=${ROOT_ADMIN_NAME:-劉程維}
+      
+      # 開發模式配置
+      - DEVELOPMENT_MODE=${DEVELOPMENT_MODE:-false}
+      - DEV_AUTO_LOGIN_EMAIL=${DEV_AUTO_LOGIN_EMAIL:-}
+      - DEV_BYPASS_AUTH=${DEV_BYPASS_AUTH:-false}
+      - DEV_CORS_ENABLED=${DEV_CORS_ENABLED:-false}
+      
+      # 檔案上傳限制
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-104857600}      # 100MB
       - MAX_UPLOAD_MEMORY=${MAX_UPLOAD_MEMORY:-33554432}  # 32MB
+      
+      # 功能開關
       - DEDUPLICATION_ENABLED=${DEDUPLICATION_ENABLED:-true}
       - STREAMING_EXPORT_ENABLED=${STREAMING_EXPORT_ENABLED:-true}
       - EXPORT_CLEANUP_INTERVAL=${EXPORT_CLEANUP_INTERVAL:-24h}
       - VIRTUAL_PATH_ENABLED=${VIRTUAL_PATH_ENABLED:-true}
-      # 功能模組開關控制
       - ENABLE_SHARED_RESOURCES=${ENABLE_SHARED_RESOURCES:-false}
       - ENABLE_SABBATH_DATA=${ENABLE_SABBATH_DATA:-false}
+      
       # 效能優化配置
       - GOMEMLIMIT=${GOMEMLIMIT:-512MiB}
       - GOGC=${GOGC:-100}
       - GOMAXPROCS=${GOMAXPROCS:-2}
+    
     volumes:
       - ./data:/app/data
       - ./uploads:/app/uploads
       - ./logs:/app/logs
-      - ./backend/migrations:/app/migrations:ro  # 只讀掛載遷移腳本
-    # 資源限制（適合生產環境）
+      - ./backend/migrations:/app/migrations:ro
+    
+    # 開發環境資源配置
     deploy:
       resources:
         limits:
@@ -45,6 +63,7 @@ services:
         reservations:
           memory: 256M
           cpus: '0.25'
+    
     # 健康檢查
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/api/health"]
@@ -52,7 +71,10 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    
     restart: unless-stopped
+    
+    # 日誌配置
     logging:
       driver: "json-file"
       options:
@@ -61,15 +83,17 @@ services:
 
   nginx:
     image: docker.io/nginx:alpine
+    depends_on:
+      - backend
     ports:
       - "7001:80"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - ./frontend/dist:/usr/share/nginx/html
       - ./logs/nginx:/var/log/nginx
-    depends_on:
-      - backend
     restart: unless-stopped
+    
+    # 日誌配置
     logging:
       driver: "json-file"
       options:

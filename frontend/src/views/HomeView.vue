@@ -95,7 +95,7 @@ const loadDashboardData = async () => {
     ])
     
     // 更新儲存統計
-    if (storageResponse.success) {
+    if (storageResponse.success && storageResponse.data) {
       storageStats.value = {
         used: storageResponse.data.used_space,
         total: storageResponse.data.total_space,

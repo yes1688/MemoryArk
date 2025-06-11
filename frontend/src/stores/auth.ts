@@ -39,7 +39,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authApi.getAuthStatus()
       console.log('📡 API 回應:', response)
       
-      if (response.success) {
+      if (response.success && response.data) {
         authStatus.value = response.data
         console.log('✅ 認證狀態已更新:', response.data)
         if (response.data.user) {
@@ -89,7 +89,7 @@ export const useAuthStore = defineStore('auth', () => {
       
       const response = await authApi.getCurrentUser()
       
-      if (response.success) {
+      if (response.success && response.data) {
         user.value = response.data
         return response.data
       } else {

@@ -284,12 +284,20 @@
         </div>
       </template>
     </AppDialog>
+    
+    <!-- 檔案預覽 -->
+    <AppFilePreview
+      :visible="showFilePreview"
+      :file="selectedFile"
+      @update:visible="handlePreviewClose"
+      @download="handlePreviewDownload"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { AppButton, AppInput, AppDialog } from '@/components/ui'
+import { AppButton, AppInput, AppDialog, AppFilePreview } from '@/components/ui'
 import UploadModal from '@/components/UploadModal.vue'
 import SharedResourceCard from '@/components/SharedResourceCard.vue'
 import SharedResourceItem from '@/components/SharedResourceItem.vue'
@@ -306,6 +314,8 @@ const sortBy = ref('name')
 const isLoading = ref(false)
 const showUploadModal = ref(false)
 const showSubscriptionModal = ref(false)
+const showFilePreview = ref(false)
+const selectedFile = ref<FileInfo | null>(null)
 const subscriptions = ref<number[]>([])
 
 // 選中的分類
@@ -485,8 +495,17 @@ const downloadFile = (file: FileInfo) => {
 }
 
 const previewFile = (file: FileInfo) => {
-  // 實作預覽功能
-  console.log('Preview file:', file.name)
+  selectedFile.value = file
+  showFilePreview.value = true
+}
+
+const handlePreviewClose = () => {
+  showFilePreview.value = false
+  selectedFile.value = null
+}
+
+const handlePreviewDownload = (file: FileInfo) => {
+  downloadFile(file)
 }
 
 const toggleLike = (file: FileInfo) => {

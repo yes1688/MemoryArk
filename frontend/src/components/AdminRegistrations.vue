@@ -39,7 +39,7 @@ const loadRegistrations = async () => {
   isLoading.value = true
   try {
     const response = await adminApi.getRegistrations()
-    registrations.value = response.data.requests
+    registrations.value = response.data?.requests || []
   } catch (error) {
     console.error('載入註冊申請失敗:', error)
   } finally {

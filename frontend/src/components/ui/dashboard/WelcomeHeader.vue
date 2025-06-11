@@ -88,7 +88,7 @@ const storageStats = ref<StorageStats | null>(null)
 const fetchStorageStats = async () => {
   try {
     const response = await storageApi.getStats()
-    if (response.success) {
+    if (response.success && response.data) {
       storageStats.value = response.data
     }
   } catch (error) {

@@ -178,7 +178,7 @@ const fetchStorageStats = async () => {
   try {
     isLoading.value = true
     const response = await storageApi.getStats()
-    if (response.success) {
+    if (response.success && response.data) {
       storageStats.value = response.data
     }
   } catch (error) {

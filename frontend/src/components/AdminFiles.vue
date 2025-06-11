@@ -83,11 +83,11 @@ const loadFiles = async () => {
     console.log('📋 完整 API 回應:', response)
     console.log('📁 檔案資料:', response.data)
     console.log('📄 檔案數量:', response.data?.files?.length)
-    if (response.data?.files?.length > 0) {
+    if (response.data?.files?.length && response.data.files.length > 0) {
       console.log('📄 第一個檔案完整資料:', JSON.stringify(response.data.files[0], null, 2))
     }
     // 轉換後端回傳的資料格式到前端期望的格式
-    const transformedFiles = (response.data.files || []).map((file: any) => ({
+    const transformedFiles = (response.data?.files || []).map((file: any) => ({
       id: file.id,
       name: file.name,
       originalName: file.original_name,

@@ -152,7 +152,7 @@ const storagePercent = computed(() => storageStats.value?.usage_percent || 0)
 const loadStorageStats = async () => {
   try {
     const response = await storageApi.getStats()
-    if (response.success) {
+    if (response.success && response.data) {
       storageStats.value = response.data
     }
   } catch (error) {

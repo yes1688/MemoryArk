@@ -40,7 +40,7 @@ const loadUsers = async () => {
   isLoading.value = true
   try {
     const response = await adminApi.getUsers()
-    users.value = response.data.users
+    users.value = response.data?.users || []
   } catch (error) {
     console.error('載入用戶列表失敗:', error)
   } finally {

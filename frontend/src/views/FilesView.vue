@@ -15,7 +15,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 // UI 組件
-import { MinimalButton, AppFileIcon } from '@/components/ui'
+import { MinimalButton, AppFileIcon, AppFilePreview } from '@/components/ui'
 import UploadModal from '@/components/UploadModal.vue'
 import CreateFolderModal from '@/components/CreateFolderModal.vue'
 
@@ -29,6 +29,7 @@ const searchQuery = ref('')
 const viewMode = ref<'grid' | 'list'>('grid')
 const showUploadModal = ref(false)
 const showCreateFolderModal = ref(false)
+const showFilePreview = ref(false)
 const selectedFile = ref<FileInfo | null>(null)
 const hoveredFile = ref<FileInfo | null>(null)
 
@@ -51,12 +52,17 @@ const filteredFiles = computed(() => {
 
 // 方法
 const openFile = (file: FileInfo) => {
+  console.log('🔍 Opening file:', file.name, 'isDirectory:', file.isDirectory)
+  
   if (file.isDirectory) {
     // 導航到資料夾，更新路由
     router.push({ name: 'files-folder', params: { folderId: file.id.toString() } })
   } else {
     // 預覽檔案
+    console.log('📁 Setting up preview for file:', file)
     selectedFile.value = file
+    showFilePreview.value = true
+    console.log('🎬 Preview state:', { showFilePreview: showFilePreview.value, selectedFile: selectedFile.value?.name })
   }
 }
 
@@ -93,6 +99,15 @@ const formatDate = (dateString: string): string => {
     month: '2-digit',
     day: '2-digit'
   })
+}
+
+const handlePreviewClose = () => {
+  showFilePreview.value = false
+  selectedFile.value = null
+}
+
+const handlePreviewDownload = (file: FileInfo) => {
+  downloadFile(file)
 }
 
 // 已移除 getFileIcon 函數，改用 AppFileIcon 組件
@@ -404,6 +419,14 @@ onMounted(async () => {
       :current-folder-id="filesStore.currentFolderId"
       @close="showCreateFolderModal = false"
       @created="showCreateFolderModal = false"
+    />
+    
+    <!-- 檔案預覽 -->
+    <AppFilePreview
+      :visible="showFilePreview"
+      :file="selectedFile"
+      @update:visible="handlePreviewClose"
+      @download="handlePreviewDownload"
     />
   </div>
 </template>

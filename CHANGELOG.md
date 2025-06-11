@@ -5,6 +5,27 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)，
 版本編號遵循 [語意化版本](https://semver.org/lang/zh-TW/)。
 
+## [2.0.5] - 2025-06-12
+
+### 📚 文檔架構重組
+
+- **目錄結構優化** - 創建 `docs/` 目錄並按功能分類
+  - `docs/development/` - 開發相關文檔
+  - `docs/testing/` - 測試指南文檔  
+  - `docs/architecture/` - 系統架構文檔
+  - `docs/operations/` - 運維操作文檔
+- **過時文檔清理** - 刪除已廢除的檔案管理方案文檔
+  - 移除 `SIMPLIFIED_FILE_MANAGEMENT.md`（已採用虛擬路徑架構）
+  - 移除 `UPGRADE_PROGRESS_REPORT.md`（升級已完成）
+  - 移除 `VIRTUAL_FILE_SYSTEM_DESIGN.md`（已實現於系統中）
+- **核心文檔保留** - 根目錄僅保留關鍵文檔
+  - `README.md`, `CHANGELOG.md`, `SPECIFICATION.md`, `CLAUDE.md`
+
+### 💡 改進理念
+
+- **Git 歷史信賴** - 過時文檔無需保留，Git 提供完整變更歷史
+- **資訊架構清晰** - 按功能分類提升可維護性和新開發者體驗
+
 ## [2.0.4] - 2025-06-11
 
 ### 🔧 功能模組配置

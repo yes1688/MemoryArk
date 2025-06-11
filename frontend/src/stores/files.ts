@@ -58,7 +58,7 @@ export const useFilesStore = defineStore('files', () => {
       
       const response = await filesApi.getFiles(params)
       
-      if (response.success) {
+      if (response.success && response.data) {
         // 轉換後端回傳的資料格式到前端期望的格式
         const transformedFiles = (response.data.files || []).map((file: any) => ({
           id: file.id,
@@ -112,7 +112,7 @@ export const useFilesStore = defineStore('files', () => {
         uploadProgress.value = progress
       })
       
-      if (response.success) {
+      if (response.success && response.data) {
         // 重新獲取當前資料夾檔案列表
         await fetchFiles(currentFolderId.value || null)
         // 將 UploadResult 轉換為 FileInfo 格式
@@ -151,7 +151,7 @@ export const useFilesStore = defineStore('files', () => {
       const folderData = { name, parentId }
       const response = await filesApi.createFolder(folderData)
       
-      if (response.success) {
+      if (response.success && response.data) {
         // 重新獲取當前資料夾檔案列表
         await fetchFiles(currentFolderId.value || null)
         return response.data
@@ -344,7 +344,7 @@ export const useFilesStore = defineStore('files', () => {
       }
       const response = await filesApi.createShareLink(fileId, shareData)
       
-      if (response.success) {
+      if (response.success && response.data) {
         return response.data
       } else {
         throw new Error(response.message || '創建分享連結失敗')
@@ -392,7 +392,7 @@ export const useFilesStore = defineStore('files', () => {
         if (!folderInfo) {
           try {
             const response = await filesApi.getFileDetails(folderId)
-            if (response.success && (response.data as any).is_directory) {
+            if (response.success && response.data && (response.data as any).is_directory) {
               // 轉換 API 返回的資料格式
               const rawData = response.data as any
               folderInfo = {
