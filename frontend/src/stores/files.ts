@@ -60,26 +60,29 @@ export const useFilesStore = defineStore('files', () => {
       
       if (response.success && response.data) {
         // 轉換後端回傳的資料格式到前端期望的格式
-        const transformedFiles = (response.data.files || []).map((file: any) => ({
-          id: file.id,
-          name: file.name,
-          originalName: file.original_name,
-          size: file.file_size,
-          mimeType: file.mime_type,
-          isDirectory: file.is_directory,
-          parentId: file.parent_id,
-          path: file.file_path,
-          uploaderId: file.uploaded_by,
-          uploaderName: file.uploader?.name,
-          downloadCount: file.download_count || 0,
-          isDeleted: file.is_deleted,
-          deletedAt: file.deleted_at,
-          deletedBy: file.deleted_by,
-          createdAt: file.created_at,
-          updatedAt: file.updated_at,
-          url: file.url,
-          thumbnailUrl: file.thumbnail_url
-        }))
+        const transformedFiles = (response.data.files || []).map((file: any) => {
+          console.log('🔄 轉換檔案資料:', { name: file.name, is_directory: file.is_directory, isDirectory: file.isDirectory })
+          return {
+            id: file.id,
+            name: file.name,
+            originalName: file.original_name || file.originalName,
+            size: file.file_size || file.size,
+            mimeType: file.mime_type || file.mimeType,
+            isDirectory: file.is_directory !== undefined ? file.is_directory : file.isDirectory,
+            parentId: file.parent_id || file.parentId,
+            path: file.file_path || file.path,
+            uploaderId: file.uploaded_by || file.uploaderId,
+            uploaderName: file.uploader?.name,
+            downloadCount: file.download_count || 0,
+            isDeleted: file.is_deleted || file.isDeleted,
+            deletedAt: file.deleted_at || file.deletedAt,
+            deletedBy: file.deleted_by || file.deletedBy,
+            createdAt: file.created_at || file.createdAt,
+            updatedAt: file.updated_at || file.updatedAt,
+            url: file.url,
+            thumbnailUrl: file.thumbnail_url || file.thumbnailUrl
+          }
+        })
         files.value = transformedFiles
         
         // 注意：這裡不設置當前資料夾和麵包屑
@@ -154,7 +157,29 @@ export const useFilesStore = defineStore('files', () => {
       if (response.success && response.data) {
         // 重新獲取當前資料夾檔案列表
         await fetchFiles(currentFolderId.value || null)
-        return response.data
+        
+        // 轉換返回的資料格式
+        const rawData = response.data as any
+        return {
+          id: rawData.id,
+          name: rawData.name,
+          originalName: rawData.original_name || rawData.originalName,
+          size: rawData.file_size || rawData.size || 0,
+          mimeType: rawData.mime_type || rawData.mimeType || 'folder',
+          isDirectory: true, // 創建資料夾時一定是目錄
+          parentId: rawData.parent_id || rawData.parentId,
+          path: rawData.file_path || rawData.path || '',
+          uploaderId: rawData.uploaded_by || rawData.uploaderId,
+          uploaderName: rawData.uploader?.name,
+          downloadCount: 0,
+          isDeleted: false,
+          deletedAt: undefined,
+          deletedBy: undefined,
+          createdAt: rawData.created_at || rawData.createdAt,
+          updatedAt: rawData.updated_at || rawData.updatedAt,
+          url: '',
+          thumbnailUrl: ''
+        }
       } else {
         throw new Error(response.message || '創建資料夾失敗')
       }
@@ -395,25 +420,26 @@ export const useFilesStore = defineStore('files', () => {
             if (response.success && response.data && (response.data as any).is_directory) {
               // 轉換 API 返回的資料格式
               const rawData = response.data as any
+              console.log('📁 獲取資料夾詳情:', { id: rawData.id, name: rawData.name, is_directory: rawData.is_directory })
               folderInfo = {
                 id: rawData.id,
                 name: rawData.name,
-                originalName: rawData.original_name,
-                size: rawData.file_size,
-                mimeType: rawData.mime_type,
-                isDirectory: rawData.is_directory,
-                parentId: rawData.parent_id,
-                path: rawData.file_path,
-                uploaderId: rawData.uploaded_by,
+                originalName: rawData.original_name || rawData.originalName,
+                size: rawData.file_size || rawData.size,
+                mimeType: rawData.mime_type || rawData.mimeType,
+                isDirectory: rawData.is_directory !== undefined ? rawData.is_directory : rawData.isDirectory,
+                parentId: rawData.parent_id || rawData.parentId,
+                path: rawData.file_path || rawData.path,
+                uploaderId: rawData.uploaded_by || rawData.uploaderId,
                 uploaderName: rawData.uploader?.name,
                 downloadCount: rawData.download_count || 0,
-                isDeleted: rawData.is_deleted,
-                deletedAt: rawData.deleted_at,
-                deletedBy: rawData.deleted_by,
-                createdAt: rawData.created_at,
-                updatedAt: rawData.updated_at,
+                isDeleted: rawData.is_deleted || rawData.isDeleted,
+                deletedAt: rawData.deleted_at || rawData.deletedAt,
+                deletedBy: rawData.deleted_by || rawData.deletedBy,
+                createdAt: rawData.created_at || rawData.createdAt,
+                updatedAt: rawData.updated_at || rawData.updatedAt,
                 url: rawData.url,
-                thumbnailUrl: rawData.thumbnail_url
+                thumbnailUrl: rawData.thumbnail_url || rawData.thumbnailUrl
               }
             }
           } catch (err) {
@@ -447,17 +473,65 @@ export const useFilesStore = defineStore('files', () => {
         console.log('🗂️ 設置當前資料夾:', folderInfo)
         currentFolder.value = folderInfo
         
-        // 構建麵包屑導航
-        const newBreadcrumbs: BreadcrumbItem[] = [{ id: null, name: '根目錄', path: '/' }]
+        // 構建麵包屑導航 - 需要遞迴構建完整路徑
+        const buildBreadcrumbs = async (folder: FileInfo): Promise<BreadcrumbItem[]> => {
+          const crumbs: BreadcrumbItem[] = []
+          let currentFolder = folder
+          
+          // 從當前資料夾往上遍歷到根目錄
+          while (currentFolder.parentId) {
+            crumbs.unshift({
+              id: currentFolder.id,
+              name: currentFolder.name,
+              path: `/${currentFolder.name}`
+            })
+            
+            // 嘗試獲取父資料夾信息
+            try {
+              const parentResponse = await filesApi.getFileDetails(currentFolder.parentId)
+              if (parentResponse.success && parentResponse.data) {
+                const parentData = parentResponse.data as any
+                currentFolder = {
+                  id: parentData.id,
+                  name: parentData.name,
+                  parentId: parentData.parent_id || parentData.parentId,
+                  isDirectory: true,
+                  // 其他必要欄位
+                  originalName: parentData.original_name || '',
+                  size: 0,
+                  mimeType: 'folder',
+                  path: '',
+                  uploaderId: 0,
+                  downloadCount: 0,
+                  isDeleted: false,
+                  createdAt: '',
+                  updatedAt: '',
+                  url: ''
+                }
+              } else {
+                break
+              }
+            } catch {
+              break
+            }
+          }
+          
+          // 添加最後一層（沒有父資料夾的）
+          if (!currentFolder.parentId) {
+            crumbs.unshift({
+              id: currentFolder.id,
+              name: currentFolder.name,
+              path: `/${currentFolder.name}`
+            })
+          }
+          
+          // 添加根目錄
+          crumbs.unshift({ id: null, name: '根目錄', path: '/' })
+          
+          return crumbs
+        }
         
-        // 添加當前資料夾
-        newBreadcrumbs.push({
-          id: folderInfo.id,
-          name: folderInfo.name,
-          path: `/${folderInfo.name}`
-        })
-        
-        breadcrumbs.value = newBreadcrumbs
+        breadcrumbs.value = await buildBreadcrumbs(folderInfo)
       } else {
         console.log('🏠 返回根目錄, folderId:', folderId, 'folderInfo:', folderInfo)
         // 返回根目錄

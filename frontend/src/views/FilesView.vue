@@ -16,6 +16,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 // UI 組件
 import { MinimalButton, AppFileIcon, AppFilePreview } from '@/components/ui'
+import FileCard from '@/components/ui/file-card/FileCard.vue'
 import UploadModal from '@/components/UploadModal.vue'
 import CreateFolderModal from '@/components/CreateFolderModal.vue'
 
@@ -52,17 +53,34 @@ const filteredFiles = computed(() => {
 
 // 方法
 const openFile = (file: FileInfo) => {
-  console.log('🔍 Opening file:', file.name, 'isDirectory:', file.isDirectory)
+  console.log('🔍 Opening file:', {
+    name: file.name,
+    isDirectory: file.isDirectory,
+    id: file.id,
+    parentId: file.parentId,
+    mimeType: file.mimeType
+  })
   
-  if (file.isDirectory) {
+  if (file.isDirectory === true || file.mimeType === 'folder') {
     // 導航到資料夾，更新路由
-    router.push({ name: 'files-folder', params: { folderId: file.id.toString() } })
+    console.log('📁 Navigating to folder:', file.id, 'name:', file.name)
+    router.push({ 
+      name: 'files-folder', 
+      params: { folderId: file.id.toString() } 
+    }).then(() => {
+      console.log('✅ Navigation successful')
+    }).catch(err => {
+      console.error('❌ Navigation failed:', err)
+    })
   } else {
     // 預覽檔案
-    console.log('📁 Setting up preview for file:', file)
+    console.log('📄 Setting up preview for file:', file.name)
     selectedFile.value = file
     showFilePreview.value = true
-    console.log('🎬 Preview state:', { showFilePreview: showFilePreview.value, selectedFile: selectedFile.value?.name })
+    console.log('🎬 Preview state:', { 
+      showFilePreview: showFilePreview.value, 
+      selectedFile: selectedFile.value?.name 
+    })
   }
 }
 
@@ -72,8 +90,27 @@ const downloadFile = (file: FileInfo) => {
 }
 
 const deleteFile = async (file: FileInfo) => {
-  if (confirm(`確定要刪除 "${file.name}" 嗎？`)) {
-    await filesStore.deleteFiles([file.id])
+  let confirmMessage = `確定要刪除 "${file.name}" 嗎？`
+  
+  if (file.isDirectory) {
+    confirmMessage += '\n\n⚠️ 警告：這會同時刪除資料夾內的所有檔案和子資料夾！\n此操作會將所有項目移至垃圾桶。'
+  } else {
+    confirmMessage += '\n\n此操作會將檔案移至垃圾桶。'
+  }
+  
+  if (confirm(confirmMessage)) {
+    try {
+      await filesStore.deleteFiles([file.id])
+      // 刪除成功後顯示通知
+      if (file.isDirectory) {
+        console.log('資料夾已移至垃圾桶')
+      } else {
+        console.log('檔案已移至垃圾桶')
+      }
+    } catch (error) {
+      console.error('刪除失敗:', error)
+      alert('刪除失敗，請稍後再試')
+    }
   }
 }
 
@@ -284,71 +321,19 @@ onMounted(async () => {
         <p class="text-sm mt-1" style="color: var(--text-tertiary);">{{ searchQuery ? '試試其他關鍵字' : '開始上傳一些檔案吧' }}</p>
       </div>
       
-      <!-- 網格視圖 -->
-      <div v-else-if="viewMode === 'grid'" class="files-grid grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
-        <div
+      <!-- 網格視圖 - 使用統一的 FileCard 組件 -->
+      <div v-else-if="viewMode === 'grid'" class="files-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <FileCard
           v-for="file in filteredFiles"
           :key="file.id"
-          @click="openFile(file)"
-          @mouseenter="hoveredFile = file"
-          @mouseleave="hoveredFile = null"
-          class="file-card cursor-pointer group"
-          style="
-            background: var(--bg-elevated);
-            border-radius: var(--radius-lg);
-            padding: var(--space-4);
-            transition: all var(--duration-normal) var(--ease-smooth);
-            border: 1px solid transparent;
-          "
-          :style="{
-            borderColor: hoveredFile?.id === file.id ? 'var(--color-primary)' : 'transparent',
-            transform: hoveredFile?.id === file.id ? 'translateY(-2px)' : 'none',
-            boxShadow: hoveredFile?.id === file.id ? 'var(--shadow-lg)' : 'var(--shadow-sm)'
-          }"
-        >
-          <div class="file-icon mb-3 text-center">
-            <AppFileIcon 
-              :mime-type="file.mimeType"
-              :file-name="file.name"
-              :is-directory="file.isDirectory"
-              :thumbnail-url="file.thumbnailUrl"
-              size="lg"
-            />
-          </div>
-          <h4 class="file-name text-sm font-medium truncate" style="color: var(--text-primary);" :title="file.name">
-            {{ file.name }}
-          </h4>
-          <p class="file-meta text-xs mt-1" style="color: var(--text-tertiary);">
-            {{ file.isDirectory ? '資料夾' : formatFileSize(file.size) }}
-          </p>
-          
-          <!-- 快速操作 -->
-          <div 
-            v-if="hoveredFile?.id === file.id && !file.isDirectory"
-            class="quick-actions absolute top-2 right-2 flex space-x-1"
-          >
-            <button
-              @click.stop="downloadFile(file)"
-              class="action-btn p-1 rounded"
-              style="background: var(--bg-primary); box-shadow: var(--shadow-sm);"
-              title="下載"
-            >
-              <svg class="w-4 h-4" style="color: var(--text-secondary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-              </svg>
-            </button>
-            <button
-              @click.stop="deleteFile(file)"
-              class="action-btn p-1 rounded"
-              style="background: var(--bg-primary); box-shadow: var(--shadow-sm);"
-              title="刪除"
-            >
-              <svg class="w-4 h-4" style="color: var(--color-danger);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-              </svg>
-            </button>
-          </div>
-        </div>
+          :file="file"
+          mode="files"
+          :hovered-file="hoveredFile"
+          @click="openFile"
+          @hover="hoveredFile = $event"
+          @download="downloadFile"
+          @delete="deleteFile"
+        />
       </div>
       
       <!-- 列表視圖 -->
