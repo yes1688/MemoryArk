@@ -79,4 +79,13 @@ export const fileApi = {
   // 重命名檔案/資料夾
   renameFile: (fileId: number, renameData: FileRenameRequest) =>
     apiRequest.put(`/folders/${fileId}/rename`, renameData),
+
+  // 垃圾桶相關
+  // 獲取垃圾桶檔案列表
+  getTrashFiles: (params?: FileListParams) =>
+    apiRequest.get<FileListResponse>('/trash', params),
+
+  // 清空垃圾桶（僅限管理員）
+  emptyTrash: () =>
+    apiRequest.post('/admin/trash/empty'),
 }

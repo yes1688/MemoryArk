@@ -1115,6 +1115,59 @@ func (h *FileHandler) RenameFile(c *gin.Context) {
 	})
 }
 
+// GetTrash 獲取垃圾桶檔案列表
+func (h *FileHandler) GetTrash(c *gin.Context) {
+	// 驗證用戶已登入
+	_, exists := c.Get("user_id")
+	if !exists {
+		api.Unauthorized(c, "未授權訪問")
+		return
+	}
+	
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 50
+	}
+	
+	offset := (page - 1) * limit
+	
+	var files []models.File
+	var total int64
+	
+	query := h.db.Model(&models.File{}).Where("is_deleted = ?", true)
+	
+	// 計算總數
+	if err := query.Count(&total).Error; err != nil {
+		api.Error(c, http.StatusInternalServerError, api.ErrDatabaseError, "查詢垃圾桶檔案失敗")
+		return
+	}
+	
+	// 獲取檔案列表
+	if err := query.Preload("Uploader").Preload("DeletedByUser").Preload("Category").
+		Order("deleted_at DESC").
+		Offset(offset).Limit(limit).
+		Find(&files).Error; err != nil {
+		api.Error(c, http.StatusInternalServerError, api.ErrDatabaseError, "查詢垃圾桶檔案失敗")
+		return
+	}
+	
+	// 為圖片檔案生成縮圖URL
+	for i := range files {
+		if files[i].MimeType != "" && strings.HasPrefix(files[i].MimeType, "image/") && !files[i].IsDirectory {
+			files[i].ThumbnailURL = fmt.Sprintf("/api/files/%d/preview", files[i].ID)
+		}
+	}
+	
+	api.SuccessWithPagination(c, gin.H{
+		"files": files,
+	}, page, limit, total)
+}
+
 // EmptyTrash 清空垃圾桶（僅限管理員）
 func (h *FileHandler) EmptyTrash(c *gin.Context) {
 	// 檢查管理員權限

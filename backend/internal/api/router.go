@@ -64,6 +64,9 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		// 儲存空間統計
 		protected.GET("/storage/stats", fileHandler.GetStorageStats)
 		
+		// 垃圾桶管理
+		protected.GET("/trash", fileHandler.GetTrash)
+		
 		// 資料夾管理
 		protected.POST("/folders", fileHandler.CreateFolder)
 		protected.PUT("/folders/:id/move", fileHandler.MoveFile)
