@@ -16,6 +16,7 @@ export const useFilesStore = defineStore('files', () => {
   // 狀態
   const files = ref<FileInfo[]>([])
   const currentFolder = ref<FileInfo | null>(null)
+  const currentFolderIdValue = ref<number | null>(null) // 直接存儲當前資料夾ID
   const breadcrumbs = ref<BreadcrumbItem[]>([])
   const selectedFiles = ref<FileInfo[]>([])
   const clipboard = ref<{ files: FileInfo[], operation: 'copy' | 'cut' } | null>(null)
@@ -39,8 +40,9 @@ export const useFilesStore = defineStore('files', () => {
   const canPaste = computed(() => clipboard.value !== null)
   const hasSelection = computed(() => selectedFiles.value.length > 0)
   const currentFolderId = computed(() => {
-    console.log('🔍 currentFolderId computed:', currentFolder.value?.id)
-    return currentFolder.value?.id
+    // 優先使用直接存儲的值，回退到 currentFolder 的ID
+    const id = currentFolderIdValue.value ?? currentFolder.value?.id
+    return id
   })
 
   // 獲取檔案列表
@@ -156,7 +158,7 @@ export const useFilesStore = defineStore('files', () => {
   // 創建資料夾
   const createFolder = async (name: string, parentId?: number): Promise<FileInfo> => {
     try {
-      const folderData = { name, parentId }
+      const folderData = { name, parent_id: parentId }
       const response = await filesApi.createFolder(folderData)
       
       if (response.success && response.data) {
@@ -472,6 +474,9 @@ export const useFilesStore = defineStore('files', () => {
       
       // 獲取目標資料夾的檔案列表
       await fetchFiles(folderId)
+      
+      // 更新當前資料夾ID（無論是否有資料夾資訊都要設置）
+      currentFolderIdValue.value = folderId || null
       
       // 更新當前資料夾狀態
       if (folderId && folderInfo) {
