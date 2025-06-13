@@ -59,7 +59,7 @@ export interface FileShare {
 
 export interface FolderCreateRequest {
   name: string
-  parentId?: number
+  parent_id?: number
 }
 
 export interface BreadcrumbItem {
