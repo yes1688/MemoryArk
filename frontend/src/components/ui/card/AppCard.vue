@@ -1,6 +1,7 @@
 <template>
   <div
     :class="cardClasses"
+    :style="getCardStyles()"
     @click="handleClick"
     @mouseenter="isHovered = true"
     @mouseleave="isHovered = false"
@@ -79,28 +80,20 @@ const cardClasses = computed(() => {
     'overflow-hidden'
   ]
 
-  // Variant classes
+  // Variant classes - 使用內聯樣式替代 Tailwind 類
   const variantClasses = {
     default: [
-      'bg-white dark:bg-gray-800',
-      'border',
-      'border-gray-200 dark:border-gray-700'
+      'border'
     ],
     outlined: [
-      'bg-white dark:bg-gray-800',
-      'border-2',
-      'border-gray-300 dark:border-gray-600'
+      'border-2'
     ],
     elevated: [
-      'bg-white dark:bg-gray-800',
       'shadow-win11',
-      'border',
-      'border-gray-100 dark:border-gray-700'
+      'border'
     ],
     filled: [
-      'bg-gray-50 dark:bg-gray-900',
-      'border',
-      'border-gray-200 dark:border-gray-700'
+      'border'
     ]
   }
 
@@ -129,7 +122,6 @@ const cardClasses = computed(() => {
   if (props.hoverable) {
     interactiveClasses.push(
       'hover:shadow-win11-hover',
-      'hover:border-gray-300',
       'hover:-translate-y-0.5'
     )
   }
@@ -155,6 +147,32 @@ const cardClasses = computed(() => {
   ]
 })
 
+const getCardStyles = () => {
+  const styles: Record<string, string> = {}
+  
+  // 根據變體設置樣式
+  switch (props.variant) {
+    case 'default':
+      styles.backgroundColor = 'var(--bg-elevated)'
+      styles.borderColor = 'var(--border-light)'
+      break
+    case 'outlined':
+      styles.backgroundColor = 'var(--bg-elevated)'
+      styles.borderColor = 'var(--border-medium)'
+      break
+    case 'elevated':
+      styles.backgroundColor = 'var(--bg-elevated)'
+      styles.borderColor = 'var(--border-light)'
+      break
+    case 'filled':
+      styles.backgroundColor = 'var(--bg-secondary)'
+      styles.borderColor = 'var(--border-light)'
+      break
+  }
+  
+  return styles
+}
+
 const handleClick = (event: MouseEvent) => {
   if (props.clickable && !props.loading) {
     emit('click', event)
@@ -168,19 +186,23 @@ const handleClick = (event: MouseEvent) => {
 }
 
 .card-title {
-  @apply text-lg font-semibold text-gray-900 dark:text-gray-100 leading-tight;
+  @apply text-lg font-semibold leading-tight;
+  color: var(--text-primary);
 }
 
 .card-content {
-  @apply text-gray-700 dark:text-gray-300 leading-relaxed;
+  @apply leading-relaxed;
+  color: var(--text-secondary);
 }
 
 .card-footer {
-  @apply mt-4 pt-3 border-t border-gray-200 dark:border-gray-700;
+  @apply mt-4 pt-3 border-t;
+  border-color: var(--border-light);
 }
 
 .card-loading {
-  @apply absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center;
+  @apply absolute inset-0 bg-opacity-75 flex items-center justify-center;
+  background-color: var(--bg-elevated);
 }
 
 .card-selection-indicator {
@@ -197,7 +219,8 @@ const handleClick = (event: MouseEvent) => {
 }
 
 .card-skeleton .skeleton-line {
-  @apply h-4 bg-gray-200 dark:bg-gray-700 rounded;
+  @apply h-4 rounded;
+  background-color: var(--bg-tertiary);
 }
 
 .card-skeleton .skeleton-line:nth-child(1) {

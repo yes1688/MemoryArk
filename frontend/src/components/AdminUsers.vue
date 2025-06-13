@@ -76,23 +76,105 @@ onMounted(() => {
 })
 </script>
 
+<style scoped>
+/* 管理員面板樣式 */
+.admin-panel {
+  background: var(--bg-elevated);
+  border-color: var(--border-light);
+}
+
+/* 輸入框樣式 */
+.admin-input {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.admin-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* 表格樣式 */
+.admin-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.admin-table-header {
+  background: var(--bg-secondary);
+}
+
+.admin-table-th {
+  color: var(--text-tertiary);
+}
+
+.admin-table-body {
+  background: var(--bg-elevated);
+}
+
+.admin-table-row {
+  border-top: 1px solid var(--border-light);
+  transition: background-color var(--duration-fast) var(--ease-smooth);
+}
+
+.admin-table-row:hover {
+  background: var(--bg-secondary);
+}
+
+/* 頭像樣式 */
+.admin-avatar {
+  background: var(--color-primary-light);
+}
+
+.admin-avatar-text {
+  color: var(--color-primary-dark);
+}
+
+/* 選擇框樣式 */
+.admin-select {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.admin-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* 刪除按鈕樣式 */
+.admin-delete-btn {
+  color: var(--color-danger);
+  transition: color var(--duration-fast) var(--ease-smooth);
+}
+
+.admin-delete-btn:hover {
+  color: var(--color-danger-dark);
+}
+</style>
+
 <template>
   <div class="space-y-6">
     <!-- 搜尋和篩選 -->
-    <div class="bg-white p-4 rounded-lg border">
+    <div class="p-4 rounded-lg border admin-panel">
       <div class="flex flex-col sm:flex-row gap-4">
         <div class="flex-1">
           <input
             v-model="searchQuery"
             type="text"
             placeholder="搜尋用戶名稱或電子郵件..."
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            class="w-full px-3 py-2 rounded-md admin-input"
           />
         </div>
         <div class="sm:w-48">
           <select
             v-model="selectedRole"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            class="w-full px-3 py-2 rounded-md admin-input"
           >
             <option
               v-for="role in roles"
@@ -107,54 +189,54 @@ onMounted(() => {
     </div>
 
     <!-- 用戶列表 -->
-    <div class="bg-white rounded-lg border overflow-hidden">
+    <div class="rounded-lg overflow-hidden admin-panel">
       <div v-if="isLoading" class="p-8 text-center">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-        <p class="mt-2 text-gray-600">載入中...</p>
+        <p class="mt-2" style="color: var(--text-secondary);">載入中...</p>
       </div>
 
-      <div v-else-if="filteredUsers.length === 0" class="p-8 text-center text-gray-500">
+      <div v-else-if="filteredUsers.length === 0" class="p-8 text-center" style="color: var(--text-tertiary);">
         <p>沒有找到符合條件的用戶</p>
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+        <table class="min-w-full admin-table">
+          <thead class="admin-table-header">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider admin-table-th">
                 用戶
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider admin-table-th">
                 角色
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider admin-table-th">
                 註冊時間
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider admin-table-th">
                 操作
               </th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
+          <tbody class="admin-table-body">
             <tr
               v-for="user in filteredUsers"
               :key="user.id"
-              class="hover:bg-gray-50"
+              class="admin-table-row"
             >
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 h-10 w-10">
-                    <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                      <span class="text-blue-600 font-medium">
+                    <div class="h-10 w-10 rounded-full flex items-center justify-center admin-avatar">
+                      <span class="font-medium admin-avatar-text">
                         {{ user.name.charAt(0).toUpperCase() }}
                       </span>
                     </div>
                   </div>
                   <div class="ml-4">
-                    <div class="text-sm font-medium text-gray-900">
+                    <div class="text-sm font-medium" style="color: var(--text-primary);">
                       {{ user.name }}
                     </div>
-                    <div class="text-sm text-gray-500">
+                    <div class="text-sm" style="color: var(--text-secondary);">
                       {{ user.email }}
                     </div>
                   </div>
@@ -164,19 +246,19 @@ onMounted(() => {
                 <select
                   :value="user.role"
                   @change="updateUserRole(user.id, ($event.target as HTMLSelectElement).value)"
-                  class="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="text-sm rounded px-2 py-1 admin-select"
                 >
                   <option value="user">一般用戶</option>
                   <option value="admin">管理員</option>
                 </select>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <td class="px-6 py-4 whitespace-nowrap text-sm" style="color: var(--text-secondary);">
                 {{ new Date(user.createdAt).toLocaleDateString() }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <td class="px-6 py-4 whitespace-nowrap text-sm" style="color: var(--text-secondary);">
                 <button
                   @click="deleteUser(user.id)"
-                  class="text-red-600 hover:text-red-800 font-medium"
+                  class="font-medium admin-delete-btn"
                 >
                   刪除
                 </button>

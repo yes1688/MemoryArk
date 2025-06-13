@@ -69,7 +69,7 @@ const rejectRegistration = async (id: number, reason: string = '') => {
 
 const getStatusColor = (status: string) => {
   const option = statusOptions.find(opt => opt.value === status)
-  return option?.color || 'bg-gray-100 text-gray-800'
+  return option?.color || 'admin-reason-text'
 }
 
 const getStatusLabel = (status: string) => {
@@ -82,18 +82,104 @@ onMounted(() => {
 })
 </script>
 
+<style scoped>
+/* 管理員面板樣式 */
+.admin-panel {
+  background: var(--bg-elevated);
+  border-color: var(--border-light);
+}
+
+/* 篩選按鈕樣式 */
+.admin-filter-active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.admin-filter-inactive {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.admin-filter-inactive:hover {
+  background: var(--bg-primary);
+  border-color: var(--color-primary);
+}
+
+/* 註冊申請列表樣式 */
+.admin-registration-list {
+  border-top: 1px solid var(--border-light);
+}
+
+.admin-registration-item {
+  border-bottom: 1px solid var(--border-light);
+  transition: background-color var(--duration-fast) var(--ease-smooth);
+}
+
+.admin-registration-item:hover {
+  background: var(--bg-secondary);
+}
+
+/* 頭像樣式 */
+.admin-avatar {
+  background: var(--bg-secondary);
+}
+
+.admin-avatar-text {
+  color: var(--text-secondary);
+}
+
+/* 申請原因文字樣式 */
+.admin-reason-text {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* 元數據文字樣式 */
+.admin-meta-text {
+  color: var(--text-tertiary);
+}
+
+/* 操作按鈕樣式 */
+.admin-approve-btn {
+  background: var(--color-success);
+  color: white;
+  border: 1px solid transparent;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.admin-approve-btn:hover {
+  background: var(--color-success-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.admin-reject-btn {
+  background: var(--color-danger);
+  color: white;
+  border: 1px solid transparent;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.admin-reject-btn:hover {
+  background: var(--color-danger-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+</style>
+
 <template>
   <div class="space-y-6">
     <!-- 狀態篩選 -->
-    <div class="bg-white p-4 rounded-lg border">
+    <div class="p-4 rounded-lg border admin-panel">
       <div class="flex flex-wrap gap-2">
         <button
           @click="selectedStatus = 'all'"
           :class="[
             'px-4 py-2 rounded-md text-sm font-medium transition-colors',
             selectedStatus === 'all'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              ? 'admin-filter-active'
+              : 'admin-filter-inactive'
           ]"
         >
           全部
@@ -105,8 +191,8 @@ onMounted(() => {
           :class="[
             'px-4 py-2 rounded-md text-sm font-medium transition-colors',
             selectedStatus === option.value
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              ? 'admin-filter-active'
+              : 'admin-filter-inactive'
           ]"
         >
           {{ option.label }}
@@ -115,37 +201,37 @@ onMounted(() => {
     </div>
 
     <!-- 註冊申請列表 -->
-    <div class="bg-white rounded-lg border overflow-hidden">
+    <div class="admin-panel rounded-lg border overflow-hidden">
       <div v-if="isLoading" class="p-8 text-center">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-        <p class="mt-2 text-gray-600">載入中...</p>
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-current mx-auto"></div>
+        <p class="mt-2 admin-meta-text">載入中...</p>
       </div>
 
-      <div v-else-if="filteredRegistrations.length === 0" class="p-8 text-center text-gray-500">
+      <div v-else-if="filteredRegistrations.length === 0" class="p-8 text-center admin-meta-text">
         <p>沒有找到符合條件的註冊申請</p>
       </div>
 
-      <div v-else class="divide-y divide-gray-200">
+      <div v-else class="admin-registration-list">
         <div
           v-for="registration in filteredRegistrations"
           :key="registration.id"
-          class="p-6 hover:bg-gray-50"
+          class="admin-registration-item p-6"
         >
           <div class="flex items-start justify-between">
             <div class="flex-1 min-w-0">
               <div class="flex items-center space-x-3">
                 <div class="flex-shrink-0">
-                  <div class="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
-                    <span class="text-gray-600 font-medium">
+                  <div class="h-10 w-10 rounded-full admin-avatar flex items-center justify-center">
+                    <span class="admin-avatar-text font-medium">
                       {{ registration.name.charAt(0).toUpperCase() }}
                     </span>
                   </div>
                 </div>
                 <div class="flex-1">
-                  <h3 class="text-lg font-medium text-gray-900">
+                  <h3 class="text-lg font-medium">
                     {{ registration.name }}
                   </h3>
-                  <p class="text-sm text-gray-500">{{ registration.email }}</p>
+                  <p class="text-sm admin-meta-text">{{ registration.email }}</p>
                 </div>
                 <div>
                   <span :class="[
@@ -158,13 +244,13 @@ onMounted(() => {
               </div>
 
               <div class="mt-4">
-                <h4 class="text-sm font-medium text-gray-900 mb-2">申請原因：</h4>
-                <p class="text-sm text-gray-700 bg-gray-50 p-3 rounded-md">
+                <h4 class="text-sm font-medium mb-2">申請原因：</h4>
+                <p class="text-sm admin-reason-text p-3 rounded-md">
                   {{ registration.reason || '未提供申請原因' }}
                 </p>
               </div>
 
-              <div class="mt-4 flex items-center justify-between text-xs text-gray-500">
+              <div class="mt-4 flex items-center justify-between text-xs admin-meta-text">
                 <span>申請時間：{{ new Date(registration.createdAt).toLocaleString() }}</span>
                 <span v-if="registration.updatedAt !== registration.createdAt">
                   處理時間：{{ new Date(registration.updatedAt).toLocaleString() }}
@@ -177,7 +263,7 @@ onMounted(() => {
           <div v-if="registration.status === 'pending'" class="mt-4 flex space-x-3">
             <button
               @click="approveRegistration(registration.id)"
-              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md admin-approve-btn focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
             >
               <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -186,7 +272,7 @@ onMounted(() => {
             </button>
             <button
               @click="rejectRegistration(registration.id)"
-              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md admin-reject-btn focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
             >
               <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />

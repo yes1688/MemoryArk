@@ -45,39 +45,39 @@ type UserRegistrationRequest struct {
 type File struct {
 	ID            uint           `json:"id" gorm:"primaryKey"`
 	Name          string         `json:"name" gorm:"size:255;not null"`
-	OriginalName  string         `json:"original_name" gorm:"size:255;not null"`
-	FilePath      string         `json:"file_path" gorm:"size:500;not null"` // 實體檔案路徑（UUID檔名）
-	VirtualPath   string         `json:"virtual_path" gorm:"size:1000;index"` // 虛擬路徑
-	SHA256Hash    string         `json:"sha256_hash" gorm:"size:64;index"` // 檔案雜湊值（去重用）
-	FileSize      int64          `json:"file_size" gorm:"not null"`
-	MimeType      string         `json:"mime_type" gorm:"size:100"`
-	ThumbnailURL  string         `json:"thumbnail_url" gorm:"size:500"` // 縮圖URL
-	ParentID      *uint          `json:"parent_id"`
-	CategoryID    *uint          `json:"category_id" gorm:"index"` // 分類ID
-	UploadedBy    uint           `json:"uploaded_by" gorm:"not null"`
-	DownloadCount int            `json:"download_count" gorm:"default:0"`
-	IsDirectory   bool           `json:"is_directory" gorm:"default:false"`
-	IsDeleted     bool           `json:"is_deleted" gorm:"default:false"`
-	DeletedAt     *time.Time     `json:"deleted_at"`
-	DeletedBy     *uint          `json:"deleted_by"`
+	OriginalName  string         `json:"originalName" gorm:"size:255;not null"`
+	FilePath      string         `json:"filePath" gorm:"size:500;not null"` // 實體檔案路徑（UUID檔名）
+	VirtualPath   string         `json:"virtualPath" gorm:"size:1000;index"` // 虛擬路徑
+	SHA256Hash    string         `json:"sha256Hash" gorm:"size:64;index"` // 檔案雜湊值（去重用）
+	FileSize      int64          `json:"size" gorm:"not null"`
+	MimeType      string         `json:"mimeType" gorm:"size:100"`
+	ThumbnailURL  string         `json:"thumbnailUrl" gorm:"size:500"` // 縮圖URL
+	ParentID      *uint          `json:"parentId"`
+	CategoryID    *uint          `json:"categoryId" gorm:"index"` // 分類ID
+	UploadedBy    uint           `json:"uploadedBy" gorm:"not null"`
+	DownloadCount int            `json:"downloadCount" gorm:"default:0"`
+	IsDirectory   bool           `json:"isDirectory" gorm:"default:false"`
+	IsDeleted     bool           `json:"isDeleted" gorm:"default:false"`
+	DeletedAt     *time.Time     `json:"deletedAt"`
+	DeletedBy     *uint          `json:"deletedBy"`
 	
 	// 教會特色欄位
 	Description   string         `json:"description" gorm:"type:text"`
 	Tags          string         `json:"tags" gorm:"size:500"`
-	ContentType   string         `json:"content_type" gorm:"size:100"` // 內容類型
+	ContentType   string         `json:"contentType" gorm:"size:100"` // 內容類型
 	Speaker       string         `json:"speaker" gorm:"size:255"` // 講員
-	SermonTitle   string         `json:"sermon_title" gorm:"size:500"` // 講道標題
-	BibleReference string        `json:"bible_reference" gorm:"size:255"` // 經文參考
-	LikeCount     int            `json:"like_count" gorm:"default:0"` // 按讚數
+	SermonTitle   string         `json:"sermonTitle" gorm:"size:500"` // 講道標題
+	BibleReference string        `json:"bibleReference" gorm:"size:255"` // 經文參考
+	LikeCount     int            `json:"likeCount" gorm:"default:0"` // 按讚數
 	
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	CreatedAt     time.Time      `json:"createdAt"`
+	UpdatedAt     time.Time      `json:"updatedAt"`
 	
 	// 關聯
 	Parent        *File          `json:"parent,omitempty" gorm:"foreignKey:ParentID"`
 	Category      *Category      `json:"category,omitempty" gorm:"foreignKey:CategoryID"`
 	Uploader      User           `json:"uploader" gorm:"foreignKey:UploadedBy"`
-	DeletedByUser *User          `json:"deleted_by_user,omitempty" gorm:"foreignKey:DeletedBy"`
+	DeletedByUser *User          `json:"deletedByUser,omitempty" gorm:"foreignKey:DeletedBy"`
 }
 
 // Category 分類模型 - 支援檔案分類管理

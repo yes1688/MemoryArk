@@ -5,17 +5,21 @@
     @click="handleBackdropClick"
   >
     <div
-      class="relative w-full max-w-2xl mx-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl transform transition-all"
+      class="relative w-full max-w-2xl mx-4 rounded-lg shadow-xl transform transition-all"
+      :style="{ backgroundColor: 'var(--bg-elevated)' }"
       @click.stop
     >
       <!-- 標題列 -->
-      <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+      <div class="flex items-center justify-between p-6 border-b" :style="{ borderColor: 'var(--border-light)' }">
+        <h2 class="text-xl font-semibold" :style="{ color: 'var(--text-primary)' }">
           上傳檔案
         </h2>
         <button
           @click="close"
-          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          class="transition-colors"
+          :style="{ color: 'var(--text-tertiary)' }"
+          @mouseenter="$event.target.style.color = 'var(--text-secondary)'"
+          @mouseleave="$event.target.style.color = 'var(--text-tertiary)'"
         >
           <XMarkIcon class="w-6 h-6" />
         </button>
@@ -28,23 +32,32 @@
           ref="dropZone"
           :class="[
             'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
-            isDragOver ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+            isDragOver ? 'border-blue-500' : ''
           ]"
+          :style="{
+            borderColor: isDragOver ? 'var(--color-primary)' : 'var(--border-medium)',
+            backgroundColor: isDragOver ? 'rgba(59, 130, 246, 0.1)' : 'transparent'
+          }"
+          @mouseenter="!isDragOver && ($event.target.style.borderColor = 'var(--border-heavy)')"
+          @mouseleave="!isDragOver && ($event.target.style.borderColor = 'var(--border-medium)')"
           @dragenter.prevent="onDragEnter"
           @dragover.prevent="onDragOver"
           @dragleave.prevent="onDragLeave"
           @drop.prevent="onDrop"
         >
-          <CloudArrowUpIcon class="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
-          <div class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+          <CloudArrowUpIcon class="w-12 h-12 mx-auto mb-4" :style="{ color: 'var(--text-tertiary)' }" />
+          <div class="text-lg font-medium mb-2" :style="{ color: 'var(--text-primary)' }">
             將檔案拖拽到此處
           </div>
-          <div class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          <div class="text-sm mb-4" :style="{ color: 'var(--text-tertiary)' }">
             支援多檔案上傳，單檔最大 100MB
           </div>
           <button
             @click="selectFiles"
-            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+            class="px-4 py-2 text-white rounded-md transition-colors"
+            :style="{ backgroundColor: 'var(--color-primary)' }"
+            @mouseenter="$event.target.style.backgroundColor = 'var(--color-primary-dark)'"
+            @mouseleave="$event.target.style.backgroundColor = 'var(--color-primary)'"
           >
             選擇檔案
           </button>
@@ -59,29 +72,33 @@
 
         <!-- 選中檔案列表 -->
         <div v-if="selectedFiles.length > 0" class="mt-6">
-          <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+          <h3 class="text-sm font-medium mb-3" :style="{ color: 'var(--text-primary)' }">
             選中的檔案 ({{ selectedFiles.length }})
           </h3>
           <div class="max-h-48 overflow-y-auto">
             <div
               v-for="file in selectedFiles"
               :key="file.name + file.size"
-              class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md mb-2"
+              class="flex items-center justify-between p-3 rounded-md mb-2"
+              :style="{ backgroundColor: 'var(--bg-secondary)' }"
             >
               <div class="flex items-center flex-1 min-w-0">
-                <DocumentIcon class="w-5 h-5 text-gray-400 dark:text-gray-500 mr-3 flex-shrink-0" />
+                <DocumentIcon class="w-5 h-5 mr-3 flex-shrink-0" :style="{ color: 'var(--text-tertiary)' }" />
                 <div class="min-w-0 flex-1">
-                  <div class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                  <div class="text-sm font-medium truncate" :style="{ color: 'var(--text-primary)' }">
                     {{ file.name }}
                   </div>
-                  <div class="text-sm text-gray-500 dark:text-gray-400">
+                  <div class="text-sm" :style="{ color: 'var(--text-tertiary)' }">
                     {{ formatFileSize(file.size) }}
                   </div>
                 </div>
               </div>
               <button
                 @click="removeFile(file)"
-                class="ml-2 text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                class="ml-2 transition-colors"
+                :style="{ color: 'var(--text-tertiary)' }"
+                @mouseenter="$event.target.style.color = '#dc2626'"
+                @mouseleave="$event.target.style.color = 'var(--text-tertiary)'"
               >
                 <XMarkIcon class="w-4 h-4" />
               </button>
@@ -92,42 +109,56 @@
         <!-- 上傳進度 -->
         <div v-if="uploading" class="mt-6">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">上傳進度</span>
-            <span class="text-sm text-gray-500 dark:text-gray-400">{{ Math.round(uploadProgress) }}%</span>
+            <span class="text-sm font-medium" :style="{ color: 'var(--text-primary)' }">上傳進度</span>
+            <span class="text-sm" :style="{ color: 'var(--text-tertiary)' }">{{ Math.round(uploadProgress) }}%</span>
           </div>
-          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div class="w-full rounded-full h-2" :style="{ backgroundColor: 'var(--bg-tertiary)' }">
             <div
-              class="bg-blue-600 dark:bg-blue-500 h-2 rounded-full transition-all duration-300"
-              :style="{ width: `${uploadProgress}%` }"
+              class="h-2 rounded-full transition-all duration-300"
+              :style="{ 
+                backgroundColor: 'var(--color-primary)', 
+                width: `${uploadProgress}%` 
+              }"
             ></div>
           </div>
-          <div v-if="currentUploadFile" class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+          <div v-if="currentUploadFile" class="text-sm mt-2" :style="{ color: 'var(--text-tertiary)' }">
             正在上傳: {{ currentUploadFile }}
           </div>
         </div>
 
         <!-- 錯誤訊息 -->
-        <div v-if="error" class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-md">
+        <div v-if="error" class="mt-4 p-3 border rounded-md" :style="{ backgroundColor: 'rgb(254 242 242)', borderColor: 'rgb(252 165 165)' }">
           <div class="flex items-center">
             <ExclamationTriangleIcon class="w-5 h-5 text-red-600 dark:text-red-400 mr-2" />
-            <span class="text-sm text-red-800 dark:text-red-300">{{ error }}</span>
+            <span class="text-sm" :style="{ color: 'rgb(153 27 27)' }">{{ error }}</span>
           </div>
         </div>
       </div>
 
       <!-- 操作按鈕 -->
-      <div class="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
+      <div class="flex items-center justify-end space-x-3 p-6 border-t" :style="{ borderColor: 'var(--border-light)' }">
         <button
           @click="close"
           :disabled="uploading"
-          class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+          class="px-4 py-2 rounded-md transition-colors disabled:opacity-50"
+          :style="{
+            color: 'var(--text-secondary)',
+            backgroundColor: 'var(--bg-secondary)'
+          }"
+          @mouseenter="$event.target.style.backgroundColor = 'var(--bg-tertiary)'"
+          @mouseleave="$event.target.style.backgroundColor = 'var(--bg-secondary)'"
         >
           取消
         </button>
         <button
           @click="startUpload"
           :disabled="selectedFiles.length === 0 || uploading"
-          class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50"
+          class="px-4 py-2 text-white rounded-md transition-colors disabled:opacity-50"
+          :style="{
+            backgroundColor: 'var(--color-primary)'
+          }"
+          @mouseenter="$event.target.style.backgroundColor = 'var(--color-primary-dark)'"
+          @mouseleave="$event.target.style.backgroundColor = 'var(--color-primary)'"
         >
           {{ uploading ? '上傳中...' : '開始上傳' }}
         </button>

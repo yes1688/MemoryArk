@@ -5,17 +5,21 @@
     @click="handleBackdropClick"
   >
     <div
-      class="relative w-full max-w-md mx-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl transform transition-all"
+      class="relative w-full max-w-md mx-4 rounded-lg shadow-xl transform transition-all"
+      :style="{ backgroundColor: 'var(--bg-elevated)' }"
       @click.stop
     >
       <!-- 標題列 -->
-      <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+      <div class="flex items-center justify-between p-6 border-b" :style="{ borderColor: 'var(--border-light)' }">
+        <h2 class="text-xl font-semibold" :style="{ color: 'var(--text-primary)' }">
           新增資料夾
         </h2>
         <button
           @click="close"
-          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          class="transition-colors"
+          :style="{ color: 'var(--text-tertiary)' }"
+          @mouseenter="$event.target.style.color = 'var(--text-secondary)'"
+          @mouseleave="$event.target.style.color = 'var(--text-tertiary)'"
         >
           <XMarkIcon class="w-6 h-6" />
         </button>
@@ -24,7 +28,7 @@
       <!-- 內容區域 -->
       <div class="p-6">
         <div class="mb-4">
-          <label for="folderName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label for="folderName" class="block text-sm font-medium mb-2" :style="{ color: 'var(--text-secondary)' }">
             資料夾名稱
           </label>
           <input
@@ -33,42 +37,58 @@
             v-model="folderName"
             type="text"
             placeholder="請輸入資料夾名稱"
-            :class="[
-              'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:border-transparent transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100',
-              error ? 'border-red-300 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+:class="[
+              'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:border-transparent transition-colors',
+              error ? 'border-red-300 focus:ring-red-500' : 'focus:ring-blue-500'
             ]"
+            :style="{
+              backgroundColor: 'var(--bg-elevated)',
+              color: 'var(--text-primary)',
+              borderColor: error ? '#f87171' : 'var(--border-medium)'
+            }"
             @keyup.enter="createFolder"
             @input="clearError"
           />
         </div>
 
         <!-- 錯誤訊息 -->
-        <div v-if="error" class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-md">
+        <div v-if="error" class="mb-4 p-3 border rounded-md" :style="{ backgroundColor: 'rgb(254 242 242)', borderColor: 'rgb(252 165 165)' }">
           <div class="flex items-center">
             <ExclamationTriangleIcon class="w-5 h-5 text-red-600 dark:text-red-400 mr-2" />
-            <span class="text-sm text-red-800 dark:text-red-300">{{ error }}</span>
+            <span class="text-sm" :style="{ color: 'rgb(153 27 27)' }">{{ error }}</span>
           </div>
         </div>
 
         <!-- 提示文字 -->
-        <div class="text-sm text-gray-500 dark:text-gray-400">
+        <div class="text-sm" :style="{ color: 'var(--text-tertiary)' }">
           資料夾名稱不能包含以下字符：\ / : * ? " &lt; &gt; |
         </div>
       </div>
 
       <!-- 操作按鈕 -->
-      <div class="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
+      <div class="flex items-center justify-end space-x-3 p-6 border-t" :style="{ borderColor: 'var(--border-light)' }">
         <button
           @click="close"
           :disabled="creating"
-          class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+          class="px-4 py-2 rounded-md transition-colors disabled:opacity-50"
+          :style="{
+            color: 'var(--text-secondary)',
+            backgroundColor: 'var(--bg-secondary)'
+          }"
+          @mouseenter="$event.target.style.backgroundColor = 'var(--bg-tertiary)'"
+          @mouseleave="$event.target.style.backgroundColor = 'var(--bg-secondary)'"
         >
           取消
         </button>
         <button
           @click="createFolder"
           :disabled="!folderName.trim() || creating"
-          class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50"
+          class="px-4 py-2 text-white rounded-md transition-colors disabled:opacity-50"
+          :style="{
+            backgroundColor: 'var(--color-primary)'
+          }"
+          @mouseenter="$event.target.style.backgroundColor = 'var(--color-primary-dark)'"
+          @mouseleave="$event.target.style.backgroundColor = 'var(--color-primary)'"
         >
           {{ creating ? '建立中...' : '建立' }}
         </button>

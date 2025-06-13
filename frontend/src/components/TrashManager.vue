@@ -1,17 +1,35 @@
 <template>
   <div class="trash-manager">
+    <!-- 麵包屑導航 -->
+    <div v-if="props.folderId" class="mb-4">
+      <nav class="flex items-center space-x-2 text-sm" style="color: var(--text-secondary);">
+        <button
+          @click="navigateToTrash()"
+          class="nav-link transition-colors"
+        >
+          垃圾桶
+        </button>
+        <svg class="w-4 h-4" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+        <span class="font-medium" style="color: var(--text-primary);">{{ currentFolderName }}</span>
+      </nav>
+    </div>
+
     <!-- 標題列 -->
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center space-x-3">
-        <div class="p-2 bg-red-100 rounded-lg">
-          <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="p-2 rounded-lg" style="background: var(--color-danger-light);">
+          <svg class="w-5 h-5" style="color: var(--color-danger);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
           </svg>
         </div>
         <div>
-          <h2 class="text-xl font-semibold text-gray-900">垃圾桶</h2>
-          <p class="text-sm text-gray-500">
+          <h2 class="text-xl font-semibold" style="color: var(--text-primary);">
+            {{ props.folderId ? currentFolderName : '垃圾桶' }}
+          </h2>
+          <p class="text-sm" style="color: var(--text-tertiary);">
             共 {{ totalFiles }} 個檔案已刪除
           </p>
         </div>
@@ -40,75 +58,29 @@
     </div>
 
     <div v-else-if="files.length === 0" class="text-center py-12">
-      <div class="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-        <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="mx-auto w-24 h-24 rounded-full flex items-center justify-center mb-4" style="background: var(--bg-tertiary);">
+        <svg class="w-12 h-12" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7"/>
         </svg>
       </div>
-      <h3 class="text-lg font-medium text-gray-900 mb-2">垃圾桶是空的</h3>
-      <p class="text-gray-500">刪除的檔案會出現在這裡</p>
+      <h3 class="text-lg font-medium mb-2" style="color: var(--text-primary);">垃圾桶是空的</h3>
+      <p style="color: var(--text-tertiary);">刪除的檔案會出現在這裡</p>
     </div>
 
-    <div v-else class="space-y-2">
-      <div
+    <!-- 使用統一的 FileCard 組件 -->
+    <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <FileCard
         v-for="file in files"
         :key="file.id"
-        class="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow"
-      >
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-3 flex-1 min-w-0">
-            <!-- 檔案圖示 -->
-            <AppFileIcon :file-type="file.mimeType" :is-directory="file.isDirectory" />
-            
-            <!-- 檔案資訊 -->
-            <div class="flex-1 min-w-0">
-              <h3 class="text-sm font-medium text-gray-900 truncate">
-                {{ file.name }}
-              </h3>
-              <div class="flex items-center space-x-4 text-xs text-gray-500 mt-1">
-                <span>{{ formatFileSize(file.size) }}</span>
-                <span>刪除於 {{ formatDate(file.deletedAt) }}</span>
-                <span v-if="file.uploaderName">
-                  由 {{ file.uploaderName }} 刪除
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- 操作按鈕 -->
-          <div class="flex items-center space-x-2">
-            <AppButton
-              @click="restoreFile(file)"
-              size="small"
-              variant="outline"
-              :disabled="loading"
-              class="flex items-center space-x-1"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                      d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
-              </svg>
-              <span>還原</span>
-            </AppButton>
-
-            <AppButton
-              v-if="isAdmin"
-              @click="confirmPermanentDelete(file)"
-              size="small"
-              variant="danger"
-              :disabled="loading"
-              class="flex items-center space-x-1"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                      d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-              <span>永久刪除</span>
-            </AppButton>
-          </div>
-        </div>
-      </div>
+        :file="file"
+        mode="trash"
+        :loading="loading"
+        :show-permanent-delete="isAdmin"
+        @click="handleFileClick"
+        @restore="restoreFile"
+        @permanent-delete="confirmPermanentDelete"
+      />
     </div>
 
     <!-- 分頁 -->
@@ -123,7 +95,7 @@
           上一頁
         </AppButton>
         
-        <span class="flex items-center px-4 text-sm text-gray-700">
+        <span class="flex items-center px-4 text-sm" style="color: var(--text-secondary);">
           第 {{ currentPage }} 頁，共 {{ totalPages }} 頁
         </span>
         
@@ -147,10 +119,10 @@
       variant="danger"
       @confirm="emptyTrash"
     >
-      <p class="text-gray-700">
+      <p style="color: var(--text-secondary);">
         此操作將永久刪除垃圾桶中的所有 {{ totalFiles }} 個檔案，無法復原。
       </p>
-      <p class="text-red-600 font-medium mt-2">
+      <p class="font-medium mt-2" style="color: var(--color-danger);">
         請確認您要繼續執行此操作。
       </p>
     </AppDialog>
@@ -163,7 +135,7 @@
       variant="danger"
       @confirm="permanentDeleteFile"
     >
-      <p class="text-gray-700">
+      <p style="color: var(--text-secondary);">
         此操作將永久刪除檔案 <strong>{{ selectedFile?.name }}</strong>，無法復原。
       </p>
     </AppDialog>
@@ -171,14 +143,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { fileApi } from '@/api/files'
 import { useAuthStore } from '@/stores/auth'
 import type { FileInfo } from '@/types/files'
 import AppButton from '@/components/ui/button/AppButton.vue'
-import AppFileIcon from '@/components/ui/file-icon/AppFileIcon.vue'
 import AppDialog from '@/components/ui/dialog/AppDialog.vue'
 import SkeletonLoader from '@/components/ui/loading/SkeletonLoader.vue'
+import FileCard from '@/components/ui/file-card/FileCard.vue'
+
+// Props
+interface Props {
+  folderId?: number
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  folderId: undefined
+})
+
+const router = useRouter()
+const route = useRoute()
 
 // 狀態
 const loading = ref(false)
@@ -189,6 +174,7 @@ const totalPages = ref(0)
 const showEmptyConfirm = ref(false)
 const showDeleteConfirm = ref(false)
 const selectedFile = ref<FileInfo | null>(null)
+const currentFolderName = ref('')
 
 // Store
 const authStore = useAuthStore()
@@ -200,16 +186,25 @@ const isAdmin = computed(() => authStore.user?.role === 'admin')
 const loadTrashFiles = async (page = 1) => {
   try {
     loading.value = true
-    const response = await fileApi.getTrashFiles({
+    const params: any = {
       page,
       limit: 20
-    })
+    }
+    
+    // 如果指定了 folderId，添加 parent_id 參數以進行階層瀏覽
+    if (props.folderId) {
+      params.parent_id = props.folderId
+    }
+    
+    const response = await fileApi.getTrashFiles(params)
     
     if (response.data) {
-      files.value = response.data.files
-      currentPage.value = response.data.page
-      totalFiles.value = response.data.total
-      totalPages.value = response.data.totalPages
+      files.value = response.data.files || []
+      if (response.meta?.pagination) {
+        currentPage.value = response.meta.pagination.page
+        totalFiles.value = response.meta.pagination.total
+        totalPages.value = response.meta.pagination.totalPages
+      }
     }
   } catch (error) {
     console.error('載入垃圾桶檔案失敗:', error)
@@ -229,10 +224,21 @@ const loadPage = (page: number) => {
 const restoreFile = async (file: FileInfo) => {
   try {
     loading.value = true
-    await fileApi.restoreFile(file.id)
+    const response = await fileApi.restoreFile(file.id)
+    
+    // 顯示成功消息
+    if (response.success && (response as any).message) {
+      console.log((response as any).message)
+    } else if (file.isDirectory) {
+      console.log('資料夾已成功還原')
+    } else {
+      console.log('檔案已成功還原')
+    }
+    
     await loadTrashFiles(currentPage.value)
   } catch (error) {
     console.error('還原檔案失敗:', error)
+    alert('還原失敗，請稍後再試')
   } finally {
     loading.value = false
   }
@@ -282,29 +288,68 @@ const emptyTrash = async () => {
   }
 }
 
-// 格式化檔案大小
-const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+// 導航函數
+const navigateToTrash = () => {
+  router.push('/trash')
 }
 
-// 格式化日期
-const formatDate = (dateString?: string): string => {
-  if (!dateString) return '未知時間'
-  return new Date(dateString).toLocaleString('zh-TW', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+const handleFileClick = (file: FileInfo) => {
+  console.log('🖱️ 點擊檔案:', file.name, 'isDirectory:', file.isDirectory, 'ID:', file.id)
+  
+  if (file.isDirectory) {
+    console.log('🗂️ 這是資料夾，準備導航...')
+    navigateToFolder(file)
+  } else {
+    console.log('📄 這是檔案，不執行任何動作')
+  }
 }
+
+const navigateToFolder = (folder: FileInfo) => {
+  console.log('🗂️ 嘗試導航到垃圾桶資料夾:', folder.name, 'ID:', folder.id)
+  const targetPath = `/trash/folder/${folder.id}`
+  console.log('🛣️ 目標路徑:', targetPath)
+  router.push(targetPath)
+}
+
+// 載入當前資料夾名稱
+const loadCurrentFolderName = async () => {
+  if (props.folderId) {
+    try {
+      // 這裡需要一個 API 來獲取已刪除資料夾的詳情
+      // 暫時使用靜態名稱，稍後可以改進
+      currentFolderName.value = `資料夾 ${props.folderId}`
+    } catch (error) {
+      console.error('載入資料夾名稱失敗:', error)
+      currentFolderName.value = '未知資料夾'
+    }
+  }
+}
+
+// 監聽 folderId 變化
+watch(() => props.folderId, (newFolderId, oldFolderId) => {
+  console.log('📁 垃圾桶資料夾ID變化:', { old: oldFolderId, new: newFolderId })
+  loadTrashFiles()
+  loadCurrentFolderName()
+}, { immediate: true })
+
+// 監聽路由變化
+watch(() => route.path, (newPath, oldPath) => {
+  console.log('🛣️ 垃圾桶路由變化:', { old: oldPath, new: newPath })
+}, { immediate: true })
 
 // 初始化
 onMounted(() => {
   loadTrashFiles()
+  loadCurrentFolderName()
 })
 </script>
+
+<style scoped>
+.nav-link {
+  color: var(--text-secondary);
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+}
+</style>

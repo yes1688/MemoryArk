@@ -127,7 +127,6 @@ const dialogClasses = computed(() => {
   const baseClasses = [
     'dialog-content',
     'relative',
-    'bg-white',
     'rounded-win11-xl',
     'shadow-xl',
     'transform',
@@ -252,18 +251,27 @@ watch(() => props.visible, (newVisible) => {
 
 .dialog-content {
   @apply animate-scale-in;
+  background: var(--bg-elevated);
 }
 
 .dialog-header {
-  @apply flex items-center justify-between p-6 border-b border-gray-200;
+  @apply flex items-center justify-between p-6;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .dialog-title {
-  @apply text-lg font-semibold text-gray-900 leading-6;
+  @apply text-lg font-semibold leading-6;
+  color: var(--text-primary);
 }
 
 .dialog-close {
-  @apply p-2 text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition-colors duration-200 rounded-md hover:bg-gray-100;
+  @apply p-2 focus:outline-none transition-colors duration-200 rounded-md;
+  color: var(--text-tertiary);
+}
+
+.dialog-close:hover {
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
 }
 
 .dialog-body {
@@ -271,7 +279,9 @@ watch(() => props.visible, (newVisible) => {
 }
 
 .dialog-footer {
-  @apply p-6 border-t border-gray-200 bg-gray-50;
+  @apply p-6;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-secondary);
 }
 
 .dialog-actions {

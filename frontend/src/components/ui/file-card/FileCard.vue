@@ -148,9 +148,9 @@ const emit = defineEmits<Emits>()
 const cardClasses = computed(() => {
   if (props.mode === 'trash') {
     return {
-      'bg-white border rounded-lg p-4 transition-all duration-200': true,
-      'hover:shadow-lg hover:border-blue-300 hover:bg-blue-50': props.file.isDirectory,
-      'hover:shadow-md': !props.file.isDirectory
+      'trash-card rounded-lg p-4 transition-all duration-200': true,
+      'trash-folder-card': props.file.isDirectory,
+      'trash-file-card': !props.file.isDirectory
     }
   }
   return {}
@@ -247,5 +247,22 @@ const formatDate = (dateString?: string): string => {
 
 .folder-card:hover .file-name svg {
   animation: slideRight 0.5s ease-in-out;
+}
+
+/* 垃圾桶模式卡片樣式 */
+.trash-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+}
+
+.trash-folder-card:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-dark);
+  background: var(--bg-secondary);
+  transform: translateY(-2px);
+}
+
+.trash-file-card:hover {
+  box-shadow: var(--shadow-md);
 }
 </style>

@@ -636,6 +636,50 @@ func (h *FileHandler) UpdateFile(c *gin.Context) {
 	})
 }
 
+// deleteFileRecursive 遞迴刪除檔案/資料夾（內部函數）
+func (h *FileHandler) deleteFileRecursive(fileID uint, userID uint, tx *gorm.DB) (int, error) {
+	var file models.File
+	if err := tx.First(&file, fileID).Error; err != nil {
+		return 0, err
+	}
+	
+	// 如果已經被刪除，跳過
+	if file.IsDeleted {
+		return 0, nil
+	}
+	
+	deletedCount := 0
+	
+	// 如果是資料夾，先遞迴刪除子項目
+	if file.IsDirectory {
+		var children []models.File
+		if err := tx.Where("parent_id = ? AND is_deleted = ?", fileID, false).Find(&children).Error; err != nil {
+			return deletedCount, err
+		}
+		
+		for _, child := range children {
+			childCount, err := h.deleteFileRecursive(child.ID, userID, tx)
+			if err != nil {
+				return deletedCount, err
+			}
+			deletedCount += childCount
+		}
+	}
+	
+	// 軟刪除當前項目
+	now := time.Now()
+	file.IsDeleted = true
+	file.DeletedAt = &now
+	file.DeletedBy = &userID
+	
+	if err := tx.Save(&file).Error; err != nil {
+		return deletedCount, err
+	}
+	
+	deletedCount++
+	return deletedCount, nil
+}
+
 // DeleteFile 刪除檔案（移至垃圾桶）
 func (h *FileHandler) DeleteFile(c *gin.Context) {
 	fileID := c.Param("id")
@@ -664,16 +708,41 @@ func (h *FileHandler) DeleteFile(c *gin.Context) {
 		return
 	}
 	
-	// 軟刪除
-	now := time.Now()
-	file.IsDeleted = true
-	file.DeletedAt = &now
-	
-	if userIDVal, ok := userID.(uint); ok {
-		file.DeletedBy = &userIDVal
+	userIDVal, ok := userID.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "INVALID_USER_ID",
+				"message": "無效的用戶ID",
+			},
+		})
+		return
 	}
 	
-	if err := h.db.Save(&file).Error; err != nil {
+	// 開始事務操作
+	tx := h.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	
+	if err := tx.Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "TRANSACTION_ERROR",
+				"message": "事務開始失敗",
+			},
+		})
+		return
+	}
+	
+	// 遞迴刪除檔案/資料夾
+	deletedCount, err := h.deleteFileRecursive(file.ID, userIDVal, tx)
+	if err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error": gin.H{
@@ -684,11 +753,86 @@ func (h *FileHandler) DeleteFile(c *gin.Context) {
 		return
 	}
 	
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "COMMIT_FAILED",
+				"message": "提交事務失敗",
+			},
+		})
+		return
+	}
+	
+	// 重新載入檔案資訊以返回給前端
+	if err := h.db.First(&file, fileID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "RELOAD_FAILED",
+				"message": "重新載入檔案失敗",
+			},
+		})
+		return
+	}
+	
+	message := "檔案已移至垃圾桶"
+	if file.IsDirectory && deletedCount > 1 {
+		message = fmt.Sprintf("資料夾及其 %d 個子項目已移至垃圾桶", deletedCount-1)
+	}
+	
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "檔案已移至垃圾桶",
-		"data": file,
+		"message": message,
+		"data": gin.H{
+			"file": file,
+			"deletedCount": deletedCount,
+		},
 	})
+}
+
+// restoreFileRecursive 遞迴還原檔案/資料夾（內部函數）
+func (h *FileHandler) restoreFileRecursive(fileID uint, tx *gorm.DB) (int, error) {
+	var file models.File
+	if err := tx.First(&file, fileID).Error; err != nil {
+		return 0, err
+	}
+	
+	// 如果沒有被刪除，跳過
+	if !file.IsDeleted {
+		return 0, nil
+	}
+	
+	restoredCount := 0
+	
+	// 還原當前項目
+	file.IsDeleted = false
+	file.DeletedAt = nil
+	file.DeletedBy = nil
+	
+	if err := tx.Save(&file).Error; err != nil {
+		return restoredCount, err
+	}
+	
+	restoredCount++
+	
+	// 如果是資料夾，遞迴還原子項目
+	if file.IsDirectory {
+		var children []models.File
+		if err := tx.Where("parent_id = ? AND is_deleted = ?", fileID, true).Find(&children).Error; err != nil {
+			return restoredCount, err
+		}
+		
+		for _, child := range children {
+			childCount, err := h.restoreFileRecursive(child.ID, tx)
+			if err != nil {
+				return restoredCount, err
+			}
+			restoredCount += childCount
+		}
+	}
+	
+	return restoredCount, nil
 }
 
 // RestoreFile 還原檔案
@@ -718,12 +862,29 @@ func (h *FileHandler) RestoreFile(c *gin.Context) {
 		return
 	}
 	
-	// 還原檔案
-	file.IsDeleted = false
-	file.DeletedAt = nil
-	file.DeletedBy = nil
+	// 開始事務操作
+	tx := h.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 	
-	if err := h.db.Save(&file).Error; err != nil {
+	if err := tx.Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "TRANSACTION_ERROR",
+				"message": "事務開始失敗",
+			},
+		})
+		return
+	}
+	
+	// 遞迴還原檔案/資料夾
+	restoredCount, err := h.restoreFileRecursive(file.ID, tx)
+	if err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error": gin.H{
@@ -734,10 +895,41 @@ func (h *FileHandler) RestoreFile(c *gin.Context) {
 		return
 	}
 	
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "COMMIT_FAILED",
+				"message": "提交事務失敗",
+			},
+		})
+		return
+	}
+	
+	// 重新載入檔案資訊以返回給前端
+	if err := h.db.First(&file, fileID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "RELOAD_FAILED",
+				"message": "重新載入檔案失敗",
+			},
+		})
+		return
+	}
+	
+	message := "檔案還原成功"
+	if file.IsDirectory && restoredCount > 1 {
+		message = fmt.Sprintf("資料夾及其 %d 個子項目還原成功", restoredCount-1)
+	}
+	
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "檔案還原成功",
-		"data": file,
+		"message": message,
+		"data": gin.H{
+			"file": file,
+			"restoredCount": restoredCount,
+		},
 	})
 }
 
@@ -1126,6 +1318,7 @@ func (h *FileHandler) GetTrash(c *gin.Context) {
 	
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	parentIDStr := c.DefaultQuery("parent_id", "")
 	
 	if page < 1 {
 		page = 1
@@ -1139,21 +1332,82 @@ func (h *FileHandler) GetTrash(c *gin.Context) {
 	var files []models.File
 	var total int64
 	
-	query := h.db.Model(&models.File{}).Where("is_deleted = ?", true)
+	// 檢查是否指定了 parent_id（垃圾桶階層瀏覽）
+	if parentIDStr != "" {
+		// 階層瀏覽模式：顯示指定已刪除資料夾的子項目
+		parentID, err := strconv.ParseUint(parentIDStr, 10, 32)
+		if err != nil {
+			api.Error(c, http.StatusBadRequest, api.ErrInvalidRequest, "無效的父資料夾ID")
+			return
+		}
+		
+		// 確認父資料夾確實存在且已被刪除
+		var parentFolder models.File
+		if err := h.db.Where("id = ? AND is_deleted = ? AND is_directory = ?", parentID, true, true).First(&parentFolder).Error; err != nil {
+			api.Error(c, http.StatusNotFound, api.ErrFileNotFound, "父資料夾不存在或未被刪除")
+			return
+		}
+		
+		// 獲取該已刪除資料夾的所有已刪除子項目
+		query := h.db.Model(&models.File{}).Where("parent_id = ? AND is_deleted = ?", parentID, true)
+		
+		// 計算總數
+		if err := query.Count(&total).Error; err != nil {
+			api.Error(c, http.StatusInternalServerError, api.ErrDatabaseError, "查詢垃圾桶檔案失敗")
+			return
+		}
+		
+		// 獲取檔案列表
+		if err := query.Preload("Uploader").Preload("DeletedByUser").Preload("Category").
+			Order("is_directory DESC, name ASC").
+			Offset(offset).Limit(limit).
+			Find(&files).Error; err != nil {
+			api.Error(c, http.StatusInternalServerError, api.ErrDatabaseError, "查詢垃圾桶檔案失敗")
+			return
+		}
+	} else {
+		// 頂級視圖模式：只顯示頂級已刪除項目
+		// 方法：獲取所有已刪除的項目，然後篩選出父項目未被刪除的項目
+		// 1. 獲取所有已刪除項目
+		var allDeleted []models.File
+		h.db.Where("is_deleted = ?", true).Find(&allDeleted)
 	
-	// 計算總數
-	if err := query.Count(&total).Error; err != nil {
-		api.Error(c, http.StatusInternalServerError, api.ErrDatabaseError, "查詢垃圾桶檔案失敗")
-		return
-	}
+		// 2. 篩選頂級項目（父項目未被刪除或為NULL）
+		var topLevelDeleted []models.File
+		for _, file := range allDeleted {
+			if file.ParentID == nil {
+				// 頂級項目（沒有父項目）
+				topLevelDeleted = append(topLevelDeleted, file)
+			} else {
+				// 檢查父項目是否被刪除
+				parentDeleted := false
+				for _, parent := range allDeleted {
+					if parent.ID == *file.ParentID {
+						parentDeleted = true
+						break
+					}
+				}
+				if !parentDeleted {
+					// 父項目沒有被刪除，這是一個頂級刪除項目
+					topLevelDeleted = append(topLevelDeleted, file)
+				}
+			}
+		}
 	
-	// 獲取檔案列表
-	if err := query.Preload("Uploader").Preload("DeletedByUser").Preload("Category").
-		Order("deleted_at DESC").
-		Offset(offset).Limit(limit).
-		Find(&files).Error; err != nil {
-		api.Error(c, http.StatusInternalServerError, api.ErrDatabaseError, "查詢垃圾桶檔案失敗")
-		return
+		// 準備返回結果
+		files = topLevelDeleted
+		total = int64(len(topLevelDeleted))
+	
+		// 應用分頁
+		if offset < len(files) {
+			end := offset + limit
+			if end > len(files) {
+				end = len(files)
+			}
+			files = files[offset:end]
+		} else {
+			files = []models.File{}
+		}
 	}
 	
 	// 為圖片檔案生成縮圖URL

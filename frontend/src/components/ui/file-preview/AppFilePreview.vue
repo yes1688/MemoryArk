@@ -16,9 +16,9 @@
             size="sm"
           />
           <div>
-            <h3 class="text-lg font-semibold text-gray-900">{{ file?.name }}</h3>
-            <p v-if="file && !file.isDirectory" class="text-sm text-gray-500">
-              {{ formatFileSize(file.size) }} • {{ getFileTypeLabel(file.mimeType) }}
+            <h3 class="text-lg font-semibold" style="color: var(--text-primary);">{{ file?.name }}</h3>
+            <p v-if="file && !file.isDirectory" class="text-sm" style="color: var(--text-tertiary);">
+              {{ formatFileSize(file.size || 0) }} • {{ getFileTypeLabel(file.mimeType) }}
             </p>
           </div>
         </div>
@@ -62,7 +62,7 @@
       <div v-if="isLoading" class="flex items-center justify-center h-64">
         <div class="text-center">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p class="text-sm text-gray-600">載入中...</p>
+          <p class="text-sm" style="color: var(--text-secondary);">載入中...</p>
         </div>
       </div>
       
@@ -72,20 +72,20 @@
           <svg class="w-16 h-16 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
           </svg>
-          <p class="text-lg font-medium text-gray-900">無法載入預覽</p>
-          <p class="text-sm text-gray-600 mt-2">{{ error }}</p>
+          <p class="text-lg font-medium" style="color: var(--text-primary);">無法載入預覽</p>
+          <p class="text-sm mt-2" style="color: var(--text-secondary);">{{ error }}</p>
         </div>
       </div>
       
       <!-- 圖片預覽 -->
-      <div v-else-if="previewType === 'image'" class="flex items-center justify-center h-full bg-gray-50 min-h-[400px]">
+      <div v-else-if="previewType === 'image'" class="flex items-center justify-center h-full min-h-[400px]" style="background: var(--bg-secondary);">
         <div v-if="isLoading" class="text-center">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p class="text-gray-600">載入圖片中...</p>
+          <p style="color: var(--text-secondary);">載入圖片中...</p>
         </div>
         <div v-else-if="!previewUrl || previewUrl === ''" class="text-center">
-          <p class="text-gray-600">準備載入圖片...</p>
-          <p class="text-xs text-gray-500 mt-2">Debug: previewUrl = "{{ previewUrl }}"</p>
+          <p style="color: var(--text-secondary);">準備載入圖片...</p>
+          <p class="text-xs mt-2" style="color: var(--text-tertiary);">Debug: previewUrl = "{{ previewUrl }}"</p>
         </div>
         <img 
           v-else
@@ -327,7 +327,7 @@ const handleClose = () => {
 }
 
 const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B'
+  if (!bytes || bytes === 0 || isNaN(bytes)) return '0 B'
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))

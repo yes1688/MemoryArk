@@ -31,18 +31,39 @@ onMounted(() => {
 })
 </script>
 
+<style scoped>
+/* 標籤導航樣式 */
+.admin-tab {
+  color: var(--text-secondary);
+}
+
+.admin-tab:hover {
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+}
+
+.admin-tab-active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.admin-tab-inactive {
+  border-color: transparent;
+}
+</style>
+
 <template>
   <div class="h-full flex flex-col">
     <!-- 頁面標題 -->
-    <div class="bg-white border-b p-6">
+    <div class="p-6" style="background: var(--bg-elevated); border-bottom: 1px solid var(--border-light);">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">系統管理</h1>
-        <p class="text-sm text-gray-600">管理用戶、檔案和系統設定</p>
+        <h1 class="text-2xl font-bold" style="color: var(--text-primary);">系統管理</h1>
+        <p class="text-sm" style="color: var(--text-secondary);">管理用戶、檔案和系統設定</p>
       </div>
     </div>
 
     <!-- 標籤導航 -->
-    <div class="bg-white border-b">
+    <div style="background: var(--bg-elevated); border-bottom: 1px solid var(--border-light);">
       <nav class="px-6">
         <div class="flex space-x-8">
           <button
@@ -50,10 +71,8 @@ onMounted(() => {
             :key="tab.id"
             @click="switchTab(tab.id)"
             :class="[
-              'py-4 px-1 border-b-2 font-medium text-sm transition-colors',
-              activeTab === tab.id
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              'py-4 px-1 border-b-2 font-medium text-sm transition-colors admin-tab',
+              activeTab === tab.id ? 'admin-tab-active' : 'admin-tab-inactive'
             ]"
           >
             <span class="mr-2">{{ tab.icon }}</span>

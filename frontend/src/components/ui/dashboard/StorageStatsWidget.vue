@@ -1,8 +1,8 @@
 <template>
-  <div class="widget storage-widget bg-white dark:bg-gray-800 rounded-win11 shadow-win11 border border-gray-200 dark:border-gray-700">
+  <div class="widget storage-widget rounded-win11 shadow-win11 border" :style="{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border-light)' }">
     <!-- 小工具標題 -->
-    <div class="widget-header flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-      <h3 class="flex items-center space-x-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+    <div class="widget-header flex items-center justify-between p-4 border-b" :style="{ borderColor: 'var(--border-light)' }">
+      <h3 class="flex items-center space-x-2 text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">
         <svg class="w-5 h-5 text-church-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
         </svg>
@@ -11,7 +11,10 @@
       
       <button
         @click="refreshStats"
-        class="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200"
+        class="p-2 rounded-lg transition-colors duration-200"
+        :style="{ color: 'var(--text-tertiary)' }"
+        @mouseenter="$event.target.style.color = 'var(--text-secondary)'; $event.target.style.backgroundColor = 'var(--bg-secondary)'"
+        @mouseleave="$event.target.style.color = 'var(--text-tertiary)'; $event.target.style.backgroundColor = 'transparent'"
         title="重新整理"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -30,7 +33,7 @@
               cx="60"
               cy="60"
               r="50"
-              stroke="#e5e7eb"
+:stroke="isDarkMode ? '#374151' : '#e5e7eb'"
               stroke-width="8"
               fill="none"
             />
@@ -52,8 +55,8 @@
           <!-- 中心內容 -->
           <div class="absolute inset-0 flex items-center justify-center">
             <div class="text-center">
-              <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ Math.round(usagePercent) }}%</p>
-              <p class="text-xs text-gray-500 dark:text-gray-400">已使用</p>
+              <p class="text-2xl font-bold" :style="{ color: 'var(--text-primary)' }">{{ Math.round(usagePercent) }}%</p>
+              <p class="text-xs" :style="{ color: 'var(--text-tertiary)' }">已使用</p>
             </div>
           </div>
         </div>
@@ -62,22 +65,22 @@
       <!-- 詳細資訊 -->
       <div class="storage-details space-y-3 mb-6">
         <div class="detail-item flex justify-between items-center">
-          <span class="text-sm text-gray-600 dark:text-gray-400">已使用</span>
-          <span class="font-medium text-gray-900 dark:text-gray-100">{{ formatSize(usedSpace) }}</span>
+          <span class="text-sm" :style="{ color: 'var(--text-secondary)' }">已使用</span>
+          <span class="font-medium" :style="{ color: 'var(--text-primary)' }">{{ formatSize(usedSpace) }}</span>
         </div>
         <div class="detail-item flex justify-between items-center">
-          <span class="text-sm text-gray-600 dark:text-gray-400">可用</span>
-          <span class="font-medium text-green-600 dark:text-green-400">{{ formatSize(freeSpace) }}</span>
+          <span class="text-sm" :style="{ color: 'var(--text-secondary)' }">可用</span>
+          <span class="font-medium" :style="{ color: '#22c55e' }">{{ formatSize(freeSpace) }}</span>
         </div>
         <div class="detail-item flex justify-between items-center">
-          <span class="text-sm text-gray-600 dark:text-gray-400">總容量</span>
-          <span class="font-medium text-gray-900 dark:text-gray-100">{{ formatSize(totalSpace) }}</span>
+          <span class="text-sm" :style="{ color: 'var(--text-secondary)' }">總容量</span>
+          <span class="font-medium" :style="{ color: 'var(--text-primary)' }">{{ formatSize(totalSpace) }}</span>
         </div>
       </div>
       
       <!-- 檔案類型分布 -->
       <div class="type-breakdown">
-        <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">類型分布</h4>
+        <h4 class="text-sm font-medium mb-3" :style="{ color: 'var(--text-primary)' }">類型分布</h4>
         <div class="type-bars space-y-3">
           <div 
             v-for="type in fileTypes"
@@ -90,17 +93,17 @@
                   class="w-3 h-3 rounded-full"
                   :style="{ backgroundColor: type.color }"
                 ></div>
-                <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4" :style="{ color: 'var(--text-tertiary)' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="type.iconPath"/>
                 </svg>
-                <span class="text-sm text-gray-700 dark:text-gray-300">{{ type.label }}</span>
+                <span class="text-sm" :style="{ color: 'var(--text-secondary)' }">{{ type.label }}</span>
               </div>
               <div class="text-right">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ formatSize(type.size) }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">({{ Math.round(type.percentage) }}%)</span>
+                <span class="text-sm font-medium" :style="{ color: 'var(--text-primary)' }">{{ formatSize(type.size) }}</span>
+                <span class="text-xs ml-1" :style="{ color: 'var(--text-tertiary)' }">({{ Math.round(type.percentage) }}%)</span>
               </div>
             </div>
-            <div class="bar-track bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div class="bar-track rounded-full h-2" :style="{ backgroundColor: 'var(--bg-tertiary)' }">
               <div 
                 class="bar-fill rounded-full h-full transition-all duration-1000 ease-out"
                 :style="{ 
@@ -114,12 +117,12 @@
       </div>
       
       <!-- 警告訊息 -->
-      <div v-if="showWarning" class="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+      <div v-if="showWarning" class="mt-4 p-3 border rounded-lg" :style="{ backgroundColor: 'rgb(254 252 232)', borderColor: 'rgb(251 191 36)' }">
         <div class="flex items-center space-x-2">
           <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
           </svg>
-          <p class="text-sm text-yellow-800 dark:text-yellow-300">
+          <p class="text-sm" :style="{ color: 'rgb(146 64 14)' }">
             {{ warningMessage }}
           </p>
         </div>
@@ -127,17 +130,23 @@
     </div>
     
     <!-- 小工具底部 -->
-    <div class="widget-footer p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 rounded-b-win11">
+    <div class="widget-footer p-4 border-t rounded-b-win11" :style="{ borderColor: 'var(--border-light)', backgroundColor: 'var(--bg-secondary)' }">
       <div class="flex items-center justify-between">
         <button
           @click="cleanupFiles"
-          class="text-sm text-church-primary hover:text-church-primary-light font-medium"
+          class="text-sm font-medium transition-colors"
+          :style="{ color: 'var(--color-primary)' }"
+          @mouseenter="$event.target.style.color = 'var(--color-primary-light)'"
+          @mouseleave="$event.target.style.color = 'var(--color-primary)'"
         >
           清理檔案
         </button>
         <button
           @click="manageStorage"
-          class="text-sm text-church-primary hover:text-church-primary-light font-medium"
+          class="text-sm font-medium transition-colors"
+          :style="{ color: 'var(--color-primary)' }"
+          @mouseenter="$event.target.style.color = 'var(--color-primary-light)'"
+          @mouseleave="$event.target.style.color = 'var(--color-primary)'"
         >
           管理儲存空間
         </button>
@@ -172,6 +181,11 @@ const filesStore = useFilesStore()
 // 狀態管理
 const storageStats = ref<StorageStats | null>(null)
 const isLoading = ref(false)
+
+// 深色模式檢查
+const isDarkMode = computed(() => {
+  return document.documentElement.classList.contains('dark')
+})
 
 // 獲取儲存統計
 const fetchStorageStats = async () => {

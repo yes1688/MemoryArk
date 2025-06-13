@@ -1,17 +1,7 @@
 <template>
   <div :class="iconContainerClasses">
-    <!-- Thumbnail image (for image files) -->
-    <img
-      v-if="showThumbnail && thumbnailUrl"
-      :src="thumbnailUrl"
-      :alt="fileName"
-      class="file-thumbnail"
-      @error="thumbnailError = true"
-      @load="thumbnailLoaded = true"
-    />
-    
-    <!-- Folder icon -->
-    <div v-else-if="actualIsFolder" :class="folderIconClasses">
+    <!-- Folder icon (優先顯示) -->
+    <div v-if="actualIsFolder" :class="folderIconClasses">
       <svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full">
         <path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z"/>
       </svg>
@@ -24,6 +14,16 @@
       </div>
     </div>
     
+    <!-- Thumbnail image (for image files, non-folders only) -->
+    <img
+      v-else-if="showThumbnail && thumbnailUrl && !actualIsFolder"
+      :src="thumbnailUrl"
+      :alt="fileName"
+      class="file-thumbnail"
+      @error="thumbnailError = true"
+      @load="thumbnailLoaded = true"
+    />
+    
     <!-- File type icon -->
     <div v-else :class="fileIconClasses">
       <component :is="iconComponent" class="w-full h-full" />
@@ -34,8 +34,8 @@
       </div>
     </div>
     
-    <!-- Loading placeholder -->
-    <div v-if="showThumbnail && !thumbnailLoaded && !thumbnailError" class="thumbnail-loading">
+    <!-- Loading placeholder (只對非資料夾檔案顯示) -->
+    <div v-if="showThumbnail && !thumbnailLoaded && !thumbnailError && !actualIsFolder" class="thumbnail-loading">
       <div class="animate-spin">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -89,6 +89,9 @@ const actualIsFolder = computed(() => props.isFolder || props.isDirectory)
 
 const thumbnailLoaded = ref(false)
 const thumbnailError = ref(false)
+
+// Generate unique ID for gradient definitions to avoid conflicts
+const uniqueId = ref(`icon-${Math.random().toString(36).substr(2, 9)}`)
 
 // Extract file extension
 const fileExtension = computed(() => {
@@ -189,7 +192,7 @@ const iconContainerClasses = computed(() => [
 // Folder icon classes
 const folderIconClasses = computed(() => [
   'relative',
-  'text-yellow-500',
+  'text-amber-600',
   'w-full',
   'h-full'
 ])
@@ -305,8 +308,16 @@ const CodeIcon = {
   line-height: 1;
 }
 
+.folder-container {
+  @apply relative w-full h-full flex items-center justify-center;
+}
+
+.folder-icon {
+  @apply drop-shadow-sm;
+}
+
 .folder-expanded-indicator {
-  @apply absolute -bottom-1 -right-1 bg-yellow-600 text-white rounded-full p-0.5;
+  @apply absolute -bottom-1 -right-1 bg-amber-600 text-white rounded-full p-0.5 shadow-lg;
 }
 
 .thumbnail-loading {
