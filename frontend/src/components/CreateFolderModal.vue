@@ -18,8 +18,8 @@
           @click="close"
           class="transition-colors"
           :style="{ color: 'var(--text-tertiary)' }"
-          @mouseenter="$event.target.style.color = 'var(--text-secondary)'"
-          @mouseleave="$event.target.style.color = 'var(--text-tertiary)'"
+          @mouseenter="($event.target as HTMLElement).style.color = 'var(--text-secondary)'"
+          @mouseleave="($event.target as HTMLElement).style.color = 'var(--text-tertiary)'"
         >
           <XMarkIcon class="w-6 h-6" />
         </button>
@@ -75,8 +75,8 @@
             color: 'var(--text-secondary)',
             backgroundColor: 'var(--bg-secondary)'
           }"
-          @mouseenter="$event.target.style.backgroundColor = 'var(--bg-tertiary)'"
-          @mouseleave="$event.target.style.backgroundColor = 'var(--bg-secondary)'"
+          @mouseenter="($event.target as HTMLElement).style.backgroundColor = 'var(--bg-tertiary)'"
+          @mouseleave="($event.target as HTMLElement).style.backgroundColor = 'var(--bg-secondary)'"
         >
           取消
         </button>
@@ -87,8 +87,8 @@
           :style="{
             backgroundColor: 'var(--color-primary)'
           }"
-          @mouseenter="$event.target.style.backgroundColor = 'var(--color-primary-dark)'"
-          @mouseleave="$event.target.style.backgroundColor = 'var(--color-primary)'"
+          @mouseenter="($event.target as HTMLElement).style.backgroundColor = 'var(--color-primary-dark)'"
+          @mouseleave="($event.target as HTMLElement).style.backgroundColor = 'var(--color-primary)'"
         >
           {{ creating ? '建立中...' : '建立' }}
         </button>

@@ -14,8 +14,10 @@ const uploadForm = ref({
 })
 
 const selectedFile = ref<File | null>(null)
+const selectedFiles = ref<File[]>([])
 const isUploading = ref(false)
 const uploadSuccess = ref(false)
+const uploadProgress = ref(0)
 
 const categories = [
   { id: 'image', name: '圖片', icon: '🖼️' },
@@ -27,6 +29,7 @@ const categories = [
 
 const handleFileSelect = (file: File) => {
   selectedFile.value = file
+  selectedFiles.value = [] // 清除多檔案選擇
   // 根據檔案類型自動選擇分類
   const mimeType = file.type
   if (mimeType.startsWith('image/')) {
@@ -42,31 +45,55 @@ const handleFileSelect = (file: File) => {
   }
 }
 
+const handleFilesSelect = (files: File[]) => {
+  selectedFiles.value = files
+  selectedFile.value = null // 清除單檔案選擇
+  // 對於多檔案，設為「其他」分類
+  uploadForm.value.category = 'other'
+}
+
 const handleUpload = async () => {
-  if (!selectedFile.value || !uploadForm.value.category) {
+  if ((!selectedFile.value && selectedFiles.value.length === 0) || !uploadForm.value.category) {
     return
   }
 
   isUploading.value = true
+  uploadProgress.value = 0
 
   try {
-    const result = await fileStore.uploadFile(selectedFile.value)
-
-    if (result) {
-      uploadSuccess.value = true
-      setTimeout(() => {
-        router.push('/')
-      }, 2000)
+    if (selectedFiles.value.length > 0) {
+      // 多檔案上傳
+      const totalFiles = selectedFiles.value.length
+      
+      for (let i = 0; i < totalFiles; i++) {
+        const file = selectedFiles.value[i]
+        // 如果是資料夾內的檔案，傳遞相對路徑
+        const relativePath = file.webkitRelativePath || undefined
+        await fileStore.uploadFile(file, fileStore.currentFolderId || undefined, relativePath)
+        uploadProgress.value = ((i + 1) / totalFiles) * 100
+      }
+    } else if (selectedFile.value) {
+      // 單檔案上傳
+      await fileStore.uploadFile(selectedFile.value)
+      uploadProgress.value = 100
     }
+
+    uploadSuccess.value = true
+    setTimeout(() => {
+      router.push('/')
+    }, 2000)
   } catch (error) {
     console.error('上傳失敗:', error)
   } finally {
     isUploading.value = false
+    uploadProgress.value = 0
   }
 }
 
 const resetForm = () => {
   selectedFile.value = null
+  selectedFiles.value = []
+  uploadProgress.value = 0
   uploadForm.value = {
     category: '',
     description: '',
@@ -164,15 +191,18 @@ const resetForm = () => {
             <!-- 檔案選擇器 -->
             <FileUploader
               :selected-file="selectedFile"
+              :selected-files="selectedFiles"
+              :support-folder="true"
               :is-uploading="isUploading"
-              :upload-progress="fileStore.uploadProgress"
+              :upload-progress="uploadProgress"
               @file-select="handleFileSelect"
+              @files-select="handleFilesSelect"
               @upload="handleUpload"
               @reset="resetForm"
             />
 
             <!-- 檔案分類 -->
-            <div v-if="selectedFile">
+            <div v-if="selectedFile || selectedFiles.length > 0">
               <label class="block text-sm font-medium mb-3" style="color: var(--text-secondary);">檔案分類</label>
               <div class="grid grid-cols-5 gap-3">
                 <button
@@ -191,7 +221,7 @@ const resetForm = () => {
             </div>
 
             <!-- 檔案描述 -->
-            <div v-if="selectedFile">
+            <div v-if="selectedFile || selectedFiles.length > 0">
               <label for="description" class="block text-sm font-medium" style="color: var(--text-secondary);">檔案描述</label>
               <textarea
                 id="description"
@@ -204,7 +234,7 @@ const resetForm = () => {
             </div>
 
             <!-- 標籤 -->
-            <div v-if="selectedFile">
+            <div v-if="selectedFile || selectedFiles.length > 0">
               <label for="tags" class="block text-sm font-medium" style="color: var(--text-secondary);">標籤</label>
               <input
                 id="tags"

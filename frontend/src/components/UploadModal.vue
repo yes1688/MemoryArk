@@ -18,8 +18,8 @@
           @click="close"
           class="transition-colors"
           :style="{ color: 'var(--text-tertiary)' }"
-          @mouseenter="$event.target.style.color = 'var(--text-secondary)'"
-          @mouseleave="$event.target.style.color = 'var(--text-tertiary)'"
+          @mouseenter="($event.target as HTMLElement).style.color = 'var(--text-secondary)'"
+          @mouseleave="($event.target as HTMLElement).style.color = 'var(--text-tertiary)'"
         >
           <XMarkIcon class="w-6 h-6" />
         </button>
@@ -38,8 +38,8 @@
             borderColor: isDragOver ? 'var(--color-primary)' : 'var(--border-medium)',
             backgroundColor: isDragOver ? 'rgba(59, 130, 246, 0.1)' : 'transparent'
           }"
-          @mouseenter="!isDragOver && ($event.target.style.borderColor = 'var(--border-heavy)')"
-          @mouseleave="!isDragOver && ($event.target.style.borderColor = 'var(--border-medium)')"
+          @mouseenter="!isDragOver && (($event.target as HTMLElement).style.borderColor = 'var(--border-heavy)')"
+          @mouseleave="!isDragOver && (($event.target as HTMLElement).style.borderColor = 'var(--border-medium)')"
           @dragenter.prevent="onDragEnter"
           @dragover.prevent="onDragOver"
           @dragleave.prevent="onDragLeave"
@@ -47,22 +47,47 @@
         >
           <CloudArrowUpIcon class="w-12 h-12 mx-auto mb-4" :style="{ color: 'var(--text-tertiary)' }" />
           <div class="text-lg font-medium mb-2" :style="{ color: 'var(--text-primary)' }">
-            將檔案拖拽到此處
+            將檔案或資料夾拖拽到此處
           </div>
           <div class="text-sm mb-4" :style="{ color: 'var(--text-tertiary)' }">
-            支援多檔案上傳，單檔最大 100MB
+            支援多檔案或整個資料夾上傳，單檔最大 100MB
           </div>
-          <button
-            @click="selectFiles"
-            class="px-4 py-2 text-white rounded-md transition-colors"
-            :style="{ backgroundColor: 'var(--color-primary)' }"
-            @mouseenter="$event.target.style.backgroundColor = 'var(--color-primary-dark)'"
-            @mouseleave="$event.target.style.backgroundColor = 'var(--color-primary)'"
-          >
-            選擇檔案
-          </button>
+          <div class="flex items-center justify-center space-x-3">
+            <button
+              @click="selectFiles"
+              class="px-4 py-2 text-white rounded-md transition-colors flex items-center"
+              :style="{ backgroundColor: 'var(--color-primary)' }"
+              @mouseenter="($event.target as HTMLElement).style.backgroundColor = 'var(--color-primary-dark)'"
+              @mouseleave="($event.target as HTMLElement).style.backgroundColor = 'var(--color-primary)'"
+            >
+              <DocumentIcon class="w-4 h-4 mr-2" />
+              選擇檔案
+            </button>
+            <button
+              @click="selectFolder"
+              class="px-4 py-2 rounded-md transition-colors flex items-center"
+              :style="{ 
+                backgroundColor: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-medium)'
+              }"
+              @mouseenter="($event.target as HTMLElement).style.backgroundColor = 'var(--bg-tertiary)'"
+              @mouseleave="($event.target as HTMLElement).style.backgroundColor = 'var(--bg-secondary)'"
+            >
+              <FolderIcon class="w-4 h-4 mr-2" />
+              選擇資料夾
+            </button>
+          </div>
           <input
             ref="fileInput"
+            type="file"
+            multiple
+            webkitdirectory
+            class="hidden"
+            @change="onFileSelect"
+          />
+          <input
+            ref="fileInputSingle"
             type="file"
             multiple
             class="hidden"
@@ -86,10 +111,13 @@
                 <DocumentIcon class="w-5 h-5 mr-3 flex-shrink-0" :style="{ color: 'var(--text-tertiary)' }" />
                 <div class="min-w-0 flex-1">
                   <div class="text-sm font-medium truncate" :style="{ color: 'var(--text-primary)' }">
-                    {{ file.name }}
+                    {{ getDisplayName(file) }}
                   </div>
                   <div class="text-sm" :style="{ color: 'var(--text-tertiary)' }">
                     {{ formatFileSize(file.size) }}
+                    <span v-if="file.webkitRelativePath" class="ml-2">
+                      • {{ getParentPath(file.webkitRelativePath) }}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -97,8 +125,8 @@
                 @click="removeFile(file)"
                 class="ml-2 transition-colors"
                 :style="{ color: 'var(--text-tertiary)' }"
-                @mouseenter="$event.target.style.color = '#dc2626'"
-                @mouseleave="$event.target.style.color = 'var(--text-tertiary)'"
+                @mouseenter="($event.target as HTMLElement).style.color = '#dc2626'"
+                @mouseleave="($event.target as HTMLElement).style.color = 'var(--text-tertiary)'"
               >
                 <XMarkIcon class="w-4 h-4" />
               </button>
@@ -145,8 +173,8 @@
             color: 'var(--text-secondary)',
             backgroundColor: 'var(--bg-secondary)'
           }"
-          @mouseenter="$event.target.style.backgroundColor = 'var(--bg-tertiary)'"
-          @mouseleave="$event.target.style.backgroundColor = 'var(--bg-secondary)'"
+          @mouseenter="($event.target as HTMLElement).style.backgroundColor = 'var(--bg-tertiary)'"
+          @mouseleave="($event.target as HTMLElement).style.backgroundColor = 'var(--bg-secondary)'"
         >
           取消
         </button>
@@ -157,8 +185,8 @@
           :style="{
             backgroundColor: 'var(--color-primary)'
           }"
-          @mouseenter="$event.target.style.backgroundColor = 'var(--color-primary-dark)'"
-          @mouseleave="$event.target.style.backgroundColor = 'var(--color-primary)'"
+          @mouseenter="($event.target as HTMLElement).style.backgroundColor = 'var(--color-primary-dark)'"
+          @mouseleave="($event.target as HTMLElement).style.backgroundColor = 'var(--color-primary)'"
         >
           {{ uploading ? '上傳中...' : '開始上傳' }}
         </button>
@@ -173,6 +201,7 @@ import {
   XMarkIcon,
   CloudArrowUpIcon,
   DocumentIcon,
+  FolderIcon,
   ExclamationTriangleIcon
 } from '@heroicons/vue/24/outline'
 import { useFilesStore } from '@/stores/files'
@@ -205,6 +234,7 @@ const error = ref('')
 
 // 元素引用
 const fileInput = ref<HTMLInputElement>()
+const fileInputSingle = ref<HTMLInputElement>()
 const dropZone = ref<HTMLElement>()
 
 
@@ -225,20 +255,39 @@ const handleBackdropClick = () => {
 
 // 檔案選擇
 const selectFiles = () => {
-  // 確保檔案輸入元素存在
-  if (!fileInput.value) {
+  // 使用單檔案輸入元素
+  if (!fileInputSingle.value) {
     console.error('File input element not found')
     return
   }
   
   // 重置檔案輸入（確保可以重新選擇相同檔案）
-  fileInput.value.value = ''
+  fileInputSingle.value.value = ''
   
   // 觸發檔案選擇
   try {
-    fileInput.value.click()
+    fileInputSingle.value.click()
   } catch (error) {
     console.error('Error opening file dialog:', error)
+  }
+}
+
+// 資料夾選擇
+const selectFolder = () => {
+  // 使用資料夾輸入元素
+  if (!fileInput.value) {
+    console.error('Folder input element not found')
+    return
+  }
+  
+  // 重置檔案輸入（確保可以重新選擇相同資料夾）
+  fileInput.value.value = ''
+  
+  // 觸發資料夾選擇
+  try {
+    fileInput.value.click()
+  } catch (error) {
+    console.error('Error opening folder dialog:', error)
   }
 }
 
@@ -324,6 +373,24 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
+// 取得檔案顯示名稱（如果是資料夾內的檔案，顯示相對路徑）
+const getDisplayName = (file: File): string => {
+  // 如果有 webkitRelativePath，使用相對路徑
+  if (file.webkitRelativePath) {
+    return file.webkitRelativePath
+  }
+  // 否則使用檔案名稱
+  return file.name
+}
+
+// 取得父資料夾路徑
+const getParentPath = (relativePath: string): string => {
+  const parts = relativePath.split('/')
+  // 移除檔案名稱，保留資料夾路徑
+  parts.pop()
+  return parts.join('/') || '根目錄'
+}
+
 // 開始上傳
 const startUpload = async () => {
   if (selectedFiles.value.length === 0) return
@@ -339,7 +406,13 @@ const startUpload = async () => {
       const file = selectedFiles.value[i]
       currentUploadFile.value = file.name
       
-      await filesStore.uploadFile(file, props.currentFolderId)
+      // 如果是資料夾內的檔案，需要處理資料夾結構
+      if (file.webkitRelativePath) {
+        // 傳遞相對路徑資訊給後端
+        await filesStore.uploadFile(file, props.currentFolderId, file.webkitRelativePath)
+      } else {
+        await filesStore.uploadFile(file, props.currentFolderId)
+      }
       
       uploadProgress.value = ((i + 1) / totalFiles) * 100
     }

@@ -100,7 +100,7 @@ export const useFilesStore = defineStore('files', () => {
   }
 
   // 上傳檔案
-  const uploadFile = async (file: File, folderId?: number): Promise<FileInfo> => {
+  const uploadFile = async (file: File, folderId?: number, relativePath?: string): Promise<FileInfo> => {
     try {
       isLoading.value = true
       error.value = null
@@ -109,6 +109,11 @@ export const useFilesStore = defineStore('files', () => {
       const metadata: FileUploadRequest = {}
       if (folderId !== undefined) {
         metadata.parentId = folderId
+      }
+      
+      // 如果有相對路徑（資料夾上傳），添加路徑信息
+      if (relativePath) {
+        metadata.relativePath = relativePath
       }
       
       const response = await filesApi.uploadFile(file, metadata, (progress) => {

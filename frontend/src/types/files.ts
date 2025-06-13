@@ -87,6 +87,7 @@ export interface FileUploadRequest {
   categoryId?: number  // 保持可選以維持兼容性
   description?: string
   tags?: string
+  relativePath?: string  // 資料夾上傳時的相對路徑
 }
 
 export interface FileListParams {

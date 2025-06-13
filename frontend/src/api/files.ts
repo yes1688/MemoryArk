@@ -39,6 +39,9 @@ export const fileApi = {
     if (metadata.tags) {
       formData.append('tags', metadata.tags)
     }
+    if (metadata.relativePath) {
+      formData.append('relative_path', metadata.relativePath)
+    }
 
     return apiRequest.upload<UploadResult>('/files/upload', formData, onProgress)
   },

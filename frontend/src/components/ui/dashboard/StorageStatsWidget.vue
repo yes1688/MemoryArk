@@ -13,8 +13,8 @@
         @click="refreshStats"
         class="p-2 rounded-lg transition-colors duration-200"
         :style="{ color: 'var(--text-tertiary)' }"
-        @mouseenter="$event.target.style.color = 'var(--text-secondary)'; $event.target.style.backgroundColor = 'var(--bg-secondary)'"
-        @mouseleave="$event.target.style.color = 'var(--text-tertiary)'; $event.target.style.backgroundColor = 'transparent'"
+        @mouseenter="($event.target as HTMLElement).style.color = 'var(--text-secondary)'; ($event.target as HTMLElement).style.backgroundColor = 'var(--bg-secondary)'"
+        @mouseleave="($event.target as HTMLElement).style.color = 'var(--text-tertiary)'; ($event.target as HTMLElement).style.backgroundColor = 'transparent'"
         title="重新整理"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,8 +136,8 @@
           @click="cleanupFiles"
           class="text-sm font-medium transition-colors"
           :style="{ color: 'var(--color-primary)' }"
-          @mouseenter="$event.target.style.color = 'var(--color-primary-light)'"
-          @mouseleave="$event.target.style.color = 'var(--color-primary)'"
+          @mouseenter="($event.target as HTMLElement).style.color = 'var(--color-primary-light)'"
+          @mouseleave="($event.target as HTMLElement).style.color = 'var(--color-primary)'"
         >
           清理檔案
         </button>
@@ -145,8 +145,8 @@
           @click="manageStorage"
           class="text-sm font-medium transition-colors"
           :style="{ color: 'var(--color-primary)' }"
-          @mouseenter="$event.target.style.color = 'var(--color-primary-light)'"
-          @mouseleave="$event.target.style.color = 'var(--color-primary)'"
+          @mouseenter="($event.target as HTMLElement).style.color = 'var(--color-primary-light)'"
+          @mouseleave="($event.target as HTMLElement).style.color = 'var(--color-primary)'"
         >
           管理儲存空間
         </button>
