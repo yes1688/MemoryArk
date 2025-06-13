@@ -332,6 +332,7 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 		// 處理父資料夾和虛擬路徑
 		parentIDStr := c.PostForm("parent_id")
 		categoryIDStr := c.PostForm("category_id")
+		relativePath := c.PostForm("relative_path")
 		
 		var parentIDPtr *uint
 		if parentIDStr != "" {
@@ -339,6 +340,23 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 				id := uint(parentID)
 				parentIDPtr = &id
 			}
+		}
+
+		// 處理資料夾上傳：如果有 relative_path，自動建立資料夾結構
+		if relativePath != "" {
+			// 解析相對路徑並建立資料夾結構
+			finalParentID, err := h.ensureFolderStructure(userID, parentIDPtr, relativePath)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"success": false,
+					"error": gin.H{
+						"code": "FOLDER_CREATION_ERROR",
+						"message": "建立資料夾結構失敗: " + err.Error(),
+					},
+				})
+				return
+			}
+			parentIDPtr = finalParentID
 		}
 
 		var categoryIDPtr *uint
@@ -422,6 +440,7 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 	// 處理父資料夾和分類ID
 	parentIDStr := c.PostForm("parent_id")
 	categoryIDStr := c.PostForm("category_id")
+	relativePath := c.PostForm("relative_path")
 	
 	var parentIDPtr *uint
 	if parentIDStr != "" {
@@ -429,6 +448,23 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 			id := uint(parentID)
 			parentIDPtr = &id
 		}
+	}
+
+	// 處理資料夾上傳：如果有 relative_path，自動建立資料夾結構
+	if relativePath != "" {
+		// 解析相對路徑並建立資料夾結構
+		finalParentID, err := h.ensureFolderStructure(userID, parentIDPtr, relativePath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code": "FOLDER_CREATION_ERROR",
+					"message": "建立資料夾結構失敗: " + err.Error(),
+				},
+			})
+			return
+		}
+		parentIDPtr = finalParentID
 	}
 
 	var categoryIDPtr *uint
@@ -497,6 +533,81 @@ func (h *FileHandler) buildVirtualPath(parentID *uint, filename string) string {
 	// 如果父資料夾沒有虛擬路徑，遞歸建立
 	parentPath := h.buildVirtualPath(parentFolder.ParentID, parentFolder.Name)
 	return parentPath + "/" + filename
+}
+
+// ensureFolderStructure 根據相對路徑自動建立資料夾結構
+func (h *FileHandler) ensureFolderStructure(userID uint, baseParentID *uint, relativePath string) (*uint, error) {
+	// 清理和驗證路徑
+	relativePath = strings.TrimPrefix(relativePath, "/")
+	relativePath = strings.TrimSuffix(relativePath, "/")
+	
+	if relativePath == "" {
+		return baseParentID, nil
+	}
+	
+	// 分割路徑為資料夾名稱
+	pathParts := strings.Split(relativePath, "/")
+	
+	// 移除檔案名稱，只保留資料夾路徑
+	if len(pathParts) > 0 {
+		pathParts = pathParts[:len(pathParts)-1]
+	}
+	
+	// 如果沒有資料夾需要建立，返回原始父ID
+	if len(pathParts) == 0 {
+		return baseParentID, nil
+	}
+	
+	currentParentID := baseParentID
+	
+	// 逐層建立資料夾
+	for _, folderName := range pathParts {
+		// 清理資料夾名稱
+		folderName = strings.TrimSpace(folderName)
+		if folderName == "" || folderName == "." || folderName == ".." {
+			continue
+		}
+		
+		// 檢查資料夾是否已存在
+		var existingFolder models.File
+		query := h.db.Where("name = ? AND is_directory = ? AND is_deleted = ? AND uploaded_by = ?", 
+			folderName, true, false, userID)
+		
+		if currentParentID != nil {
+			query = query.Where("parent_id = ?", *currentParentID)
+		} else {
+			query = query.Where("parent_id IS NULL")
+		}
+		
+		if err := query.First(&existingFolder).Error; err == nil {
+			// 資料夾已存在，使用現有的
+			currentParentID = &existingFolder.ID
+		} else {
+			// 建立新資料夾
+			virtualPath := h.buildVirtualPath(currentParentID, folderName)
+			
+			newFolder := models.File{
+				Name:         folderName,
+				OriginalName: folderName,
+				FilePath:     "", // 虛擬資料夾無實體路徑
+				VirtualPath:  virtualPath,
+				FileSize:     0,
+				MimeType:     "",
+				ParentID:     currentParentID,
+				UploadedBy:   userID,
+				IsDirectory:  true,
+				IsDeleted:    false,
+			}
+			
+			if err := h.db.Create(&newFolder).Error; err != nil {
+				return nil, fmt.Errorf("建立資料夾 '%s' 失敗: %v", folderName, err)
+			}
+			
+			currentParentID = &newFolder.ID
+		}
+	}
+	
+	return currentParentID, nil
 }
 
 // CreateFolder 創建資料夾
