@@ -245,6 +245,10 @@ func (h *FileHandler) GetFileDetails(c *gin.Context) {
 
 // UploadFile 上傳檔案 - 重寫支援 SHA256 去重和純虛擬路徑
 func (h *FileHandler) UploadFile(c *gin.Context) {
+	// 調試：早期打印所有接收到的參數
+	fmt.Printf("[DEBUG] UploadFile START: Request.Method=%s\n", c.Request.Method)
+	fmt.Printf("[DEBUG] UploadFile START: Request.URL=%s\n", c.Request.URL.String())
+	
 	userIDValue, exists := c.Get("user_id")
 	if !exists {
 		api.Unauthorized(c, "未授權訪問")
@@ -259,6 +263,10 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 	
 	// 獲取上傳的檔案
 	file, err := c.FormFile("file")
+	
+	// 調試：打印所有接收到的 form 參數
+	fmt.Printf("[DEBUG] UploadFile: Request.Form: %v\n", c.Request.Form)
+	fmt.Printf("[DEBUG] UploadFile: Request.PostForm: %v\n", c.Request.PostForm)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -333,6 +341,10 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 		parentIDStr := c.PostForm("parent_id")
 		categoryIDStr := c.PostForm("category_id")
 		relativePath := c.PostForm("relative_path")
+		
+		// 調試：打印去重情況下的參數
+		fmt.Printf("[DEBUG] UploadFile (duplicate): All PostForm keys: %v\n", c.Request.PostForm)
+		fmt.Printf("[DEBUG] UploadFile (duplicate): parentIDStr=%s, categoryIDStr=%s, relativePath=%s\n", parentIDStr, categoryIDStr, relativePath)
 		
 		var parentIDPtr *uint
 		if parentIDStr != "" {
@@ -442,6 +454,34 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 	categoryIDStr := c.PostForm("category_id")
 	relativePath := c.PostForm("relative_path")
 	
+	// 強制解析 multipart form 以確保能獲取所有參數
+	if err := c.Request.ParseMultipartForm(32 << 20); err != nil {
+		fmt.Printf("[ERROR] Failed to parse multipart form: %v\n", err)
+	} else {
+		fmt.Printf("[INFO] Successfully parsed multipart form\n")
+	}
+	
+	// 調試：檢查所有可能的參數來源
+	fmt.Printf("[DEBUG] PostForm relative_path: '%s'\n", c.PostForm("relative_path"))
+	fmt.Printf("[DEBUG] FormValue relative_path: '%s'\n", c.Request.FormValue("relative_path"))
+	fmt.Printf("[DEBUG] PostForm relativePath: '%s'\n", c.PostForm("relativePath"))
+	fmt.Printf("[DEBUG] FormValue relativePath: '%s'\n", c.Request.FormValue("relativePath"))
+	
+	if c.Request.MultipartForm != nil {
+		fmt.Printf("[DEBUG] MultipartForm values: %v\n", c.Request.MultipartForm.Value)
+		
+		// 檢查所有可能的參數名稱變體
+		for _, key := range []string{"relative_path", "relativePath", "relativePathData"} {
+			if values, exists := c.Request.MultipartForm.Value[key]; exists && len(values) > 0 {
+				relativePath = values[0]
+				fmt.Printf("[DEBUG] Found %s in MultipartForm: '%s'\n", key, relativePath)
+				break
+			}
+		}
+	} else {
+		fmt.Printf("[ERROR] MultipartForm is nil\n")
+	}
+	
 	var parentIDPtr *uint
 	if parentIDStr != "" {
 		if parentID, err := strconv.ParseUint(parentIDStr, 10, 32); err == nil && parentID > 0 {
@@ -452,9 +492,11 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 
 	// 處理資料夾上傳：如果有 relative_path，自動建立資料夾結構
 	if relativePath != "" {
+		fmt.Printf("[INFO] Processing relative_path: %s\n", relativePath)
 		// 解析相對路徑並建立資料夾結構
 		finalParentID, err := h.ensureFolderStructure(userID, parentIDPtr, relativePath)
 		if err != nil {
+			fmt.Printf("[ERROR] Failed to create folder structure: %v\n", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success": false,
 				"error": gin.H{
@@ -464,7 +506,10 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 			})
 			return
 		}
+		fmt.Printf("[INFO] Created folder structure, final parent ID: %v\n", finalParentID)
 		parentIDPtr = finalParentID
+	} else {
+		fmt.Printf("[INFO] No relative_path provided, using root directory\n")
 	}
 
 	var categoryIDPtr *uint
@@ -537,6 +582,8 @@ func (h *FileHandler) buildVirtualPath(parentID *uint, filename string) string {
 
 // ensureFolderStructure 根據相對路徑自動建立資料夾結構
 func (h *FileHandler) ensureFolderStructure(userID uint, baseParentID *uint, relativePath string) (*uint, error) {
+	fmt.Printf("[DEBUG] ensureFolderStructure: relativePath=%s, baseParentID=%v\n", relativePath, baseParentID)
+	
 	// 清理和驗證路徑
 	relativePath = strings.TrimPrefix(relativePath, "/")
 	relativePath = strings.TrimSuffix(relativePath, "/")
@@ -547,11 +594,14 @@ func (h *FileHandler) ensureFolderStructure(userID uint, baseParentID *uint, rel
 	
 	// 分割路徑為資料夾名稱
 	pathParts := strings.Split(relativePath, "/")
+	fmt.Printf("[DEBUG] pathParts before removing file: %v\n", pathParts)
 	
 	// 移除檔案名稱，只保留資料夾路徑
 	if len(pathParts) > 0 {
 		pathParts = pathParts[:len(pathParts)-1]
 	}
+	
+	fmt.Printf("[DEBUG] pathParts after removing file: %v\n", pathParts)
 	
 	// 如果沒有資料夾需要建立，返回原始父ID
 	if len(pathParts) == 0 {
