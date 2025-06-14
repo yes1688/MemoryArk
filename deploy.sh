@@ -50,6 +50,13 @@ case $ACTION in
             echo -e "${YELLOW}提示：執行 'cp .env.example .env' 建立配置檔案${NC}"
         fi
         
+        # 檢查並生成 JWT 密鑰
+        if [ -z "$JWT_SECRET" ] || [ "$JWT_SECRET" = "your-super-secret-jwt-key-change-in-production" ]; then
+            echo -e "${YELLOW}生成隨機 JWT 密鑰...${NC}"
+            export JWT_SECRET=$(openssl rand -hex 32)
+            echo -e "${GREEN}已生成安全的 JWT 密鑰${NC}"
+        fi
+        
         # 設置環境變量
         if [ "$ENVIRONMENT" = "dev" ]; then
             export DEVELOPMENT_MODE=true
@@ -87,6 +94,14 @@ case $ACTION in
         $COMPOSE_CMD logs -f
         ;;
         
+    "generate-jwt")
+        echo -e "${GREEN}生成新的 JWT 密鑰...${NC}"
+        NEW_JWT=$(openssl rand -hex 32)
+        echo "JWT_SECRET=$NEW_JWT"
+        echo ""
+        echo -e "${YELLOW}請將上述密鑰加入到 .env 檔案中${NC}"
+        ;;
+        
     "status")
         echo -e "${GREEN}服務狀態：${NC}"
         $COMPOSE_CMD ps
@@ -120,15 +135,16 @@ case $ACTION in
         ;;
         
     *)
-        echo "用法: $0 [up|down|restart|logs|status|diagnose] [production|dev]"
+        echo "用法: $0 [up|down|restart|logs|status|diagnose|generate-jwt] [production|dev]"
         echo ""
         echo "命令："
-        echo "  up/start   - 啟動服務"
-        echo "  down/stop  - 停止服務"
-        echo "  restart    - 重啟服務"
-        echo "  logs       - 查看日誌"
-        echo "  status     - 檢查狀態"
-        echo "  diagnose   - 診斷問題"
+        echo "  up/start     - 啟動服務"
+        echo "  down/stop    - 停止服務"
+        echo "  restart      - 重啟服務"
+        echo "  logs         - 查看日誌"
+        echo "  status       - 檢查狀態"
+        echo "  diagnose     - 診斷問題"
+        echo "  generate-jwt - 生成 JWT 密鑰"
         echo ""
         echo "環境："
         echo "  production - 生產環境（默認）"
