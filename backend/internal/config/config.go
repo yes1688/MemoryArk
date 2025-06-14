@@ -86,7 +86,7 @@ func Load() (*Config, error) {
 	
 	config := &Config{
 		Server: ServerConfig{
-			Port: getEnv("PORT", "8080"),
+			Port: getEnv("PORT", "8081"),
 			Mode: getEnv("GIN_MODE", "debug"),
 			Host: getEnv("HOST", "0.0.0.0"),
 		},
