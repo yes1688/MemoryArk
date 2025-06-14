@@ -112,11 +112,12 @@
 
     <!-- 確認對話框 -->
     <AppDialog
-      v-model="showEmptyConfirm"
+      v-model:visible="showEmptyConfirm"
       title="確認清空垃圾桶"
       :confirm-text="'清空垃圾桶'"
       :cancel-text="'取消'"
       variant="danger"
+      :show-default-actions="true"
       @confirm="emptyTrash"
     >
       <p style="color: var(--text-secondary);">
@@ -128,11 +129,12 @@
     </AppDialog>
 
     <AppDialog
-      v-model="showDeleteConfirm"
+      v-model:visible="showDeleteConfirm"
       title="確認永久刪除"
       :confirm-text="'永久刪除'"
       :cancel-text="'取消'"
       variant="danger"
+      :show-default-actions="true"
       @confirm="permanentDeleteFile"
     >
       <p style="color: var(--text-secondary);">
