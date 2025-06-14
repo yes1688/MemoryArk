@@ -101,6 +101,10 @@ const deleteFile = async (file: FileInfo) => {
   if (confirm(confirmMessage)) {
     try {
       await filesStore.deleteFiles([file.id])
+      
+      // 強制重新加載文件列表以確保UI更新
+      await filesStore.fetchFiles(filesStore.currentFolderId)
+      
       // 刪除成功後顯示通知
       if (file.isDirectory) {
         console.log('資料夾已移至垃圾桶')

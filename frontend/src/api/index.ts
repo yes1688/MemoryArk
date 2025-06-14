@@ -77,6 +77,7 @@ export const apiRequest = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 1800000, // 30 分鐘超時，用於大批量檔案上傳
       onUploadProgress: (progressEvent) => {
         if (onProgress && progressEvent.total) {
           const progress = Math.round((progressEvent.loaded / progressEvent.total) * 100)

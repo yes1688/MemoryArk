@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Delete Function</title>
+</head>
+<body>
+    <h1>Test File Delete</h1>
+    <p>File ID 422 - test_delete.txt</p>
+    <button onclick="deleteFile()">Delete File</button>
+    <div id="result"></div>
+
+    <script>
+        async function deleteFile() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Deleting...';
+            
+            try {
+                console.log('🗑️ Starting file deletion for file ID 422');
+                
+                const response = await fetch('/api/files/422', {
+                    method: 'DELETE',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                console.log('🗑️ Response status:', response.status);
+                
+                const data = await response.json();
+                console.log('🗑️ Response data:', data);
+                
+                if (data.success) {
+                    resultDiv.innerHTML = '<p style="color: green;">✅ File deleted successfully!</p>';
+                    resultDiv.innerHTML += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                } else {
+                    resultDiv.innerHTML = '<p style="color: red;">❌ Delete failed: ' + data.message + '</p>';
+                }
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                resultDiv.innerHTML = '<p style="color: red;">❌ Error: ' + error.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>

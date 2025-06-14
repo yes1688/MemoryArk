@@ -310,8 +310,11 @@ export const useFilesStore = defineStore('files', () => {
         }
       }
       
-      // 從本地列表中移除檔案
-      files.value = files.value.filter(file => !fileIds.includes(file.id))
+      // 從本地列表中移除檔案 - 使用更明確的方式來觸發響應式更新
+      const filteredFiles = files.value.filter(file => !fileIds.includes(file.id))
+      files.value.length = 0  // 清空數組
+      files.value.push(...filteredFiles)  // 重新填充數組
+      
       // 清除選擇
       selectedFiles.value = []
     } catch (err: any) {

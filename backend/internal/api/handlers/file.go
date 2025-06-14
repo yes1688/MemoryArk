@@ -379,10 +379,28 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 			}
 		}
 
+		// 檢查是否在相同位置已存在相同檔名的檔案
+		if sameLocationFile, err := h.checkSameLocationAndName(file.Filename, parentIDPtr, userID); err == nil {
+			// 相同位置 + 相同檔名 + 相同內容 = 跳過上傳
+			if sameLocationFile.SHA256Hash == sha256Hash {
+				c.JSON(http.StatusOK, gin.H{
+					"success": true,
+					"skipped": true,
+					"message": "檔案已存在，跳過上傳",
+					"data": gin.H{
+						"existingFileId": sameLocationFile.ID,
+						"fileName": file.Filename,
+						"reason": "檔案內容和位置完全相同",
+					},
+				})
+				return
+			}
+		}
+
 		// 建立虛擬路徑
 		virtualPath := h.buildVirtualPath(parentIDPtr, file.Filename)
 
-		// 創建新的檔案記錄（去重但允許不同虛擬位置）
+		// 創建新的檔案記錄（內容去重但不同檔名或位置）
 		fileRecord := models.File{
 			Name:         file.Filename,
 			OriginalName: file.Filename,
@@ -411,8 +429,17 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 
 		c.JSON(http.StatusCreated, gin.H{
 			"success": true,
-			"message": "檔案上傳成功（已去重）",
+			"deduplicated": true,
+			"message": "檔案內容已存在，已建立新的檔案參照",
 			"data": fileRecord,
+			"deduplicationInfo": gin.H{
+				"originalFile": existingFile.Name,
+				"originalPath": existingFile.VirtualPath,
+				"newFile": file.Filename,
+				"newPath": virtualPath,
+				"spaceSaved": file.Size,
+				"reason": "檔案內容相同但檔名或位置不同",
+			},
 		})
 		return
 	}
@@ -1146,30 +1173,83 @@ func (h *FileHandler) PermanentDeleteFile(c *gin.Context) {
 		return
 	}
 	
-	// 刪除實體檔案
-	if !file.IsDirectory && file.FilePath != "" {
-		if err := os.Remove(file.FilePath); err != nil {
-			// 記錄錯誤但不中斷操作
-			fmt.Printf("Failed to remove file %s: %v\n", file.FilePath, err)
+	// 如果是資料夾，需要遞歸刪除子項目
+	if file.IsDirectory {
+		if err := h.permanentDeleteFolderRecursive(file.ID); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code": "DELETE_FAILED",
+					"message": "永久刪除資料夾失敗: " + err.Error(),
+				},
+			})
+			return
 		}
-	}
-	
-	// 刪除資料庫記錄
-	if err := h.db.Delete(&file).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code": "DELETE_FAILED",
-				"message": "永久刪除檔案失敗",
-			},
-		})
-		return
+	} else {
+		// 刪除實體檔案
+		if file.FilePath != "" {
+			if err := os.Remove(file.FilePath); err != nil {
+				// 記錄錯誤但不中斷操作
+				fmt.Printf("Failed to remove file %s: %v\n", file.FilePath, err)
+			}
+		}
+		
+		// 刪除資料庫記錄
+		if err := h.db.Delete(&file).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code": "DELETE_FAILED",
+					"message": "永久刪除檔案失敗",
+				},
+			})
+			return
+		}
 	}
 	
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "檔案已永久刪除",
 	})
+}
+
+// permanentDeleteFolderRecursive 遞歸永久刪除資料夾及其子項目
+func (h *FileHandler) permanentDeleteFolderRecursive(folderID uint) error {
+	// 查找所有子項目
+	var children []models.File
+	if err := h.db.Where("parent_id = ? AND is_deleted = ?", folderID, true).Find(&children).Error; err != nil {
+		return err
+	}
+	
+	// 遞歸刪除子項目
+	for _, child := range children {
+		if child.IsDirectory {
+			// 遞歸刪除子資料夾
+			if err := h.permanentDeleteFolderRecursive(child.ID); err != nil {
+				return err
+			}
+		} else {
+			// 刪除子檔案的實體檔案
+			if child.FilePath != "" {
+				if err := os.Remove(child.FilePath); err != nil {
+					// 記錄錯誤但不中斷操作
+					fmt.Printf("Failed to remove file %s: %v\n", child.FilePath, err)
+				}
+			}
+		}
+		
+		// 刪除子項目的資料庫記錄
+		if err := h.db.Delete(&child).Error; err != nil {
+			return err
+		}
+	}
+	
+	// 最後刪除資料夾本身
+	if err := h.db.Delete(&models.File{}, folderID).Error; err != nil {
+		return err
+	}
+	
+	return nil
 }
 
 // DownloadFile 下載檔案
@@ -1622,23 +1702,44 @@ func (h *FileHandler) EmptyTrash(c *gin.Context) {
 	
 	// 逐一永久刪除每個檔案
 	for _, file := range deletedFiles {
+		fmt.Printf("[DEBUG] 處理檔案 ID:%d, 名稱:%s, 路徑:%s, 是否目錄:%t\n", file.ID, file.Name, file.FilePath, file.IsDirectory)
+		
+		fileDeleted := true
+		
 		// 刪除實體檔案
 		if !file.IsDirectory && file.FilePath != "" {
-			if err := os.Remove(file.FilePath); err != nil {
-				fmt.Printf("Failed to remove file %s: %v\n", file.FilePath, err)
-				failedCount++
-				continue
+			// 檢查檔案路徑是否為絕對路徑，如果不是則加上 /app/ 前綴
+			filePath := file.FilePath
+			if !strings.HasPrefix(filePath, "/") {
+				filePath = "/app/" + filePath
+			}
+			
+			fmt.Printf("[DEBUG] 嘗試刪除實體檔案: %s\n", filePath)
+			if err := os.Remove(filePath); err != nil {
+				if os.IsNotExist(err) {
+					fmt.Printf("[DEBUG] 檔案不存在，可能已被刪除: %s\n", filePath)
+				} else {
+					fmt.Printf("Failed to remove file %s: %v\n", filePath, err)
+					fileDeleted = false
+				}
+			} else {
+				fmt.Printf("[DEBUG] 成功刪除實體檔案: %s\n", filePath)
 			}
 		}
 		
-		// 刪除資料庫記錄
-		if err := h.db.Delete(&file).Error; err != nil {
-			fmt.Printf("Failed to delete file record %d: %v\n", file.ID, err)
+		// 如果實體檔案刪除成功或不存在，則刪除資料庫記錄
+		if fileDeleted {
+			fmt.Printf("[DEBUG] 嘗試刪除資料庫記錄 ID:%d\n", file.ID)
+			if err := h.db.Delete(&file).Error; err != nil {
+				fmt.Printf("Failed to delete file record %d: %v\n", file.ID, err)
+				failedCount++
+				continue
+			}
+			fmt.Printf("[DEBUG] 成功刪除檔案 ID:%d\n", file.ID)
+			deletedCount++
+		} else {
 			failedCount++
-			continue
 		}
-		
-		deletedCount++
 	}
 	
 	c.JSON(http.StatusOK, gin.H{
@@ -1650,4 +1751,22 @@ func (h *FileHandler) EmptyTrash(c *gin.Context) {
 			"totalCount":   len(deletedFiles),
 		},
 	})
+}
+
+// checkSameLocationAndName 檢查指定位置是否已存在相同檔名的檔案
+func (h *FileHandler) checkSameLocationAndName(fileName string, parentID *uint, userID uint) (*models.File, error) {
+	var existingFile models.File
+	query := h.db.Where("name = ? AND is_deleted = ? AND uploaded_by = ?", fileName, false, userID)
+	
+	if parentID != nil {
+		query = query.Where("parent_id = ?", *parentID)
+	} else {
+		query = query.Where("parent_id IS NULL")
+	}
+	
+	if err := query.First(&existingFile).Error; err != nil {
+		return nil, err // 檔案不存在
+	}
+	
+	return &existingFile, nil
 }

@@ -89,6 +89,8 @@ export const fileApi = {
     apiRequest.get<FileListResponse>('/trash', params),
 
   // 清空垃圾桶（僅限管理員）
-  emptyTrash: () =>
-    apiRequest.post('/admin/trash/empty'),
+  emptyTrash: () => {
+    console.log('🗑️ API: 發送清空垃圾桶請求到 /admin/trash/empty')
+    return apiRequest.post('/admin/trash/empty')
+  },
 }

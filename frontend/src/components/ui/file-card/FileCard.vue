@@ -46,8 +46,9 @@
     
     <!-- 操作按鈕 - 檔案管理模式 -->
     <div 
-      v-if="mode === 'files' && showActions"
-      class="quick-actions absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+      v-if="mode === 'files'"
+      class="quick-actions absolute top-2 right-2 flex space-x-1 transition-opacity duration-200"
+      :class="showActions ? 'opacity-100' : 'opacity-30 hover:opacity-100'"
     >
       <!-- 下載按鈕 -->
       <button
@@ -63,7 +64,7 @@
       </button>
       <!-- 刪除按鈕 -->
       <button
-        @click.stop="$emit('delete', file)"
+        @click.stop="handleDeleteClick"
         class="action-btn p-1 rounded"
         style="background: var(--bg-primary); box-shadow: var(--shadow-sm);"
         :title="file.isDirectory ? '刪除資料夾' : '刪除檔案'"
@@ -182,6 +183,10 @@ const iconSize = computed(() => props.mode === 'files' ? 'lg' : 'md')
 // 方法 - 保持檔案管理的穩定實作
 const handleClick = () => {
   emit('click', props.file)
+}
+
+const handleDeleteClick = () => {
+  emit('delete', props.file)
 }
 
 const formatFileSize = (bytes: number): string => {

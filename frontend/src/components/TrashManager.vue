@@ -79,7 +79,7 @@
         :show-permanent-delete="isAdmin"
         @click="handleFileClick"
         @restore="restoreFile"
-        @permanent-delete="confirmPermanentDelete"
+        @permanentDelete="confirmPermanentDelete"
       />
     </div>
 
@@ -256,11 +256,18 @@ const permanentDeleteFile = async () => {
   
   try {
     loading.value = true
-    await fileApi.permanentDeleteFile(selectedFile.value.id)
+    console.log('🗑️ 開始永久刪除檔案:', selectedFile.value.name, 'ID:', selectedFile.value.id)
+    
+    const response = await fileApi.permanentDeleteFile(selectedFile.value.id)
+    console.log('🗑️ 永久刪除 API 響應:', response)
+    
     await loadTrashFiles(currentPage.value)
     showDeleteConfirm.value = false
-  } catch (error) {
-    console.error('永久刪除檔案失敗:', error)
+    
+    console.log('🗑️ 檔案永久刪除成功')
+  } catch (error: any) {
+    console.error('🗑️ 永久刪除檔案失敗:', error)
+    alert('永久刪除失敗: ' + (error?.response?.data?.error?.message || error?.message || error))
   } finally {
     loading.value = false
     selectedFile.value = null
@@ -277,12 +284,18 @@ const confirmEmptyTrash = () => {
 // 清空垃圾桶
 const emptyTrash = async () => {
   try {
+    console.log('🗑️ 開始清空垃圾桶...')
     loading.value = true
-    await fileApi.emptyTrash()
+    console.log('🗑️ 呼叫 API...')
+    const response = await fileApi.emptyTrash()
+    console.log('🗑️ API 回應:', response)
+    console.log('🗑️ 重新載入垃圾桶檔案...')
     await loadTrashFiles(1)
     showEmptyConfirm.value = false
-  } catch (error) {
-    console.error('清空垃圾桶失敗:', error)
+    console.log('🗑️ 清空垃圾桶完成!')
+  } catch (error: any) {
+    console.error('🗑️ 清空垃圾桶失敗:', error)
+    alert('清空垃圾桶失敗: ' + (error?.message || error))
   } finally {
     loading.value = false
   }
