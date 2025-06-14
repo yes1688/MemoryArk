@@ -1,5 +1,6 @@
-# MemoryArk 開發環境 (統一配置版本)
-# 使用: podman-compose up
+# MemoryArk 2.0 統一部署配置
+# 本地開發: podman-compose up 或 docker-compose up
+# 生產環境: docker-compose up -d
 version: '3.8'
 
 services:
@@ -7,6 +8,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: memoryark-backend:latest
+    container_name: memoryark-backend
     environment:
       # 基本配置
       - GIN_MODE=${GIN_MODE:-release}
@@ -25,7 +28,7 @@ services:
       - ROOT_ADMIN_EMAIL=${ROOT_ADMIN_EMAIL:-94work.net@gmail.com}
       - ROOT_ADMIN_NAME=${ROOT_ADMIN_NAME:-劉程維}
       
-      # 開發模式配置
+      # 開發模式配置（本地開發設為 true，生產環境設為 false）
       - DEVELOPMENT_MODE=${DEVELOPMENT_MODE:-false}
       - DEV_AUTO_LOGIN_EMAIL=${DEV_AUTO_LOGIN_EMAIL:-}
       - DEV_BYPASS_AUTH=${DEV_BYPASS_AUTH:-false}
@@ -70,9 +73,14 @@ services:
       options:
         max-size: "50m"
         max-file: "7"
+    
+    # 網絡配置
+    networks:
+      - memoryark
 
   nginx:
-    image: docker.io/nginx:alpine
+    image: nginx:alpine
+    container_name: memoryark-nginx
     depends_on:
       - backend
     ports:
@@ -89,3 +97,12 @@ services:
       options:
         max-size: "50m"
         max-file: "7"
+    
+    # 網絡配置
+    networks:
+      - memoryark
+
+# 定義網絡
+networks:
+  memoryark:
+    driver: bridge
