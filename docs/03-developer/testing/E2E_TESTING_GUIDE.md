@@ -26,7 +26,7 @@ This comprehensive guide provides detailed information about MemoryArk 2.0's fro
 
 #### 1.1 Initial Access
 ```typescript
-// Entry point: https://files.94work.net/
+// Entry point: https://your-domain.com/
 // Route Guard: src/router/index.ts (lines 82-135)
 
 Flow:
@@ -180,7 +180,7 @@ Key Sections:
 ### API Configuration
 ```typescript
 // Base setup: src/api/index.ts
-// Dynamic base URL: files.94work.net or localhost:7001
+// Dynamic base URL: your-domain.com or localhost:7001
 // Automatic Cloudflare Access header injection
 // Error handling with redirect logic
 ```

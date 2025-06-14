@@ -1,87 +1,129 @@
 # 📚 MemoryArk 2.0 文檔中心
 
-> 最後更新：2025-06-14 | 基於代碼交叉檢驗確保準確性
-
-## 🚀 快速開始
-
-- **部署指南**: [deployment/DEPLOYMENT.md](deployment/DEPLOYMENT.md) ✅ 已驗證準確
-- **開發指南**: [development/DEVELOPMENT.md](development/DEVELOPMENT.md) ✅ 基本準確
-
-## 📖 核心文檔
-
-### 🏗️ 架構設計
-
-- **[串流匯出解釋](architecture/STREAMING_EXPORT_EXPLAINED.md)** ✅ 已驗證
-  - 詳細解釋串流匯出原理和實現
-  - 包含完整代碼示例
-  - **驗證狀態**: 與 `backend/internal/api/handlers/export.go` 完全匹配
-
-- **[檔案管理架構](architecture/FILE_MANAGEMENT_ARCHITECTURE.md)** ⚠️ 需要檢驗
-  - 檔案系統設計和虛擬路徑實現
-
-- **[最終檔案管理解決方案](architecture/FINAL_FILE_MANAGEMENT_SOLUTION.md)** ⚠️ 需要檢驗
-  - 完整的檔案管理系統設計方案
-
-### 💻 開發指南
-
-- **[開發環境設置](development/DEVELOPMENT.md)** ✅ 基本準確
-  - 本地開發環境配置
-  - Docker/Podman 設置說明
-
-### 🚢 部署運維
-
-- **[部署指南](deployment/DEPLOYMENT.md)** ✅ 已驗證準確
-  - 統一部署腳本使用說明
-  - 生產環境和開發環境配置
-  - **驗證狀態**: 與根目錄 `deploy.sh` 腳本匹配
-
-- **[備份和匯出優化](operations/BACKUP_AND_EXPORT_OPTIMIZATION.md)** ⚠️ 需要更新
-  - 備份策略和匯出功能優化建議
-
-### 🧪 測試文檔
-
-- **[E2E 測試指南](testing/E2E_TESTING_GUIDE.md)** ✅ 詳細完整
-  - 端到端測試執行指南
-  - 測試環境設置和執行步驟
-
-- **[檔案去重測試](testing/FILE_DEDUPLICATION_TESTING.md)** ✅ 已驗證
-  - 去重功能測試策略和結果
-  - **驗證狀態**: 與代碼中的去重邏輯和測試文件匹配
-
-### 📋 管理文檔
-
-- **[管理員管理](ADMIN_MANAGEMENT.md)** ✅ 實用指南
-  - 系統管理員功能說明
-  - 用戶權限管理
-
-## ✅ 文檔驗證狀態說明
-
-- ✅ **已驗證準確**: 已與最新代碼交叉檢驗，內容準確
-- ⚠️ **需要檢驗**: 內容可能準確，但需要進一步驗證
-- ❌ **已知過時**: 已確認過時，已刪除或需要更新
-
-## 🔄 文檔維護
-
-### 最近清理（2025-06-14）
-
-**已刪除的過時文檔**：
-- `operations/ROLLING_UPGRADE_DOCUMENTATION.md` - 引用不存在的腳本
-- `development/UPLOAD_PATH_ANALYSIS.md` - 特定問題分析，已過時  
-- `testing/STREAMING_EXPORT_LOAD_TESTING.md` - 負載測試腳本不存在
-
-**驗證方法**：
-- 檢查文檔中提到的文件和腳本是否存在
-- 對比文檔描述與實際代碼實現
-- 確保 API 端點和功能描述的準確性
-
-## 📞 支援
-
-如果發現文檔問題或需要幫助：
-
-1. **快速部署**: `./deploy.sh up production`
-2. **故障診斷**: `./deploy.sh diagnose`  
-3. **查看日誌**: `./deploy.sh logs`
+> **Just Works** - 一切從簡，輕鬆找到你需要的信息 ✨
 
 ---
 
-💡 **提示**: 優先參考標註為 ✅ 的文檔，這些已經過代碼交叉驗證確保準確性。
+## ⚡ 我想要...
+
+| 📋 需求 | 📂 文檔位置 | ⏱️ 預計時間 |
+|---------|-------------|-------------|
+| 🚀 **立即開始使用** | [入門指南](01-getting-started/) | 3 分鐘 |
+| 👥 **管理用戶系統** | [用戶指南](02-user-guide/) | 10 分鐘 |
+| 💻 **本地開發環境** | [開發者指南](03-developer/) | 30 分鐘 |
+| 🏗️ **了解技術架構** | [技術架構](04-architecture/) | 1 小時 |
+| 🔧 **系統維護運維** | [運維指南](05-operations/) | 按需查閱 |
+
+---
+
+## 📖 文檔目錄
+
+### 🥇 [01-getting-started](01-getting-started/) - 入門指南
+**新用戶必讀！** 3分鐘完成部署
+- 🚀 [部署指南](01-getting-started/DEPLOYMENT.md) - 一鍵安裝、更新、故障排除
+
+### 👥 [02-user-guide](02-user-guide/) - 用戶指南  
+**日常使用指南** 管理和維護必備
+- 🔑 [管理員管理](02-user-guide/ADMIN_MANAGEMENT.md) - 用戶權限、系統監控
+
+### 💻 [03-developer](03-developer/) - 開發者指南
+**開發者專區** 本地開發和測試
+- 🛠️ [開發環境](03-developer/DEVELOPMENT.md) - 本地設置、熱重載  
+- 🧪 [測試指南](03-developer/testing/) - E2E測試、去重測試
+
+### 🏗️ [04-architecture](04-architecture/) - 技術架構
+**深度技術文檔** 系統設計原理
+- 🔄 [串流匯出](04-architecture/STREAMING_EXPORT_EXPLAINED.md) ✅ - 技術原理
+- 📁 [檔案架構](04-architecture/FILE_MANAGEMENT_ARCHITECTURE.md) ⚠️ - 系統設計  
+- 🎯 [完整方案](04-architecture/FINAL_FILE_MANAGEMENT_SOLUTION.md) ⚠️ - 解決方案
+
+### 🔧 [05-operations](05-operations/) - 運維指南
+**系統維護專區** 備份、監控、優化
+- 💾 [備份優化](05-operations/BACKUP_AND_EXPORT_OPTIMIZATION.md) ⚠️ - 運維最佳實踐
+
+---
+
+## 🎯 按場景查找
+
+<details>
+<summary>🆕 我是新用戶，想要快速開始</summary>
+
+**推薦路徑：**
+1. [入門指南](01-getting-started/) → 快速部署
+2. [用戶指南](02-user-guide/) → 基本操作  
+3. 開始使用！
+
+**預計時間：** 10 分鐘
+</details>
+
+<details>
+<summary>👨‍💼 我是系統管理員</summary>
+
+**推薦路徑：**
+1. [部署指南](01-getting-started/DEPLOYMENT.md) → 系統部署
+2. [管理員管理](02-user-guide/ADMIN_MANAGEMENT.md) → 用戶管理
+3. [運維指南](05-operations/) → 日常維護
+
+**預計時間：** 30 分鐘
+</details>
+
+<details>
+<summary>👨‍💻 我是開發者</summary>
+
+**推薦路徑：**
+1. [開發環境](03-developer/DEVELOPMENT.md) → 本地開發
+2. [技術架構](04-architecture/) → 系統理解
+3. [測試指南](03-developer/testing/) → 質量保證
+
+**預計時間：** 2 小時
+</details>
+
+<details>
+<summary>🚨 我遇到了問題</summary>
+
+**故障排除路徑：**
+1. [快速診斷](01-getting-started/DEPLOYMENT.md#-出問題了) → 自動修復
+2. [用戶指南](02-user-guide/README.md#-遇到問題) → 常見問題
+3. [運維指南](05-operations/README.md#-故障處理) → 深度排查
+
+**預計時間：** 5-15 分鐘
+</details>
+
+---
+
+## 💡 設計理念
+
+遵循 **Steve Jobs** 的文檔設計哲學：
+
+- 🎯 **Simple** - 最重要的內容放最前面
+- ⚡ **Fast** - 3秒找到需要的信息  
+- 📋 **Practical** - 按實際使用場景組織
+- 💫 **Beautiful** - 清晰直觀的導航結構
+
+---
+
+## 🔄 文檔狀態
+
+- ✅ **已驗證** - 與最新代碼交叉檢驗，內容準確
+- ⚠️ **待檢驗** - 內容可能準確，需進一步驗證  
+- 📅 **最後更新** - 2025-06-14
+
+---
+
+## 📞 需要幫助？
+
+### 快速自助
+
+```bash
+./deploy.sh diagnose    # 自動診斷問題
+./deploy.sh report      # 生成技術報告
+```
+
+### 技術支援
+
+**聯繫方式：** 94work.net@gmail.com  
+**緊急問題：** 請附上 `./deploy.sh report` 的輸出結果
+
+---
+
+*"Simplicity is the ultimate sophistication."* - **Steve Jobs**

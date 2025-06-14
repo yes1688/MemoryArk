@@ -112,7 +112,7 @@
 ## 🔧 測試環境設定
 
 ### 測試 URL
-- **主要測試環境**: https://files.94work.net:7443
+- **主要測試環境**: https://localhost:7001
 - **備用測試環境**: http://localhost:7001
 
 ### 測試工具

@@ -16,7 +16,7 @@
 ## 📁 專案基本資訊
 
 - **技術棧**：Vue 3 + TypeScript + Go + SQLite + Podman
-- **生產環境**：<https://files.94work.net/>
+- **生產環境**：內部私有部署
 - **管理員**：<94work.net@gmail.com> (劉程維)
 - **設計原則**：賈伯斯理念 + Apple HIG + Windows 11 Fluent Design
 
