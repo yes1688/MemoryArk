@@ -106,7 +106,7 @@
         <div class="settings-group">
           <div class="setting-item">
             <div class="setting-info">
-              <h3 class="setting-title">MemoryArk 2.0</h3>
+              <h3 class="setting-title">MemoryArk</h3>
               <p class="setting-description">教會影音回憶錄系統</p>
             </div>
             <div class="about-info">

@@ -1,4 +1,4 @@
-# MemoryArk 2.0 開發環境 (統一配置版本)
+# MemoryArk 開發環境 (統一配置版本)
 # 使用: podman-compose up
 version: '3.8'
 

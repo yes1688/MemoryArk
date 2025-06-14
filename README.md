@@ -1,10 +1,10 @@
-# MemoryArk 2.0
+# MemoryArk
 
 > 真耶穌教會的現代化媒體檔案管理系統
 
 ## 系統概述
 
-MemoryArk 2.0 是專為真耶穌教會設計的檔案管理系統，提供安全的檔案存儲、管理和分享功能，特別優化教會的安息日資料和共享資源需求。
+MemoryArk 是專為真耶穌教會設計的檔案管理系統，提供安全的檔案存儲、管理和分享功能，特別優化教會的安息日資料和共享資源需求。
 
 ### 主要功能
 - 🔐 **安全認證** - JWT 用戶認證和權限管理
@@ -27,8 +27,8 @@ MemoryArk 2.0 是專為真耶穌教會設計的檔案管理系統，提供安全
 
 1. **克隆專案**
    ```bash
-   git clone <repository-url>
-   cd MemoryArk2
+   git clone https://github.com/yes1688/MemoryArk.git
+   cd MemoryArk
    ```
 
 2. **配置環境**

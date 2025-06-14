@@ -12,7 +12,7 @@
             註冊申請
           </h1>
           <p class="text-gray-600">
-            完成註冊申請以使用 MemoryArk 2.0
+            完成註冊申請以使用 MemoryArk
           </p>
         </div>
 
@@ -64,7 +64,7 @@
               v-model="registerForm.reason"
               rows="4"
               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              placeholder="請簡述您申請使用 MemoryArk 2.0 的理由（選填）"
+              placeholder="請簡述您申請使用 MemoryArk 的理由（選填）"
             />
           </div>
 
