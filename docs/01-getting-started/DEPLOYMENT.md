@@ -14,6 +14,13 @@ cd MemoryArk
 ./deploy.sh up production
 ```
 
+**想要自訂配置？**
+```bash
+cp .env.example .env  # 建立配置檔案
+nano .env             # 修改設定
+./deploy.sh restart   # 重啟套用
+```
+
 **就這麼簡單！** 3分鐘後訪問 http://localhost:7001
 
 ---
@@ -89,6 +96,14 @@ cd MemoryArk
 <details>
 <summary>📧 更改管理員帳號</summary>
 
+**方法1：修改 .env 檔案**
+```bash
+cp .env.example .env  # 如果還沒有 .env
+nano .env             # 修改 ROOT_ADMIN_EMAIL 和 ROOT_ADMIN_NAME
+./deploy.sh restart
+```
+
+**方法2：直接設定環境變數**
 ```bash
 export ROOT_ADMIN_EMAIL="your-email@domain.com"
 export ROOT_ADMIN_NAME="您的姓名"

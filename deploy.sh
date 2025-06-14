@@ -39,10 +39,21 @@ case $ACTION in
         # 創建必要目錄
         mkdir -p data logs/nginx uploads
         
+        # 載入 .env 檔案 (如果存在)
+        if [ -f ".env" ]; then
+            echo -e "${GREEN}載入 .env 配置檔案${NC}"
+            set -a
+            source .env
+            set +a
+        else
+            echo -e "${YELLOW}未找到 .env 檔案，使用預設配置${NC}"
+            echo -e "${YELLOW}提示：執行 'cp .env.example .env' 建立配置檔案${NC}"
+        fi
+        
         # 設置環境變量
         if [ "$ENVIRONMENT" = "dev" ]; then
             export DEVELOPMENT_MODE=true
-            export DEV_AUTO_LOGIN_EMAIL="94work.net@gmail.com"
+            export DEV_AUTO_LOGIN_EMAIL="${DEV_AUTO_LOGIN_EMAIL:-94work.net@gmail.com}"
             export DEV_BYPASS_AUTH=true
             export DEV_CORS_ENABLED=true
             echo -e "${YELLOW}使用開發環境配置${NC}"
