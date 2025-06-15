@@ -80,14 +80,19 @@ func createDefaultAdmin(db *gorm.DB) error {
 	adminEmail := os.Getenv("ROOT_ADMIN_EMAIL")
 	adminName := os.Getenv("ROOT_ADMIN_NAME")
 	
-	// 設定預設值
+	// 如果沒有設定管理員信箱，跳過建立預設管理員
 	if adminEmail == "" {
-		adminEmail = "admin@memoryark.org"
+		log.Printf("Warning: ROOT_ADMIN_EMAIL not set, no default admin will be created")
+		log.Printf("Hint: Set ROOT_ADMIN_EMAIL in .env file to create an admin user")
+		return nil
 	}
+	
+	// 設定預設名稱（如果沒有提供）
 	if adminName == "" {
 		adminName = "系統管理員"
 	}
 	
+	log.Printf("Creating default admin user: %s", adminEmail)
 	admin := models.User{
 		Email:  adminEmail,
 		Name:   adminName,
