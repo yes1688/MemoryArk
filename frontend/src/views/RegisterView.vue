@@ -17,11 +17,20 @@
           
           <!-- 顯示使用者 email -->
           <div v-if="authStore.authStatus?.email" class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div class="flex items-center justify-center">
-              <svg class="w-5 h-5 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
-              </svg>
-              <span class="text-blue-800 text-sm font-medium">{{ authStore.authStatus.email }}</span>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center">
+                <svg class="w-5 h-5 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+                </svg>
+                <span class="text-blue-800 text-sm font-medium">{{ authStore.authStatus.email }}</span>
+              </div>
+              <button 
+                @click="handleSwitchAccount"
+                class="text-blue-600 hover:text-blue-800 text-xs underline transition-colors duration-200"
+                title="切換帳號"
+              >
+                切換帳號
+              </button>
             </div>
           </div>
         </div>
@@ -171,6 +180,11 @@ const handleRegister = async () => {
   }
   
   isLoading.value = false
+}
+
+// 切換帳號 - 登出 Cloudflare Access
+const handleSwitchAccount = () => {
+  authStore.logout()
 }
 
 // 初始化時檢查是否已經通過 Cloudflare 認證
