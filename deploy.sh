@@ -59,6 +59,34 @@ case $ACTION in
                 read -p "管理員信箱 (必填): " admin_email
                 read -p "管理員姓名 (選填，預設'系統管理員'): " admin_name
                 
+                # 如果是開發環境，詢問是否要設定開發模式
+                if [ "$ENVIRONMENT" = "dev" ]; then
+                    echo ""
+                    echo -e "${YELLOW}檢測到開發環境，是否要啟用開發模式？(y/n)${NC}"
+                    echo -e "${YELLOW}開發模式會自動登入並跳過認證${NC}"
+                    read -p "選擇: " enable_dev_mode
+                    
+                    if [ "$enable_dev_mode" = "y" ] || [ "$enable_dev_mode" = "Y" ]; then
+                        dev_mode="true"
+                        dev_auto_login="$admin_email"
+                        dev_bypass_auth="true"
+                        dev_cors="true"
+                        echo -e "${GREEN}✅ 開發模式已啟用${NC}"
+                    else
+                        dev_mode="false"
+                        dev_auto_login=""
+                        dev_bypass_auth="false"
+                        dev_cors="false"
+                        echo -e "${GREEN}✅ 開發模式已停用${NC}"
+                    fi
+                else
+                    # 生產環境，強制關閉開發模式
+                    dev_mode="false"
+                    dev_auto_login=""
+                    dev_bypass_auth="false"
+                    dev_cors="false"
+                fi
+                
                 # 檢查管理員信箱是否為空
                 if [ -z "$admin_email" ]; then
                     echo -e "${RED}錯誤：管理員信箱不能為空${NC}"
@@ -71,14 +99,24 @@ case $ACTION in
                     admin_name="系統管理員"
                 fi
                 
-                # 複製範例檔案並替換管理員資訊
+                # 複製範例檔案並替換配置
                 cp .env.example .env
                 sed -i "s/ROOT_ADMIN_EMAIL=your-admin@example.com/ROOT_ADMIN_EMAIL=$admin_email/" .env
                 sed -i "s/ROOT_ADMIN_NAME=系統管理員/ROOT_ADMIN_NAME=$admin_name/" .env
+                sed -i "s/DEVELOPMENT_MODE=false/DEVELOPMENT_MODE=$dev_mode/" .env
+                sed -i "s/DEV_AUTO_LOGIN_EMAIL=/DEV_AUTO_LOGIN_EMAIL=$dev_auto_login/" .env
+                sed -i "s/DEV_BYPASS_AUTH=false/DEV_BYPASS_AUTH=$dev_bypass_auth/" .env
+                sed -i "s/DEV_CORS_ENABLED=false/DEV_CORS_ENABLED=$dev_cors/" .env
                 
                 echo -e "${GREEN}✅ .env 檔案已建立${NC}"
                 echo -e "${GREEN}📧 管理員信箱: $admin_email${NC}"
                 echo -e "${GREEN}👤 管理員姓名: $admin_name${NC}"
+                if [ "$dev_mode" = "true" ]; then
+                    echo -e "${GREEN}🚧 開發模式: 已啟用${NC}"
+                    echo -e "${GREEN}🔓 自動登入: $dev_auto_login${NC}"
+                else
+                    echo -e "${GREEN}🔒 生產模式: 安全配置${NC}"
+                fi
                 echo ""
                 echo -e "${YELLOW}💡 您可以編輯 .env 檔案來調整其他設定${NC}"
                 echo ""
