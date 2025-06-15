@@ -160,7 +160,8 @@ const handleRegister = async () => {
       errorMessage.value = authStore.error || '送出申請時發生錯誤，請稍後再試'
     }
   } catch (error) {
-    errorMessage.value = '網路連線錯誤，請檢查您的網路連線'
+    // 優先使用 authStore 的錯誤訊息，因為它可能已經被設定
+    errorMessage.value = authStore.error || '網路連線錯誤，請檢查您的網路連線'
   } finally {
     isLoading.value = false
   }
