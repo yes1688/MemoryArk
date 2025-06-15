@@ -46,8 +46,52 @@ case $ACTION in
             source .env
             set +a
         else
-            echo -e "${YELLOW}未找到 .env 檔案，使用預設配置${NC}"
-            echo -e "${YELLOW}提示：執行 'cp .env.example .env' 建立配置檔案${NC}"
+            echo -e "${YELLOW}未找到 .env 檔案${NC}"
+            echo -e "${YELLOW}是否要建立 .env 配置檔案？(y/n)${NC}"
+            read -p "選擇: " create_env
+            
+            if [ "$create_env" = "y" ] || [ "$create_env" = "Y" ]; then
+                echo -e "${GREEN}建立 .env 配置檔案...${NC}"
+                echo ""
+                
+                # 提示輸入管理員資訊
+                echo -e "${YELLOW}請設定系統管理員資訊：${NC}"
+                read -p "管理員信箱 (必填): " admin_email
+                read -p "管理員姓名 (選填，預設'系統管理員'): " admin_name
+                
+                # 檢查管理員信箱是否為空
+                if [ -z "$admin_email" ]; then
+                    echo -e "${RED}錯誤：管理員信箱不能為空${NC}"
+                    echo -e "${YELLOW}請手動執行 'cp .env.example .env' 建立配置檔案${NC}"
+                    exit 1
+                fi
+                
+                # 設定預設值
+                if [ -z "$admin_name" ]; then
+                    admin_name="系統管理員"
+                fi
+                
+                # 複製範例檔案並替換管理員資訊
+                cp .env.example .env
+                sed -i "s/ROOT_ADMIN_EMAIL=your-admin@example.com/ROOT_ADMIN_EMAIL=$admin_email/" .env
+                sed -i "s/ROOT_ADMIN_NAME=系統管理員/ROOT_ADMIN_NAME=$admin_name/" .env
+                
+                echo -e "${GREEN}✅ .env 檔案已建立${NC}"
+                echo -e "${GREEN}📧 管理員信箱: $admin_email${NC}"
+                echo -e "${GREEN}👤 管理員姓名: $admin_name${NC}"
+                echo ""
+                echo -e "${YELLOW}💡 您可以編輯 .env 檔案來調整其他設定${NC}"
+                echo ""
+                
+                # 載入新建立的 .env
+                set -a
+                source .env
+                set +a
+            else
+                echo -e "${YELLOW}跳過建立 .env 檔案，使用預設配置${NC}"
+                echo -e "${RED}⚠️  警告：沒有管理員設定，系統將無法正常使用${NC}"
+                echo -e "${YELLOW}提示：稍後可執行 'cp .env.example .env' 建立配置檔案${NC}"
+            fi
         fi
         
         # 檢查並生成 JWT 密鑰
@@ -60,10 +104,16 @@ case $ACTION in
         # 設置環境變量
         if [ "$ENVIRONMENT" = "dev" ]; then
             export DEVELOPMENT_MODE=true
-            export DEV_AUTO_LOGIN_EMAIL="${DEV_AUTO_LOGIN_EMAIL:-94work.net@gmail.com}"
+            # 開發模式下使用 ROOT_ADMIN_EMAIL 作為自動登入信箱
+            export DEV_AUTO_LOGIN_EMAIL="${DEV_AUTO_LOGIN_EMAIL:-$ROOT_ADMIN_EMAIL}"
             export DEV_BYPASS_AUTH=true
             export DEV_CORS_ENABLED=true
             echo -e "${YELLOW}使用開發環境配置${NC}"
+            if [ -n "$DEV_AUTO_LOGIN_EMAIL" ]; then
+                echo -e "${YELLOW}開發模式自動登入: $DEV_AUTO_LOGIN_EMAIL${NC}"
+            else
+                echo -e "${RED}警告：沒有設定開發模式登入信箱${NC}"
+            fi
         fi
         
         # 檢查並建構前端
