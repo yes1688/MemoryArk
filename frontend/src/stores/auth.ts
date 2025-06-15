@@ -134,7 +134,14 @@ export const useAuthStore = defineStore('auth', () => {
         return false
       }
     } catch (err: any) {
-      if (err.response?.data?.message) {
+      // 處理409錯誤和其他錯誤
+      if (err.response?.status === 409) {
+        const errorData = err.response.data
+        // 優先使用 error.message，若無則使用 message
+        error.value = errorData?.error?.message || errorData?.message || '註冊申請重複'
+      } else if (err.response?.data?.error?.message) {
+        error.value = err.response.data.error.message
+      } else if (err.response?.data?.message) {
         error.value = err.response.data.message
       } else {
         error.value = '網路連線錯誤'
