@@ -64,8 +64,8 @@ func (h *AuthHandler) GetAuthStatus(c *gin.Context) {
 		}
 	} else {
 		// 正常模式：從 Cloudflare Access 標頭獲取用戶郵箱
-		// Debug: 記錄所有相關標頭
-		fmt.Printf("=== Cloudflare Access Headers Debug ===\n")
+		// Debug: 記錄所有相關標頭和 cookies
+		fmt.Printf("=== Cloudflare Access Debug ===\n")
 		fmt.Printf("CF-Access-Authenticated-User-Email: %s\n", c.GetHeader("CF-Access-Authenticated-User-Email"))
 		fmt.Printf("Cf-Access-Authenticated-User-Email: %s\n", c.GetHeader("Cf-Access-Authenticated-User-Email"))
 		fmt.Printf("cf-access-authenticated-user-email: %s\n", c.GetHeader("cf-access-authenticated-user-email"))
@@ -76,7 +76,23 @@ func (h *AuthHandler) GetAuthStatus(c *gin.Context) {
 				fmt.Printf("Found CF header: %s = %v\n", key, values)
 			}
 		}
-		fmt.Printf("======================================\n")
+		
+		// 檢查 cookies
+		fmt.Printf("=== Cookies ===\n")
+		for _, cookie := range c.Request.Cookies() {
+			if len(cookie.Name) >= 2 && (cookie.Name[:2] == "CF" || cookie.Name[:2] == "cf") {
+				fmt.Printf("Found CF cookie: %s = %s\n", cookie.Name, cookie.Value)
+			}
+		}
+		
+		// 檢查 JWT token 相關的 cookies
+		if jwtCookie, err := c.Cookie("CF_Authorization"); err == nil {
+			fmt.Printf("CF_Authorization cookie found: %s\n", jwtCookie[:50]+"...")
+		}
+		if cfToken, err := c.Cookie("cf-access-token"); err == nil {
+			fmt.Printf("cf-access-token cookie found: %s\n", cfToken[:50]+"...")
+		}
+		fmt.Printf("==============================\n")
 		
 		email = c.GetHeader("CF-Access-Authenticated-User-Email")
 		if email == "" {
