@@ -6,6 +6,7 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig({
   plugins: [vue()],
   define: {
+    __APP_VERSION__: JSON.stringify(new Date().toISOString()),
     // 強制所有環境都使用相對路徑，防止 HTTP URL 洩漏
     'import.meta.env.VITE_API_BASE_URL': JSON.stringify('/api'),
     __DEV_API_URL__: JSON.stringify('/api'),

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>測試 Email 顯示</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-8">
+    <h1 class="text-2xl font-bold mb-4">測試 Email 顯示邏輯</h1>
+    
+    <div class="max-w-md">
+        <h2 class="text-lg font-semibold mb-2">1. 原始代碼（應該顯示）</h2>
+        <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-center justify-center">
+                <svg class="w-5 h-5 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+                </svg>
+                <span class="text-blue-800 text-sm font-medium">test@example.com</span>
+            </div>
+        </div>
+        
+        <h2 class="text-lg font-semibold mb-2 mt-6">2. Vue 模擬（使用 v-if）</h2>
+        <div id="app">
+            <div v-if="email" class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="flex items-center justify-center">
+                    <svg class="w-5 h-5 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+                    </svg>
+                    <span class="text-blue-800 text-sm font-medium">{{ email }}</span>
+                </div>
+            </div>
+            <div v-else class="text-red-500">Email 不存在或為空</div>
+        </div>
+        
+        <h2 class="text-lg font-semibold mb-2 mt-6">3. 檢查結果</h2>
+        <pre id="result" class="bg-gray-100 p-2 rounded text-xs"></pre>
+    </div>
+    
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script>
+        const { createApp } = Vue;
+        
+        createApp({
+            data() {
+                return {
+                    email: 'vue-test@example.com'
+                }
+            },
+            mounted() {
+                document.getElementById('result').textContent = JSON.stringify({
+                    email: this.email,
+                    hasEmail: !!this.email,
+                    vIfCondition: this.email ? 'true' : 'false'
+                }, null, 2);
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
