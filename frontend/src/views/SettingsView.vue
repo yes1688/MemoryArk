@@ -110,7 +110,7 @@
               <p class="setting-description">教會影音回憶錄系統</p>
             </div>
             <div class="about-info">
-              <p class="about-text">版本：2.0.1</p>
+              <p class="about-text">版本：2.0.11</p>
               <p class="about-text">為真耶穌教會的數位化服務而設計</p>
             </div>
           </div>
