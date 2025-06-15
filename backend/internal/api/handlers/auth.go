@@ -64,6 +64,20 @@ func (h *AuthHandler) GetAuthStatus(c *gin.Context) {
 		}
 	} else {
 		// 正常模式：從 Cloudflare Access 標頭獲取用戶郵箱
+		// Debug: 記錄所有相關標頭
+		fmt.Printf("=== Cloudflare Access Headers Debug ===\n")
+		fmt.Printf("CF-Access-Authenticated-User-Email: %s\n", c.GetHeader("CF-Access-Authenticated-User-Email"))
+		fmt.Printf("Cf-Access-Authenticated-User-Email: %s\n", c.GetHeader("Cf-Access-Authenticated-User-Email"))
+		fmt.Printf("cf-access-authenticated-user-email: %s\n", c.GetHeader("cf-access-authenticated-user-email"))
+		
+		// 檢查所有以 CF 或 cf 開頭的標頭
+		for key, values := range c.Request.Header {
+			if len(key) >= 2 && (key[:2] == "CF" || key[:2] == "Cf" || key[:2] == "cf") {
+				fmt.Printf("Found CF header: %s = %v\n", key, values)
+			}
+		}
+		fmt.Printf("======================================\n")
+		
 		email = c.GetHeader("CF-Access-Authenticated-User-Email")
 		if email == "" {
 			email = c.GetHeader("Cf-Access-Authenticated-User-Email")
