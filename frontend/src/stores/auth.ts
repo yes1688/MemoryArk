@@ -119,10 +119,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 註冊
   const register = async (data: RegisterData) => {
+    isLoading.value = true
+    error.value = null
+    
     try {
-      isLoading.value = true
-      error.value = null
-      
       const response = await authApi.register(data)
       
       if (response.success) {
@@ -134,6 +134,8 @@ export const useAuthStore = defineStore('auth', () => {
         return false
       }
     } catch (err: any) {
+      console.error('註冊錯誤:', err)
+      
       // 處理409錯誤和其他錯誤
       if (err.response?.status === 409) {
         const errorData = err.response.data
@@ -144,7 +146,7 @@ export const useAuthStore = defineStore('auth', () => {
       } else if (err.response?.data?.message) {
         error.value = err.response.data.message
       } else {
-        error.value = '網路連線錯誤'
+        error.value = '網路連線錯誤，請檢查您的網路連線'
       }
       return false
     } finally {

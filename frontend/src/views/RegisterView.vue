@@ -140,31 +140,27 @@ const handleRegister = async () => {
 
   isLoading.value = true
 
-  try {
-    const success = await authStore.register({
-      name: registerForm.value.name.trim(),
-      phone: registerForm.value.phone.trim() || undefined,
-      reason: registerForm.value.reason.trim() || undefined
-    })
+  const success = await authStore.register({
+    name: registerForm.value.name.trim(),
+    phone: registerForm.value.phone.trim() || undefined,
+    reason: registerForm.value.reason.trim() || undefined
+  })
 
-    if (success) {
-      successMessage.value = '註冊申請已成功送出！管理員會盡快審核您的申請。'
-      // 清空表單
-      registerForm.value = { name: '', phone: '', reason: '' }
-      
-      // 3秒後跳轉到等待審核頁面
-      setTimeout(() => {
-        router.push('/pending-approval')
-      }, 3000)
-    } else {
-      errorMessage.value = authStore.error || '送出申請時發生錯誤，請稍後再試'
-    }
-  } catch (error) {
-    // 優先使用 authStore 的錯誤訊息，因為它可能已經被設定
-    errorMessage.value = authStore.error || '網路連線錯誤，請檢查您的網路連線'
-  } finally {
-    isLoading.value = false
+  if (success) {
+    successMessage.value = '註冊申請已成功送出！管理員會盡快審核您的申請。'
+    // 清空表單
+    registerForm.value = { name: '', phone: '', reason: '' }
+    
+    // 3秒後跳轉到等待審核頁面
+    setTimeout(() => {
+      router.push('/pending-approval')
+    }, 3000)
+  } else {
+    // 直接使用 authStore.error，因為 register 函數已經設置了正確的錯誤訊息
+    errorMessage.value = authStore.error || '送出申請時發生錯誤，請稍後再試'
   }
+  
+  isLoading.value = false
 }
 
 // 初始化時檢查是否已經通過 Cloudflare 認證
