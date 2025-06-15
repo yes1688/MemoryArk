@@ -35,6 +35,14 @@ onMounted(() => {
   if (!localStorage.getItem('memoryark-theme')) {
     setTheme('light')
   }
+  
+  // 在 console 顯示版本資訊
+  console.log(`%c🚀 MemoryArk Frontend v2.0.11`, 
+    'color: #2563eb; font-size: 16px; font-weight: bold; background: #eff6ff; padding: 8px 12px; border-radius: 4px;')
+  console.log(`%c📅 Build Time: ${(window as any).__APP_VERSION__ || new Date().toISOString()}`, 
+    'color: #6b7280; font-size: 12px;')
+  console.log(`%c🌐 Domain: ${window.location.hostname}`, 
+    'color: #6b7280; font-size: 12px;')
 })
 </script>
 
