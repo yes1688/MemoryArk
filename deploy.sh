@@ -71,10 +71,10 @@ case $ACTION in
             echo -e "${YELLOW}建構前端...${NC}"
             if command -v npm &> /dev/null; then
                 # 本地有 npm，直接使用
-                cd frontend && npm install && npm run build && cd ..
+                cd frontend && npm install && npm audit fix && npm run build && cd ..
             else
                 # 使用 Docker 建構前端
-                docker run --rm -v $(pwd):/app -w /app/frontend node:18-alpine sh -c "npm install && npm run build"
+                docker run --rm -v $(pwd):/app -w /app/frontend node:18-alpine sh -c "npm install && npm audit fix && npm run build"
             fi
             echo -e "${GREEN}前端建構完成${NC}"
         else
@@ -117,6 +117,16 @@ case $ACTION in
         echo -e "${YELLOW}請將上述密鑰加入到 .env 檔案中${NC}"
         ;;
         
+    "update-frontend")
+        echo -e "${YELLOW}更新前端依賴並修復安全漏洞...${NC}"
+        if command -v npm &> /dev/null; then
+            cd frontend && npm update && npm audit fix && npm run build && cd ..
+        else
+            docker run --rm -v $(pwd):/app -w /app/frontend node:18-alpine sh -c "npm update && npm audit fix && npm run build"
+        fi
+        echo -e "${GREEN}前端更新完成${NC}"
+        ;;
+        
     "status")
         echo -e "${GREEN}服務狀態：${NC}"
         $COMPOSE_CMD ps
@@ -150,16 +160,17 @@ case $ACTION in
         ;;
         
     *)
-        echo "用法: $0 [up|down|restart|logs|status|diagnose|generate-jwt] [production|dev]"
+        echo "用法: $0 [up|down|restart|logs|status|diagnose|generate-jwt|update-frontend] [production|dev]"
         echo ""
         echo "命令："
-        echo "  up/start     - 啟動服務"
-        echo "  down/stop    - 停止服務"
-        echo "  restart      - 重啟服務"
-        echo "  logs         - 查看日誌"
-        echo "  status       - 檢查狀態"
-        echo "  diagnose     - 診斷問題"
-        echo "  generate-jwt - 生成 JWT 密鑰"
+        echo "  up/start        - 啟動服務"
+        echo "  down/stop       - 停止服務"
+        echo "  restart         - 重啟服務"
+        echo "  logs            - 查看日誌"
+        echo "  status          - 檢查狀態"
+        echo "  diagnose        - 診斷問題"
+        echo "  generate-jwt    - 生成 JWT 密鑰"
+        echo "  update-frontend - 更新前端依賴並修復安全漏洞"
         echo ""
         echo "環境："
         echo "  production - 生產環境（默認）"
