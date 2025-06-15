@@ -119,13 +119,19 @@ func (h *AuthHandler) GetAuthStatus(c *gin.Context) {
 	
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
+			response := AuthStatusResponse{
+				Authenticated:     true,
+				NeedsRegistration: true,
+				Email:            email,
+			}
+			fmt.Printf("=== NEEDS REGISTRATION RESPONSE ===\n")
+			fmt.Printf("Email in response: '%s'\n", response.Email)
+			fmt.Printf("Response struct: %+v\n", response)
+			fmt.Printf("=================================\n")
+			
 			c.JSON(http.StatusOK, gin.H{
 				"success": true,
-				"data": AuthStatusResponse{
-					Authenticated:     true,
-					NeedsRegistration: true,
-					Email:            email,
-				},
+				"data": response,
 			})
 			return
 		}
