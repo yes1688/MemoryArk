@@ -29,7 +29,8 @@ nano .env             # 修改設定
 
 ```bash
 cd MemoryArk
-./deploy.sh update
+git pull origin main      # 拉取最新代碼
+./deploy.sh restart       # 重啟並更新
 ```
 
 **資料會自動保護！** 不會丟失任何檔案或資料庫。
@@ -41,7 +42,7 @@ cd MemoryArk
 ```bash
 ./deploy.sh up        # 啟動系統
 ./deploy.sh down      # 停止系統  
-./deploy.sh restart   # 重啟系統
+./deploy.sh restart   # 重啟系統（自動更新代碼）
 ./deploy.sh status    # 檢查狀態
 ./deploy.sh logs      # 查看日誌
 ```

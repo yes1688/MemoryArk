@@ -190,7 +190,8 @@ case $ACTION in
             echo -e "${GREEN}前端已建構，跳過建構步驟${NC}"
         fi
         
-        # 構建並啟動
+        # 構建並啟動（確保使用最新代碼）
+        echo -e "${GREEN}🔨 建構服務...${NC}"
         $COMPOSE_CMD build
         $COMPOSE_CMD up -d
         
@@ -211,7 +212,16 @@ case $ACTION in
     "restart")
         echo -e "${YELLOW}重啟服務...${NC}"
         echo -e "${GREEN}🔄 確保使用最新代碼...${NC}"
+        
+        # 重建前端（使用 docker-compose 統一處理）
+        echo -e "${GREEN}📦 重建前端...${NC}"
+        $COMPOSE_CMD --profile build run --rm frontend-builder
+        
+        # 重建後端
+        echo -e "${GREEN}🔨 重建後端...${NC}"
         $COMPOSE_CMD build --quiet
+        
+        # 重啟服務
         $COMPOSE_CMD restart
         echo -e "${GREEN}✅ 服務已重啟並使用最新代碼${NC}"
         ;;

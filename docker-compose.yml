@@ -4,6 +4,17 @@
 version: '3.8'
 
 services:
+  # 前端建構服務（只在建構時運行）
+  frontend-builder:
+    image: node:18-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - ./frontend/dist:/app/dist
+    command: sh -c "npm ci && npm run build"
+    profiles:
+      - build
+
   backend:
     build:
       context: .

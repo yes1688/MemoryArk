@@ -79,7 +79,7 @@ cd MemoryArk
 ./deploy.sh up production      # 生產環境部署
 ./deploy.sh up dev            # 開發環境部署
 ./deploy.sh down              # 停止服務
-./deploy.sh restart           # 重啟服務
+./deploy.sh restart           # 重啟服務（自動重建前後端）
 
 # 管理功能
 ./deploy.sh update-frontend   # 更新前端依賴並修復安全漏洞
