@@ -17,6 +17,7 @@ export interface AuthStatus {
   user?: User
   needsRegistration?: boolean
   pendingApproval?: boolean
+  email?: string
 }
 
 export interface RegisterData {

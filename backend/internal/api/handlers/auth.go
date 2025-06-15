@@ -48,6 +48,7 @@ type AuthStatusResponse struct {
 	Authenticated      bool         `json:"authenticated"`
 	NeedsRegistration  bool         `json:"needsRegistration,omitempty"`
 	PendingApproval    bool         `json:"pendingApproval,omitempty"`
+	Email             string       `json:"email,omitempty"`
 	User              *models.User  `json:"user,omitempty"`
 }
 
@@ -93,6 +94,7 @@ func (h *AuthHandler) GetAuthStatus(c *gin.Context) {
 				"data": AuthStatusResponse{
 					Authenticated:     true,
 					NeedsRegistration: true,
+					Email:            email,
 				},
 			})
 			return
