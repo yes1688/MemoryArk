@@ -28,6 +28,10 @@ export const useAuthStore = defineStore('auth', () => {
   const pendingApproval = computed(() => 
     authStatus.value?.pendingApproval === true
   )
+  
+  const userEmail = computed(() => 
+    user.value?.email || authStatus.value?.email || null
+  )
 
   // 檢查認證狀態
   const checkAuthStatus = async () => {
@@ -186,6 +190,7 @@ export const useAuthStore = defineStore('auth', () => {
     hasCloudflareAccess,
     needsRegistration,
     pendingApproval,
+    userEmail,
     checkAuthStatus,
     getCurrentUser,
     register,

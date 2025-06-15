@@ -112,6 +112,7 @@ func (h *AuthHandler) GetAuthStatus(c *gin.Context) {
 	// 根據用戶狀態返回相應的回應
 	response := AuthStatusResponse{
 		Authenticated: true,
+		Email:        user.Email, // 確保 email 總是包含在回應中
 		User:         &user,
 	}
 	
