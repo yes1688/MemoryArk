@@ -24,9 +24,9 @@ services:
       # 檔案上傳配置
       - UPLOAD_PATH=${UPLOAD_PATH:-./uploads}
       
-      # 管理員配置
-      - ROOT_ADMIN_EMAIL=${ROOT_ADMIN_EMAIL:-94work.net@gmail.com}
-      - ROOT_ADMIN_NAME=${ROOT_ADMIN_NAME:-劉程維}
+      # 管理員配置 (請在 .env 檔案中設定，否則不會有預設管理員)
+      - ROOT_ADMIN_EMAIL=${ROOT_ADMIN_EMAIL:-}
+      - ROOT_ADMIN_NAME=${ROOT_ADMIN_NAME:-系統管理員}
       
       # 開發模式配置（本地開發設為 true，生產環境設為 false）
       - DEVELOPMENT_MODE=${DEVELOPMENT_MODE:-false}
