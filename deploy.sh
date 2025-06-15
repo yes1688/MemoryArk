@@ -219,7 +219,7 @@ case $ACTION in
         
         # 重建後端
         echo -e "${GREEN}🔨 重建後端...${NC}"
-        $COMPOSE_CMD build --quiet
+        $COMPOSE_CMD build --no-cache
         
         # 重啟服務
         $COMPOSE_CMD restart
