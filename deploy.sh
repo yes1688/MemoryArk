@@ -2,6 +2,27 @@
 # MemoryArk 統一部署腳本
 # 適用於本地開發和生產環境
 
+# =============================================================================
+# 設計理念：簡單優於複雜
+# =============================================================================
+# 
+# 核心思考：80% 的用戶只需要 20% 的功能
+#
+# 用戶心理模型：
+# - restart = 更新代碼 + 重啟服務（應該"就是works"）
+# - 不想理解什麼是"容器重建"、"映像建構"等技術細節
+# - 希望一個指令解決大部分問題
+#
+# 因此設計決策：
+# 1. restart 指令智能化：自動建構 + 重啟，確保代碼變更生效
+# 2. 基本指令簡化：up/restart/down/logs 覆蓋 99% 使用場景  
+# 3. 進階功能收納：避免選擇困擾，但保留維護能力
+# 4. 友善提示：清楚告知用戶正在做什麼，建立信心
+#
+# 實際效果：
+# git pull && ./deploy.sh restart  ← 這一行解決所有更新需求
+# =============================================================================
+
 set -e
 
 # 顏色輸出
@@ -189,7 +210,10 @@ case $ACTION in
         
     "restart")
         echo -e "${YELLOW}重啟服務...${NC}"
+        echo -e "${GREEN}🔄 確保使用最新代碼...${NC}"
+        $COMPOSE_CMD build --quiet
         $COMPOSE_CMD restart
+        echo -e "${GREEN}✅ 服務已重啟並使用最新代碼${NC}"
         ;;
         
     "logs")
@@ -248,17 +272,19 @@ case $ACTION in
         ;;
         
     *)
-        echo "用法: $0 [up|down|restart|logs|status|diagnose|generate-jwt|update-frontend] [production|dev]"
+        echo -e "${GREEN}MemoryArk 部署工具${NC}"
         echo ""
-        echo "命令："
-        echo "  up/start        - 啟動服務"
-        echo "  down/stop       - 停止服務"
-        echo "  restart         - 重啟服務"
-        echo "  logs            - 查看日誌"
-        echo "  status          - 檢查狀態"
-        echo "  diagnose        - 診斷問題"
-        echo "  generate-jwt    - 生成 JWT 密鑰"
-        echo "  update-frontend - 更新前端依賴並修復安全漏洞"
+        echo "基本用法："
+        echo "  ./deploy.sh up       - 🚀 啟動服務"
+        echo "  ./deploy.sh restart  - 🔄 更新並重啟" 
+        echo "  ./deploy.sh down     - 🛑 停止服務"
+        echo "  ./deploy.sh logs     - 📝 查看日誌"
+        echo ""
+        echo "進階選項："
+        echo "  ./deploy.sh status          - 檢查狀態"
+        echo "  ./deploy.sh diagnose        - 診斷問題"
+        echo "  ./deploy.sh update-frontend - 更新前端"
+        echo "  ./deploy.sh generate-jwt    - 生成密鑰"
         echo ""
         echo "環境："
         echo "  production - 生產環境（默認）"

@@ -171,8 +171,9 @@ export const useAuthStore = defineStore('auth', () => {
   // 登出
   const logout = async () => {
     clearAuth()
-    // 重定向到登入頁面
-    window.location.href = '/login'
+    // 對於 Cloudflare Access，需要訪問 Cloudflare 登出端點
+    // 這會清除 Cloudflare Access 的 session
+    window.location.href = '/cdn-cgi/access/logout'
   }
 
   return {
