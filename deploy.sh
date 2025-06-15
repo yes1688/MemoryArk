@@ -66,6 +66,21 @@ case $ACTION in
             echo -e "${YELLOW}使用開發環境配置${NC}"
         fi
         
+        # 檢查並建構前端
+        if [ ! -f "frontend/dist/index.html" ]; then
+            echo -e "${YELLOW}建構前端...${NC}"
+            if command -v npm &> /dev/null; then
+                # 本地有 npm，直接使用
+                cd frontend && npm install && npm run build && cd ..
+            else
+                # 使用 Docker 建構前端
+                docker run --rm -v $(pwd):/app -w /app/frontend node:18-alpine sh -c "npm install && npm run build"
+            fi
+            echo -e "${GREEN}前端建構完成${NC}"
+        else
+            echo -e "${GREEN}前端已建構，跳過建構步驟${NC}"
+        fi
+        
         # 構建並啟動
         $COMPOSE_CMD build
         $COMPOSE_CMD up -d
