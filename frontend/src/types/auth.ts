@@ -30,11 +30,16 @@ export interface UserRegistrationRequest {
   email: string
   name: string
   phone?: string
-  reason?: string
   status: 'pending' | 'approved' | 'rejected'
-  reviewComment?: string
-  reviewedBy?: number
-  reviewedAt?: string
-  createdAt: string
-  updatedAt: string
+  rejection_reason?: string
+  rejection_history?: string
+  processed_by?: number
+  processed_at?: string
+  created_at: string
+  processed_by_user?: {
+    id: number
+    email: string
+    name: string
+    role: string
+  }
 }

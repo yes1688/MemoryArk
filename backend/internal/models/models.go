@@ -36,6 +36,7 @@ type UserRegistrationRequest struct {
 	ProcessedAt     *time.Time     `json:"processed_at"`
 	ProcessedBy     *uint          `json:"processed_by"`
 	RejectionReason string         `json:"rejection_reason" gorm:"type:text"`
+	RejectionHistory string        `json:"rejection_history" gorm:"type:text"` // 保存歷史拒絕原因
 	
 	// 關聯
 	ProcessedByUser *User          `json:"processed_by_user,omitempty" gorm:"foreignKey:ProcessedBy"`

@@ -220,9 +220,13 @@ func (h *AdminHandler) GetRegistrations(c *gin.Context) {
 		return
 	}
 	
-	// 獲取註冊申請列表
-	if err := query.Preload("ProcessedByUser").
-		Order("created_at DESC").
+	// 獲取註冊申請列表 - 修復查詢邏輯
+	query2 := h.db.Model(&models.UserRegistrationRequest{})
+	if status != "" {
+		query2 = query2.Where("status = ?", status)
+	}
+	
+	if err := query2.Order("created_at DESC").
 		Offset(offset).Limit(limit).
 		Find(&registrations).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -235,10 +239,42 @@ func (h *AdminHandler) GetRegistrations(c *gin.Context) {
 		return
 	}
 	
+	// 手動構建完整的響應數據
+	var responseData []map[string]interface{}
+	for _, reg := range registrations {
+		// 手動查詢 rejection_history
+		var rejectionHistory string
+		h.db.Raw("SELECT COALESCE(rejection_history, '') FROM user_registration_requests WHERE id = ?", reg.ID).Scan(&rejectionHistory)
+		
+		// 構建響應對象
+		regData := map[string]interface{}{
+			"id":                reg.ID,
+			"email":             reg.Email,
+			"name":              reg.Name,
+			"phone":             reg.Phone,
+			"status":            reg.Status,
+			"created_at":        reg.CreatedAt,
+			"processed_at":      reg.ProcessedAt,
+			"processed_by":      reg.ProcessedBy,
+			"rejection_reason":  reg.RejectionReason,
+			"rejection_history": rejectionHistory,
+		}
+		
+		// 加載關聯用戶
+		if reg.ProcessedBy != nil {
+			var user models.User
+			if err := h.db.First(&user, *reg.ProcessedBy).Error; err == nil {
+				regData["processed_by_user"] = user
+			}
+		}
+		
+		responseData = append(responseData, regData)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"registrations": registrations,
+			"registrations": responseData,
 			"pagination": gin.H{
 				"page":  page,
 				"limit": limit,
@@ -288,13 +324,16 @@ func (h *AdminHandler) ApproveRegistration(c *gin.Context) {
 		role = "admin"
 	}
 	
+	// 轉換 adminUserID 為指針
+	adminID := adminUserID.(uint)
+	
 	user := models.User{
 		Email:       registration.Email,
 		Name:        registration.Name,
 		Phone:       registration.Phone,
 		Role:        role,
 		Status:      "approved",
-		ApprovedBy:  adminUserID.(*uint),
+		ApprovedBy:  &adminID,
 		ApprovedAt:  &now,
 		CreatedAt:   now,
 		UpdatedAt:   now,
@@ -315,7 +354,7 @@ func (h *AdminHandler) ApproveRegistration(c *gin.Context) {
 	// 更新註冊申請狀態
 	registration.Status = "approved"
 	registration.ProcessedAt = &now
-	registration.ProcessedBy = adminUserID.(*uint)
+	registration.ProcessedBy = &adminID
 	
 	if err := tx.Save(&registration).Error; err != nil {
 		tx.Rollback()
@@ -376,9 +415,10 @@ func (h *AdminHandler) RejectRegistration(c *gin.Context) {
 	
 	// 更新註冊申請狀態
 	now := time.Now()
+	adminID := adminUserID.(uint)
 	registration.Status = "rejected"
 	registration.ProcessedAt = &now
-	registration.ProcessedBy = adminUserID.(*uint)
+	registration.ProcessedBy = &adminID
 	registration.RejectionReason = req.Reason
 	
 	if err := h.db.Save(&registration).Error; err != nil {

@@ -9,10 +9,12 @@ export interface UserListResponse {
 }
 
 export interface RegistrationListResponse {
-  requests: UserRegistrationRequest[]
-  total: number
-  page: number
-  totalPages: number
+  registrations: UserRegistrationRequest[]
+  pagination: {
+    total: number
+    page: number
+    limit: number
+  }
 }
 
 export interface SystemStats {

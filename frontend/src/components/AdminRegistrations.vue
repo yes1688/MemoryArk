@@ -9,8 +9,17 @@ interface RegistrationRequest {
   phone?: string
   reason?: string
   status: 'pending' | 'approved' | 'rejected'
-  createdAt: string
-  updatedAt: string
+  rejection_reason?: string
+  rejection_history?: string
+  processed_by?: number
+  processed_at?: string
+  created_at: string
+  processed_by_user?: {
+    id: number
+    email: string
+    name: string
+    role: string
+  }
 }
 
 const registrations = ref<RegistrationRequest[]>([])
@@ -39,7 +48,7 @@ const loadRegistrations = async () => {
   isLoading.value = true
   try {
     const response = await adminApi.getRegistrations()
-    registrations.value = response.data?.requests || []
+    registrations.value = response.data?.registrations || []
   } catch (error) {
     console.error('載入註冊申請失敗:', error)
   } finally {
@@ -48,22 +57,33 @@ const loadRegistrations = async () => {
 }
 
 const approveRegistration = async (id: number) => {
+  if (!confirm('確定要通過這個註冊申請嗎？')) {
+    return
+  }
+  
   try {
     await adminApi.approveRegistration(id)
     await loadRegistrations()
+    alert('註冊申請已通過！')
   } catch (error) {
     console.error('通過註冊申請失敗:', error)
+    alert('通過註冊申請失敗，請稍後再試')
   }
 }
 
 const rejectRegistration = async (id: number, reason: string = '') => {
   const rejectionReason = reason || prompt('請輸入拒絕原因（選填）：')
+  if (rejectionReason === null) {
+    return // 用戶取消
+  }
   
   try {
     await adminApi.rejectRegistration(id, rejectionReason || '')
     await loadRegistrations()
+    alert('註冊申請已拒絕！')
   } catch (error) {
     console.error('拒絕註冊申請失敗:', error)
+    alert('拒絕註冊申請失敗，請稍後再試')
   }
 }
 
@@ -123,10 +143,12 @@ onMounted(() => {
 /* 頭像樣式 */
 .admin-avatar {
   background: var(--bg-secondary);
+  border: 2px solid var(--border-light);
 }
 
 .admin-avatar-text {
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 /* 申請原因文字樣式 */
@@ -243,17 +265,36 @@ onMounted(() => {
                 </div>
               </div>
 
-              <div class="mt-4">
-                <h4 class="text-sm font-medium mb-2">申請原因：</h4>
+              <div class="mt-4" v-if="registration.phone">
+                <h4 class="text-sm font-medium mb-2">聯絡電話：</h4>
                 <p class="text-sm admin-reason-text p-3 rounded-md">
-                  {{ registration.reason || '未提供申請原因' }}
+                  {{ registration.phone }}
+                </p>
+              </div>
+              
+              <div class="mt-4" v-if="registration.rejection_reason">
+                <h4 class="text-sm font-medium mb-2 text-red-600">拒絕原因：</h4>
+                <p class="text-sm p-3 rounded-md bg-red-50 text-red-700">
+                  {{ registration.rejection_reason }}
                 </p>
               </div>
 
+              <div class="mt-4" v-if="registration.rejection_history">
+                <h4 class="text-sm font-medium mb-2 text-orange-600">歷史拒絕記錄：</h4>
+                <div class="text-sm p-3 rounded-md bg-orange-50 text-orange-700 space-y-1">
+                  <div v-for="(line, index) in registration.rejection_history.split('\n')" :key="index">
+                    {{ line }}
+                  </div>
+                </div>
+              </div>
+
               <div class="mt-4 flex items-center justify-between text-xs admin-meta-text">
-                <span>申請時間：{{ new Date(registration.createdAt).toLocaleString() }}</span>
-                <span v-if="registration.updatedAt !== registration.createdAt">
-                  處理時間：{{ new Date(registration.updatedAt).toLocaleString() }}
+                <span>申請時間：{{ new Date(registration.created_at).toLocaleString() }}</span>
+                <span v-if="registration.processed_at">
+                  處理時間：{{ new Date(registration.processed_at).toLocaleString() }}
+                </span>
+                <span v-if="registration.processed_by_user">
+                  處理者：{{ registration.processed_by_user.name }}
                 </span>
               </div>
             </div>

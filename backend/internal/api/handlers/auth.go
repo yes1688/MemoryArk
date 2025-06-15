@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -191,14 +192,79 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	// 檢查是否已經有註冊申請
 	var existingRequest models.UserRegistrationRequest
 	if err := h.db.Where("email = ?", email).First(&existingRequest).Error; err == nil {
-		c.JSON(http.StatusConflict, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code": "REGISTRATION_EXISTS",
-				"message": "註冊申請已存在",
-			},
-		})
-		return
+		// 如果已經通過，不允許重複註冊
+		if existingRequest.Status == "approved" {
+			c.JSON(http.StatusConflict, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code": "ALREADY_APPROVED",
+					"message": "您的註冊申請已通過，請直接登入",
+				},
+			})
+			return
+		}
+		
+		// 如果是 pending 狀態，不允許重複註冊
+		if existingRequest.Status == "pending" {
+			c.JSON(http.StatusConflict, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code": "REGISTRATION_PENDING",
+					"message": "您的註冊申請正在審核中，請耐心等待",
+				},
+			})
+			return
+		}
+		
+		// 如果是被拒絕，允許重新註冊（更新原申請）
+		if existingRequest.Status == "rejected" {
+			now := time.Now()
+			
+			// 保存歷史拒絕原因
+			if existingRequest.RejectionReason != "" {
+				var timestamp string
+				if existingRequest.ProcessedAt != nil {
+					timestamp = existingRequest.ProcessedAt.Format("2006-01-02 15:04:05")
+				} else {
+					timestamp = "未知時間"
+				}
+				
+				historyEntry := fmt.Sprintf("[%s] %s", timestamp, existingRequest.RejectionReason)
+				
+				if existingRequest.RejectionHistory != "" {
+					existingRequest.RejectionHistory += "\n" + historyEntry
+				} else {
+					existingRequest.RejectionHistory = historyEntry
+				}
+			}
+			
+			// 更新申請資料
+			existingRequest.Name = req.Name
+			existingRequest.Phone = req.Phone
+			existingRequest.Status = "pending"
+			existingRequest.CreatedAt = now // 更新申請時間
+			existingRequest.ProcessedAt = nil // 清除處理時間
+			existingRequest.ProcessedBy = nil // 清除處理者
+			existingRequest.RejectionReason = "" // 清除當前拒絕原因
+			
+			if err := h.db.Save(&existingRequest).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"success": false,
+					"error": gin.H{
+						"code": "DATABASE_ERROR",
+						"message": "更新註冊申請失敗",
+					},
+				})
+				return
+			}
+			
+			c.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"message": "重新提交註冊申請成功，請等待審核",
+				"data": existingRequest,
+			})
+			return
+		}
 	}
 
 	// 檢查是否已經是註冊用戶

@@ -51,7 +51,7 @@
 // Dark Mode - 改為由 JavaScript 控制，不使用 CSS Media Query 自動檢測
 .dark {
   --bg-primary: var(--color-gray-900);
-  --bg-secondary: var(--color-gray-800);
+  --bg-secondary: #374151;  /* 改為更明亮的灰色，增加對比度 */
   --bg-tertiary: var(--color-gray-700);
   --bg-elevated: var(--color-gray-800);
   
@@ -60,7 +60,7 @@
   --text-tertiary: var(--color-gray-400);
   --text-placeholder: var(--color-gray-500);
   
-  --border-light: var(--color-gray-700);
+  --border-light: #4B5563;  /* 改為更明亮的邊框顏色 */
   --border-medium: var(--color-gray-600);
   --border-heavy: var(--color-gray-500);
 }
