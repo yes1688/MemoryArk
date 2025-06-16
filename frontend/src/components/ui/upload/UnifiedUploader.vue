@@ -339,7 +339,7 @@ const props = withDefaults(defineProps<Props>(), {
   supportFolder: true,
   autoUpload: false,
   hideActions: false,
-  maxFiles: 100,
+  maxFiles: 10000, // 設定為 10000 個檔案
   maxFileSize: 5 * 1024 * 1024 * 1024, // 5GB
   acceptTypes: '*',
   showMetadataForm: false
