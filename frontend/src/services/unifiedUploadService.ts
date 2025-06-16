@@ -91,8 +91,19 @@ export class UnifiedUploadService {
    */
   selectUploadMethod(files: File[]): UploadMethod {
     const largeFileThreshold = this.config.thresholds!.largeFileSize!
-    const totalThreshold = this.config.thresholds!.totalSizeThreshold!
 
+    // 🚀 強制使用分塊上傳，提供更穩定的上傳體驗
+    console.log('🚀 強制使用分塊上傳模式（生產環境測試）')
+    return {
+      name: 'chunked',
+      threshold: largeFileThreshold,
+      suitable: true,
+      description: '分塊上傳，支援斷點續傳和進度追蹤'
+    }
+
+    // 原智能選擇邏輯（已停用）
+    /*
+    const totalThreshold = this.config.thresholds!.totalSizeThreshold!
     const largeFiles = files.filter(file => file.size > largeFileThreshold)
     const totalSize = files.reduce((sum, file) => sum + file.size, 0)
 
@@ -137,6 +148,7 @@ export class UnifiedUploadService {
       suitable: true,
       description: '標準上傳，適合小檔案快速傳輸'
     }
+    */
   }
 
   /**
