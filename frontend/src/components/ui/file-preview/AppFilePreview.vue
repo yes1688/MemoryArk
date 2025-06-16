@@ -14,6 +14,7 @@
             :mime-type="file?.mimeType"
             :is-folder="file?.isDirectory || false"
             size="sm"
+            :show-extension="false"
           />
           <div>
             <h3 class="text-lg font-semibold" style="color: var(--text-primary);">{{ file?.name }}</h3>
@@ -24,34 +25,57 @@
         </div>
         
         <div class="flex items-center space-x-2">
-          <AppButton
-            variant="ghost"
-            size="small"
+          <!-- 導航按鈕 -->
+          <div v-if="showNavigation" class="flex items-center space-x-1 mr-2">
+            <button
+              @click="navigatePrev"
+              :disabled="!canNavigatePrev"
+              title="上一個檔案"
+              class="inline-flex items-center justify-center px-2 py-1.5 text-sm font-medium rounded-win11 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none bg-transparent text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white active:bg-gray-200 dark:active:bg-gray-600 focus:ring-gray-500 dark:focus:ring-gray-400 min-h-[32px]"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            
+            <span class="text-sm px-2" :style="{ color: 'var(--text-secondary)' }">
+              {{ (props.currentIndex || 0) + 1 }} / {{ props.fileList?.length || 0 }}
+            </span>
+            
+            <button
+              @click="navigateNext"
+              :disabled="!canNavigateNext"
+              title="下一個檔案"
+              class="inline-flex items-center justify-center px-2 py-1.5 text-sm font-medium rounded-win11 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none bg-transparent text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white active:bg-gray-200 dark:active:bg-gray-600 focus:ring-gray-500 dark:focus:ring-gray-400 min-h-[32px]"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </div>
+          
+          <button
             @click="toggleFullscreen"
             :title="isFullscreen ? '退出全屏' : '全屏'"
+            class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-win11 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none bg-transparent text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white active:bg-gray-200 dark:active:bg-gray-600 focus:ring-gray-500 dark:focus:ring-gray-400 min-h-[32px]"
           >
-            <template #icon-left>
-              <svg v-if="!isFullscreen" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
-              </svg>
-              <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </template>
-          </AppButton>
+            <svg v-if="!isFullscreen" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+            </svg>
+            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
           
-          <AppButton
-            variant="ghost"
-            size="small"
+          <button
             @click="downloadFile"
             title="下載檔案"
+            class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-win11 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none bg-transparent text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white active:bg-gray-200 dark:active:bg-gray-600 focus:ring-gray-500 dark:focus:ring-gray-400 min-h-[32px]"
           >
-            <template #icon-left>
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-              </svg>
-            </template>
-          </AppButton>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+          </button>
         </div>
       </div>
     </template>
@@ -148,18 +172,15 @@
           />
           <p class="text-lg font-medium text-gray-900">無法預覽此檔案</p>
           <p class="text-sm text-gray-600 mt-2">請下載檔案以查看內容</p>
-          <AppButton
-            variant="primary"
+          <button
             @click="downloadFile"
-            class="mt-4"
+            class="mt-4 inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-win11 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none bg-gradient-to-b from-primary-500 to-primary-600 text-white shadow-win11 hover:from-primary-400 hover:to-primary-500 hover:shadow-win11-hover active:shadow-win11-active focus:ring-primary-500 min-h-[40px]"
           >
-            <template #icon-left>
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-              </svg>
-            </template>
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
             下載檔案
-          </AppButton>
+          </button>
         </div>
       </div>
     </div>
@@ -168,7 +189,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { AppDialog, AppButton, AppFileIcon } from '@/components/ui'
 import type { FileInfo } from '@/types/files'
 import { fileApi } from '@/api/files'
@@ -176,11 +197,14 @@ import { fileApi } from '@/api/files'
 interface Props {
   visible: boolean
   file?: FileInfo | null
+  fileList?: FileInfo[]
+  currentIndex?: number
 }
 
 interface Emits {
   (e: 'update:visible', visible: boolean): void
   (e: 'download', file: FileInfo): void
+  (e: 'navigate', direction: 'prev' | 'next'): void
 }
 
 const props = defineProps<Props>()
@@ -206,6 +230,22 @@ const previewType = computed(() => {
       mimeType === 'application/xml') return 'text'
   
   return 'unknown'
+})
+
+// 導航相關計算屬性
+const showNavigation = computed(() => {
+  return props.fileList && props.fileList.length > 1
+})
+
+const canNavigatePrev = computed(() => {
+  return showNavigation.value && (props.currentIndex || 0) > 0
+})
+
+const canNavigateNext = computed(() => {
+  return showNavigation.value && 
+    props.fileList && 
+    (props.currentIndex !== undefined) &&
+    props.currentIndex < props.fileList.length - 1
 })
 
 const dialogSize = computed(() => {
@@ -326,6 +366,39 @@ const handleClose = () => {
   emit('update:visible', false)
 }
 
+// 導航方法
+const navigatePrev = () => {
+  if (canNavigatePrev.value) {
+    emit('navigate', 'prev')
+  }
+}
+
+const navigateNext = () => {
+  if (canNavigateNext.value) {
+    emit('navigate', 'next')
+  }
+}
+
+// 鍵盤快捷鍵支援
+const handleKeydown = (event: KeyboardEvent) => {
+  if (!props.visible) return
+  
+  switch (event.key) {
+    case 'ArrowLeft':
+      event.preventDefault()
+      navigatePrev()
+      break
+    case 'ArrowRight':
+      event.preventDefault()
+      navigateNext()
+      break
+    case 'Escape':
+      event.preventDefault()
+      handleClose()
+      break
+  }
+}
+
 const formatFileSize = (bytes: number): string => {
   if (!bytes || bytes === 0 || isNaN(bytes)) return '0 B'
   const k = 1024
@@ -363,4 +436,13 @@ watch([() => props.file, () => props.visible], ([file, visible]) => {
     loadPreview()
   }
 }, { immediate: true })
+
+// 鍵盤事件監聽
+onMounted(() => {
+  document.addEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+})
 </script>

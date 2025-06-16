@@ -34,6 +34,7 @@ const showCreateFolderModal = ref(false)
 const showFilePreview = ref(false)
 const selectedFile = ref<FileInfo | null>(null)
 const hoveredFile = ref<FileInfo | null>(null)
+const currentPreviewIndex = ref(-1)
 
 // 計算屬性
 const files = computed(() => filesStore.files)
@@ -50,6 +51,11 @@ const filteredFiles = computed(() => {
   return files.value.filter(file => 
     file.name.toLowerCase().includes(query)
   )
+})
+
+// 只包含非目錄檔案的列表（用於預覽導航）
+const previewableFiles = computed(() => {
+  return filteredFiles.value.filter(file => !file.isDirectory)
 })
 
 // 方法
@@ -77,10 +83,16 @@ const openFile = (file: FileInfo) => {
     // 預覽檔案
     console.log('📄 Setting up preview for file:', file.name)
     selectedFile.value = file
+    
+    // 找到當前檔案在可預覽檔案列表中的索引
+    currentPreviewIndex.value = previewableFiles.value.findIndex(f => f.id === file.id)
+    
     showFilePreview.value = true
     console.log('🎬 Preview state:', { 
       showFilePreview: showFilePreview.value, 
-      selectedFile: selectedFile.value?.name 
+      selectedFile: selectedFile.value?.name,
+      currentIndex: currentPreviewIndex.value,
+      totalPreviewable: previewableFiles.value.length
     })
   }
 }
@@ -146,10 +158,35 @@ const formatDate = (dateString: string): string => {
 const handlePreviewClose = () => {
   showFilePreview.value = false
   selectedFile.value = null
+  currentPreviewIndex.value = -1
 }
 
 const handlePreviewDownload = (file: FileInfo) => {
   downloadFile(file)
+}
+
+// 處理預覽導航
+const handlePreviewNavigate = (direction: 'next' | 'prev') => {
+  if (previewableFiles.value.length === 0) return
+  
+  let newIndex: number
+  if (direction === 'next') {
+    newIndex = (currentPreviewIndex.value + 1) % previewableFiles.value.length
+  } else {
+    newIndex = currentPreviewIndex.value <= 0 
+      ? previewableFiles.value.length - 1 
+      : currentPreviewIndex.value - 1
+  }
+  
+  currentPreviewIndex.value = newIndex
+  selectedFile.value = previewableFiles.value[newIndex]
+  
+  console.log('🔄 Preview navigation:', {
+    direction,
+    newIndex,
+    fileName: selectedFile.value?.name,
+    total: previewableFiles.value.length
+  })
 }
 
 // 處理上傳完成
@@ -445,8 +482,11 @@ onMounted(async () => {
     <AppFilePreview
       :visible="showFilePreview"
       :file="selectedFile"
+      :file-list="previewableFiles"
+      :current-index="currentPreviewIndex"
       @update:visible="handlePreviewClose"
       @download="handlePreviewDownload"
+      @navigate="handlePreviewNavigate"
     />
   </div>
 </template>

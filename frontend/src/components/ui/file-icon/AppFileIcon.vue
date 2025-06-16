@@ -16,7 +16,7 @@
     
     <!-- Thumbnail image (for image files, non-folders only) -->
     <img
-      v-else-if="showThumbnail && thumbnailUrl && !actualIsFolder"
+      v-else-if="showThumbnail && thumbnailUrl && !actualIsFolder && detectedFileType === 'image'"
       :src="thumbnailUrl"
       :alt="fileName"
       class="file-thumbnail"
@@ -25,8 +25,39 @@
     />
     
     <!-- File type icon -->
-    <div v-else :class="fileIconClasses">
-      <component :is="iconComponent" class="w-full h-full" />
+    <div v-else :class="fileIconClasses" :title="`檔案類型: ${detectedFileType}, 副檔名: ${fileExtension}, MIME: ${mimeType}`">
+      <!-- 使用直接的 SVG 圖示而不是動態組件 -->
+      <div class="w-full h-full flex items-center justify-center">
+        <!-- Image icon - 使用填充圖示更清楚 -->
+        <svg v-if="detectedFileType === 'image'" class="w-full h-full" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M4 4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2H4zm16 2v7l-2-2-3 3-4-4-5 5V6h14zM7 9a1 1 0 100-2 1 1 0 000 2z"/>
+        </svg>
+        
+        <!-- Video icon -->
+        <svg v-else-if="detectedFileType === 'video'" class="w-full h-full" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M4 4a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm14 4.5v7l-6-3.5 6-3.5z"/>
+        </svg>
+        
+        <!-- Audio icon -->
+        <svg v-else-if="detectedFileType === 'audio'" class="w-full h-full" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 3v10.55A4 4 0 1014 17V7h4V3h-6zM9 19a2 2 0 100-4 2 2 0 000 4z"/>
+        </svg>
+        
+        <!-- Archive icon -->
+        <svg v-else-if="detectedFileType === 'archive'" class="w-full h-full" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M4 3a1 1 0 000 2h16a1 1 0 100-2H4zm0 4h16v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7zm6 4h4v2h-4v-2z"/>
+        </svg>
+        
+        <!-- Code icon -->
+        <svg v-else-if="detectedFileType === 'code'" class="w-full h-full" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0L19.2 12l-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
+        </svg>
+        
+        <!-- Default document icon -->
+        <svg v-else class="w-full h-full" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M6 2a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6H6zm0 2h7v5h5v11H6V4zm2 8v2h8v-2H8zm0 4v2h5v-2H8z"/>
+        </svg>
+      </div>
       
       <!-- File extension badge -->
       <div v-if="showExtension && fileExtension" class="file-extension">
@@ -34,8 +65,8 @@
       </div>
     </div>
     
-    <!-- Loading placeholder (只對非資料夾檔案顯示) -->
-    <div v-if="showThumbnail && !thumbnailLoaded && !thumbnailError && !actualIsFolder" class="thumbnail-loading">
+    <!-- Loading placeholder (只對有縮圖URL的圖片檔案顯示) -->
+    <div v-if="showThumbnail && thumbnailUrl && !thumbnailLoaded && !thumbnailError && !actualIsFolder && detectedFileType === 'image'" class="thumbnail-loading">
       <div class="animate-spin">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -48,18 +79,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import {
-  FolderIcon,
-  DocumentTextIcon,
-  PhotoIcon,
-  VideoCameraIcon,
-  MusicalNoteIcon,
-  ArchiveBoxIcon,
-  CodeBracketIcon,
-  DocumentIcon as HeroDocumentIcon,
-  PresentationChartBarIcon,
-  TableCellsIcon
-} from '@heroicons/vue/24/outline'
 
 interface Props {
   fileType?: string
@@ -199,102 +218,30 @@ const folderIconClasses = computed(() => [
 
 // File icon classes with color coding
 const fileIconClasses = computed(() => {
-  const baseClasses = ['relative', 'w-full', 'h-full']
+  const baseClasses = ['relative', 'w-full', 'h-full', 'flex', 'items-center', 'justify-center']
   
   if (props.customColor) {
     return [...baseClasses, `text-[${props.customColor}]`]
   }
   
   const colorClasses: Record<string, string> = {
-    image: 'text-green-500',
-    video: 'text-red-500',
-    audio: 'text-purple-500',
-    pdf: 'text-red-600',
-    word: 'text-blue-600',
-    excel: 'text-green-600',
+    image: 'text-green-600',
+    video: 'text-red-600',
+    audio: 'text-purple-600',
+    pdf: 'text-red-700',
+    word: 'text-blue-700',
+    excel: 'text-green-700',
     powerpoint: 'text-orange-600',
-    archive: 'text-gray-600',
-    code: 'text-blue-500',
-    text: 'text-gray-500',
-    file: 'text-gray-400'
+    archive: 'text-gray-700',
+    code: 'text-blue-600',
+    text: 'text-gray-600',
+    file: 'text-gray-600'
   }
   
   return [...baseClasses, colorClasses[detectedFileType.value] || colorClasses.file]
 })
 
-// Icon component mapping
-const iconComponent = computed(() => {
-  const icons: Record<string, string> = {
-    image: 'ImageIcon',
-    video: 'VideoIcon',
-    audio: 'AudioIcon',
-    pdf: 'DocumentIcon',
-    word: 'DocumentIcon',
-    excel: 'DocumentIcon',
-    powerpoint: 'DocumentIcon',
-    archive: 'ArchiveIcon',
-    code: 'CodeIcon',
-    text: 'DocumentIcon',
-    file: 'DocumentIcon'
-  }
-  
-  return icons[detectedFileType.value] || 'DocumentIcon'
-})
-
-// Icon components (using heroicons)
-const ImageIcon = {
-  template: `
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-        d="m4 16 4.586-4.586a2 2 0 012.828 0L16 16m-2-2 1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-  `
-}
-
-const VideoIcon = {
-  template: `
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-    </svg>
-  `
-}
-
-const AudioIcon = {
-  template: `
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-        d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-    </svg>
-  `
-}
-
-const DocumentIcon = {
-  template: `
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-    </svg>
-  `
-}
-
-const ArchiveIcon = {
-  template: `
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-        d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-    </svg>
-  `
-}
-
-const CodeIcon = {
-  template: `
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-        d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-    </svg>
-  `
-}
+// 移除舊的動態組件定義，改用直接的 SVG 渲染
 </script>
 
 <style scoped>
@@ -333,5 +280,51 @@ const CodeIcon = {
 .w-4.h-4 .folder-expanded-indicator,
 .w-6.h-6 .folder-expanded-indicator {
   @apply w-2 h-2 p-0;
+}
+
+/* 確保 SVG 圖示在所有主題下都可見 */
+.file-icon svg {
+  min-width: 1rem;
+  min-height: 1rem;
+}
+
+/* 深色主題下的顏色覆寫 */
+@media (prefers-color-scheme: dark) {
+  .text-green-600 {
+    color: #16a34a !important;
+  }
+  .text-red-600 {
+    color: #dc2626 !important;
+  }
+  .text-purple-600 {
+    color: #9333ea !important;
+  }
+  .text-blue-600 {
+    color: #2563eb !important;
+  }
+  .text-blue-700 {
+    color: #1d4ed8 !important;
+  }
+  .text-green-700 {
+    color: #15803d !important;
+  }
+  .text-gray-600 {
+    color: #9ca3af !important;
+  }
+  .text-gray-700 {
+    color: #a1a1aa !important;
+  }
+}
+
+/* 確保圖示在預覽視窗中清楚可見 */
+.file-preview .AppFileIcon svg,
+.preview-dialog .AppFileIcon svg {
+  opacity: 0.9;
+  transition: opacity 0.2s ease;
+}
+
+.file-preview .AppFileIcon:hover svg,
+.preview-dialog .AppFileIcon:hover svg {
+  opacity: 1;
 }
 </style>

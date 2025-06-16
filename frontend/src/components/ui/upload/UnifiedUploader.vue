@@ -160,9 +160,9 @@
       </div>
     </div>
 
-    <!-- Metadata 表單 -->
+    <!-- 檔案分類選擇 -->
     <div v-if="showMetadataForm && selectedFiles.length > 0" class="mt-6">
-      <div class="p-4 rounded-lg space-y-4" 
+      <div class="p-4 rounded-lg" 
         :style="{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-light)' }">
         
         <!-- 檔案分類 -->
@@ -184,49 +184,6 @@
               <span class="text-xs font-medium">{{ category.name }}</span>
             </button>
           </div>
-        </div>
-
-        <!-- 檔案描述 -->
-        <div>
-          <label for="unified-description" class="block text-sm font-medium mb-2" 
-            :style="{ color: 'var(--text-secondary)' }">
-            檔案描述
-          </label>
-          <textarea
-            id="unified-description"
-            v-model="internalForm.description"
-            rows="3"
-            class="block w-full rounded-md shadow-sm text-sm"
-            :style="{
-              border: '1px solid var(--border-medium)',
-              backgroundColor: 'var(--bg-primary)',
-              color: 'var(--text-primary)'
-            }"
-            placeholder="請描述這個檔案的內容或用途..."
-          />
-        </div>
-
-        <!-- 標籤 -->
-        <div>
-          <label for="unified-tags" class="block text-sm font-medium mb-2" 
-            :style="{ color: 'var(--text-secondary)' }">
-            標籤
-          </label>
-          <input
-            id="unified-tags"
-            v-model="internalForm.tags"
-            type="text"
-            class="block w-full rounded-md shadow-sm text-sm"
-            :style="{
-              border: '1px solid var(--border-medium)',
-              backgroundColor: 'var(--bg-primary)',
-              color: 'var(--text-primary)'
-            }"
-            placeholder="輸入標籤，用逗號分隔（例如：聚會,講道,2024）"
-          />
-          <p class="text-xs mt-1" :style="{ color: 'var(--text-tertiary)' }">
-            標籤可以幫助其他人更容易找到這個檔案
-          </p>
         </div>
       </div>
     </div>
@@ -394,11 +351,9 @@ const error = ref('')
 // 檔案上傳狀態追蹤
 const fileUploadStatuses = ref<Map<number, 'pending' | 'uploading' | 'completed' | 'error'>>(new Map())
 
-// 內部表單狀態
+// 內部表單狀態（僅保留分類）
 const internalForm = ref({
-  category: '',
-  description: '',
-  tags: ''
+  category: ''
 })
 
 // 分類數據
@@ -620,9 +575,7 @@ const clearFiles = () => {
   // 如果啟用了內部表單，也要清除表單數據
   if (props.showMetadataForm) {
     internalForm.value = {
-      category: '',
-      description: '',
-      tags: ''
+      category: ''
     }
   }
 }
@@ -667,12 +620,14 @@ const startUpload = async () => {
   
   try {
     // 優先使用內部表單數據，其次使用 props 傳入的 metadata
-    const metadata = props.showMetadataForm ? internalForm.value : (props.metadata || {})
+    const metadata = props.showMetadataForm 
+      ? { category: internalForm.value.category } 
+      : (props.metadata || {})
     
     const options: UploadOptions = {
       parentId: props.parentId,
-      description: metadata.description,
-      tags: metadata.tags,
+      description: 'description' in metadata ? metadata.description : undefined,
+      tags: 'tags' in metadata ? metadata.tags : undefined,
       category: metadata.category,
       onProgress: (progress) => {
         detailedProgress.value = progress
