@@ -88,6 +88,12 @@ const router = createRouter({
       path: '/cloudflare-auth',
       name: 'cloudflare-auth',
       component: () => import('@/views/CloudflareAuthView.vue')
+    },
+    {
+      path: '/test/chunk-upload',
+      name: 'chunk-upload-test',
+      component: () => import('@/views/ChunkUploadTestView.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })
@@ -119,22 +125,30 @@ router.beforeEach(async (to, from, next) => {
   }
   
   // 檢查是否需要完整認證（Cloudflare + 內部審核）
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    console.log('🔐 需要完整認證但未通過')
-    if (!authStore.hasCloudflareAccess) {
-      console.log('  → 重定向到 cloudflare-auth (無 Cloudflare 存取)')
-      next('/cloudflare-auth')
-    } else if (authStore.needsRegistration) {
-      console.log('  → 重定向到 register (需要註冊)')
-      next('/register')
-    } else if (authStore.pendingApproval) {
-      console.log('  → 重定向到 pending-approval (等待審核)')
-      next('/pending-approval')
+  if (to.meta.requiresAuth) {
+    console.log('🔐 路由需要認證，檢查認證狀態...')
+    console.log('  - to.meta.requiresAuth:', to.meta.requiresAuth)
+    console.log('  - authStore.isAuthenticated:', authStore.isAuthenticated)
+    
+    if (!authStore.isAuthenticated) {
+      console.log('🔐 需要完整認證但未通過')
+      if (!authStore.hasCloudflareAccess) {
+        console.log('  → 重定向到 cloudflare-auth (無 Cloudflare 存取)')
+        next('/cloudflare-auth')
+      } else if (authStore.needsRegistration) {
+        console.log('  → 重定向到 register (需要註冊)')
+        next('/register')
+      } else if (authStore.pendingApproval) {
+        console.log('  → 重定向到 pending-approval (等待審核)')
+        next('/pending-approval')
+      } else {
+        console.log('  → 重定向到 access-denied (拒絕存取)')
+        next('/access-denied')
+      }
+      return
     } else {
-      console.log('  → 重定向到 access-denied (拒絕存取)')
-      next('/access-denied')
+      console.log('✅ 認證通過，繼續路由')
     }
-    return
   }
   
   // 檢查是否需要管理員權限

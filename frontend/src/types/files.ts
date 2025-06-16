@@ -45,6 +45,32 @@ export interface UploadResult {
   isDirectory: boolean
 }
 
+// 跳過的檔案資訊
+export interface SkippedFileInfo {
+  filename: string
+  reason: string
+  size: number
+}
+
+// 失敗的檔案資訊  
+export interface FailedFileInfo {
+  filename: string
+  reason: string
+  size: number
+}
+
+// 批量上傳結果
+export interface BatchUploadResult {
+  success: boolean
+  total_files: number
+  uploaded_count: number
+  skipped_count: number
+  failed_count: number
+  uploaded_files: FileInfo[]
+  skipped_files: SkippedFileInfo[]
+  failed_files: FailedFileInfo[]
+}
+
 export interface FileShare {
   id: number
   fileId: number

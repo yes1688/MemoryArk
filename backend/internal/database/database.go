@@ -54,6 +54,7 @@ func autoMigrate(db *gorm.DB) error {
 		&models.ExportJob{},
 		&models.FileShare{},
 		&models.ActivityLog{},
+		&models.ChunkSession{},
 	); err != nil {
 		return err
 	}

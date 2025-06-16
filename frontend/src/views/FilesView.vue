@@ -5,6 +5,7 @@ import { useFilesStore } from '@/stores/files'
 import { useAuthStore } from '@/stores/auth'
 import type { FileInfo } from '@/types/files'
 import { fileApi } from '@/api/files'
+import type { UnifiedUploadResult } from '@/services/unifiedUploadService'
 
 // Props
 interface Props {
@@ -149,6 +150,35 @@ const handlePreviewClose = () => {
 
 const handlePreviewDownload = (file: FileInfo) => {
   downloadFile(file)
+}
+
+// 處理上傳完成
+const handleUploadComplete = async (results?: UnifiedUploadResult[]) => {
+  console.log('🎉 上傳完成回調觸發')
+  
+  // 如果有統一上傳結果，顯示詳細統計
+  if (results && results.length > 0) {
+    const successCount = results.filter(r => r.success).length
+    const failureCount = results.length - successCount
+    
+    console.log(`📊 上傳統計: 成功 ${successCount}/${results.length} 個檔案`)
+    
+    if (failureCount > 0) {
+      const failedFiles = results.filter(r => !r.success)
+      console.error('❌ 上傳失敗的檔案:', failedFiles.map(f => ({
+        file: f.file,
+        error: f.error
+      })))
+    }
+  }
+  
+  // 重新載入檔案列表
+  try {
+    await filesStore.fetchFiles(filesStore.currentFolderId)
+    console.log('✅ 檔案列表已更新')
+  } catch (error) {
+    console.error('❌ 重新載入檔案列表失敗:', error)
+  }
 }
 
 // 已移除 getFileIcon 函數，改用 AppFileIcon 組件
@@ -399,7 +429,8 @@ onMounted(async () => {
       :is-visible="showUploadModal"
       :current-folder-id="filesStore.currentFolderId"
       @close="showUploadModal = false"
-      @uploaded="showUploadModal = false"
+      @uploaded="handleUploadComplete"
+      @upload-complete="handleUploadComplete"
     />
     
     <CreateFolderModal

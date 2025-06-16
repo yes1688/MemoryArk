@@ -153,3 +153,13 @@ func InternalServerError(c *gin.Context, message string) {
 func Forbidden(c *gin.Context, message string) {
 	Error(c, http.StatusForbidden, ErrAccessDenied, message)
 }
+
+// ErrorResponse 簡化的錯誤響應函數（兼容性）
+func ErrorResponse(c *gin.Context, statusCode int, message string) {
+	Error(c, statusCode, "ERROR", message)
+}
+
+// SuccessResponse 簡化的成功響應函數（兼容性）
+func SuccessResponse(c *gin.Context, data interface{}) {
+	Success(c, data)
+}

@@ -3,8 +3,10 @@ package handlers
 import (
 	"crypto/md5"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -38,6 +40,7 @@ var allowedExtensions = map[string]bool{
 	".webp": true,
 	".svg":  true,
 	".tiff": true,
+	".tif":  true,
 	".ico":  true,
 	
 	// 影片檔案
@@ -80,6 +83,18 @@ var allowedExtensions = map[string]bool{
 	".7z":   true,
 	".tar":  true,
 	".gz":   true,
+	".wmz":  true,
+	
+	// 設計軟體檔案
+	".psd":  true,  // Adobe Photoshop
+	".ai":   true,  // Adobe Illustrator
+	".cdr":  true,  // CorelDRAW
+	".indd": true,  // Adobe InDesign
+	".idlk": true,  // InDesign 鎖定檔案
+	
+	// 其他檔案類型
+	".msg":  true,  // Outlook 郵件檔案
+	".shs":  true,  // Windows Shell Scrap Object
 	
 	// 其他常見檔案
 	".json": true,
@@ -273,6 +288,21 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 			"error": gin.H{
 				"code": "NO_FILE",
 				"message": "沒有選擇檔案",
+			},
+		})
+		return
+	}
+	
+	// 檢查是否為系統檔案
+	if strings.EqualFold(file.Filename, "Thumbs.db") ||
+		strings.EqualFold(file.Filename, ".DS_Store") ||
+		strings.HasPrefix(file.Filename, "~") ||
+		strings.HasSuffix(file.Filename, ".tmp") {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code": "SYSTEM_FILE",
+				"message": fmt.Sprintf("系統檔案 '%s' 不需要上傳", file.Filename),
 			},
 		})
 		return
@@ -1769,4 +1799,660 @@ func (h *FileHandler) checkSameLocationAndName(fileName string, parentID *uint, 
 	}
 	
 	return &existingFile, nil
+}
+
+// BatchUploadResult 批量上傳結果
+type BatchUploadResult struct {
+	Success      bool                   `json:"success"`
+	TotalFiles   int                    `json:"total_files"`
+	UploadedCount int                   `json:"uploaded_count"`
+	SkippedCount int                    `json:"skipped_count"`
+	FailedCount  int                    `json:"failed_count"`
+	UploadedFiles []models.File         `json:"uploaded_files"`
+	SkippedFiles []SkippedFileInfo     `json:"skipped_files"`
+	FailedFiles  []FailedFileInfo      `json:"failed_files"`
+}
+
+// SkippedFileInfo 跳過的檔案資訊
+type SkippedFileInfo struct {
+	Filename string `json:"filename"`
+	Reason   string `json:"reason"`
+	Size     int64  `json:"size"`
+}
+
+// FailedFileInfo 失敗的檔案資訊
+type FailedFileInfo struct {
+	Filename string `json:"filename"`
+	Reason   string `json:"reason"`
+	Size     int64  `json:"size"`
+}
+
+// BatchUploadFile 批量上傳檔案
+func (h *FileHandler) BatchUploadFile(c *gin.Context) {
+	fmt.Printf("[DEBUG] BatchUploadFile START\n")
+	
+	userIDValue, exists := c.Get("user_id")
+	if !exists {
+		api.Unauthorized(c, "未授權訪問")
+		return
+	}
+
+	userID, ok := userIDValue.(uint)
+	if !ok {
+		api.Error(c, http.StatusInternalServerError, api.ErrInvalidUserID, "無效的用戶ID")
+		return
+	}
+
+	// 解析 multipart form
+	if err := c.Request.ParseMultipartForm(32 << 20); err != nil {
+		fmt.Printf("[ERROR] Failed to parse multipart form: %v\n", err)
+		api.Error(c, http.StatusBadRequest, api.ErrInvalidRequest, "無法解析上傳表單")
+		return
+	}
+
+	// 獲取所有上傳的檔案
+	form := c.Request.MultipartForm
+	files := form.File["files"]
+	
+	if len(files) == 0 {
+		api.Error(c, http.StatusBadRequest, api.ErrInvalidRequest, "沒有選擇檔案")
+		return
+	}
+
+	// 獲取其他參數
+	parentIDStr := c.PostForm("parent_id")
+	var parentID *uint
+	if parentIDStr != "" {
+		if pid, err := strconv.ParseUint(parentIDStr, 10, 32); err == nil {
+			parentIDVal := uint(pid)
+			parentID = &parentIDVal
+		}
+	}
+
+	// 初始化結果
+	result := BatchUploadResult{
+		Success:       true,
+		TotalFiles:    len(files),
+		UploadedFiles: make([]models.File, 0),
+		SkippedFiles:  make([]SkippedFileInfo, 0),
+		FailedFiles:   make([]FailedFileInfo, 0),
+	}
+
+	// 處理每個檔案
+	for _, fileHeader := range files {
+		fmt.Printf("[DEBUG] Processing file: %s (size: %d)\n", fileHeader.Filename, fileHeader.Size)
+		
+		// 檢查檔案是否應該跳過
+		if shouldSkipFile(fileHeader.Filename, fileHeader.Size) {
+			reason := getSkipReason(fileHeader.Filename, fileHeader.Size)
+			result.SkippedFiles = append(result.SkippedFiles, SkippedFileInfo{
+				Filename: fileHeader.Filename,
+				Reason:   reason,
+				Size:     fileHeader.Size,
+			})
+			result.SkippedCount++
+			fmt.Printf("[INFO] Skipped file: %s (%s)\n", fileHeader.Filename, reason)
+			continue
+		}
+
+		// 嘗試上傳檔案
+		uploadedFile, err := h.processSingleFile(fileHeader, userID, parentID)
+		if err != nil {
+			result.FailedFiles = append(result.FailedFiles, FailedFileInfo{
+				Filename: fileHeader.Filename,
+				Reason:   err.Error(),
+				Size:     fileHeader.Size,
+			})
+			result.FailedCount++
+			fmt.Printf("[ERROR] Failed to upload file %s: %v\n", fileHeader.Filename, err)
+			continue
+		}
+
+		result.UploadedFiles = append(result.UploadedFiles, *uploadedFile)
+		result.UploadedCount++
+		fmt.Printf("[SUCCESS] Uploaded file: %s\n", fileHeader.Filename)
+	}
+
+	// 回傳結果
+	c.JSON(http.StatusOK, result)
+}
+
+// shouldSkipFile 判斷是否應該跳過檔案
+func shouldSkipFile(filename string, size int64) bool {
+	// 檢查檔案大小
+	maxSize := int64(100 * 1024 * 1024) // 100MB
+	if size > maxSize {
+		return true
+	}
+
+	// 檢查系統檔案
+	if strings.EqualFold(filename, "Thumbs.db") ||
+		strings.EqualFold(filename, ".DS_Store") ||
+		strings.HasPrefix(filename, "~") ||
+		strings.HasSuffix(filename, ".tmp") {
+		return true
+	}
+
+	// 檢查檔案類型
+	if !isValidFileExtension(filename) {
+		return true
+	}
+
+	return false
+}
+
+// getSkipReason 取得跳過檔案的原因
+func getSkipReason(filename string, size int64) string {
+	maxSize := int64(100 * 1024 * 1024) // 100MB
+	if size > maxSize {
+		return fmt.Sprintf("檔案過大 (%.1fMB > 100MB)", float64(size)/(1024*1024))
+	}
+
+	if strings.EqualFold(filename, "Thumbs.db") || strings.EqualFold(filename, ".DS_Store") {
+		return "系統暫存檔案"
+	}
+
+	if strings.HasPrefix(filename, "~") {
+		return "暫存檔案"
+	}
+
+	if strings.HasSuffix(filename, ".tmp") {
+		return "臨時檔案"
+	}
+
+	if !isValidFileExtension(filename) {
+		ext := strings.ToLower(filepath.Ext(filename))
+		return fmt.Sprintf("不支援的檔案類型: %s", ext)
+	}
+
+	return "未知原因"
+}
+
+// processSingleFile 處理單個檔案上傳
+func (h *FileHandler) processSingleFile(fileHeader *multipart.FileHeader, userID uint, parentID *uint) (*models.File, error) {
+	// 檢查檔案類型
+	if !isValidFileExtension(fileHeader.Filename) {
+		ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+		return nil, fmt.Errorf("不允許上傳 '%s' 類型的檔案", ext)
+	}
+
+	// 檢查檔案大小
+	maxSize := int64(100 * 1024 * 1024) // 100MB
+	if fileHeader.Size > maxSize {
+		return nil, fmt.Errorf("檔案大小超過限制")
+	}
+
+	// 開啟檔案
+	file, err := fileHeader.Open()
+	if err != nil {
+		return nil, fmt.Errorf("無法讀取上傳檔案: %v", err)
+	}
+	defer file.Close()
+
+	// 讀取檔案內容
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("無法讀取檔案內容: %v", err)
+	}
+
+	// 計算 SHA256
+	sha256Hash := sha256.Sum256(content)
+	sha256Hex := fmt.Sprintf("%x", sha256Hash)
+
+	// 檢查去重 (暫時停用，因為配置中沒有此欄位)
+	// TODO: 添加配置支援後再啟用去重功能
+
+	// 生成唯一檔案名
+	ext := filepath.Ext(fileHeader.Filename)
+	uniqueFilename := uuid.New().String() + ext
+	
+	// 確保上傳目錄存在
+	uploadDir := "./uploads" // 使用固定路徑
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		return nil, fmt.Errorf("建立上傳目錄失敗: %v", err)
+	}
+
+	// 儲存檔案
+	filePath := filepath.Join(uploadDir, uniqueFilename)
+	if err := os.WriteFile(filePath, content, 0644); err != nil {
+		return nil, fmt.Errorf("儲存檔案失敗: %v", err)
+	}
+
+	// 計算 MD5 (暫時不需要)
+	// md5Hash := md5.Sum(content)
+	// md5Hex := fmt.Sprintf("%x", md5Hash)
+
+	// 建立檔案記錄
+	fileRecord := models.File{
+		Name:         fileHeader.Filename,
+		OriginalName: fileHeader.Filename,
+		FilePath:     filePath,
+		FileSize:     fileHeader.Size,
+		MimeType:     http.DetectContentType(content),
+		SHA256Hash:   sha256Hex,
+		VirtualPath:  h.buildVirtualPath(parentID, fileHeader.Filename),
+		ParentID:     parentID,
+		UploadedBy:   userID,
+		IsDirectory:  false,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+
+	if err := h.db.Create(&fileRecord).Error; err != nil {
+		// 刪除已儲存的檔案
+		os.Remove(filePath)
+		return nil, fmt.Errorf("建立檔案記錄失敗: %v", err)
+	}
+
+	return &fileRecord, nil
+}
+
+// ChunkUploadInit 初始化分塊上傳會話
+func (h *FileHandler) ChunkUploadInit(c *gin.Context) {
+	// 調試：檢查所有可用的上下文 keys
+	fmt.Printf("[DEBUG] 🔧 ChunkUploadInit - 檢查所有 Context Keys:\n")
+	fmt.Printf("user_id: %v\n", c.GetString("user_id"))
+	fmt.Printf("userID: %v\n", c.GetString("userID"))
+	if user, exists := c.Get("user"); exists {
+		fmt.Printf("user: %v\n", user)
+	}
+	fmt.Printf("user_email: %v\n", c.GetString("user_email"))
+	fmt.Printf("===============================\n")
+	
+	userID, exists := c.Get("user_id")
+	if !exists {
+		fmt.Printf("[DEBUG] 🔧 ChunkUploadInit - user_id NOT EXISTS\n")
+		api.ErrorResponse(c, http.StatusUnauthorized, "未認證")
+		return
+	}
+	fmt.Printf("[DEBUG] 🔧 ChunkUploadInit - user_id EXISTS: %v\n", userID)
+
+	var req struct {
+		FileName       string   `json:"fileName" binding:"required"`
+		FileSize       int64    `json:"fileSize" binding:"required"`
+		FileHash       string   `json:"fileHash" binding:"required"`
+		TotalChunks    int      `json:"totalChunks" binding:"required"`
+		ChunkSize      int      `json:"chunkSize" binding:"required"`
+		RelativePath   string   `json:"relativePath"`
+		CompletedChunks []string `json:"completedChunks"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.ErrorResponse(c, http.StatusBadRequest, "請求參數錯誤: "+err.Error())
+		return
+	}
+
+	// 檢查檔案大小限制 (100MB)
+	if req.FileSize > 100*1024*1024 {
+		api.ErrorResponse(c, http.StatusBadRequest, "檔案大小超過限制 (100MB)")
+		return
+	}
+
+	// 檢查檔案類型
+	ext := strings.ToLower(filepath.Ext(req.FileName))
+	if !allowedExtensions[ext] {
+		api.ErrorResponse(c, http.StatusBadRequest, "不支援的檔案類型: "+ext)
+		return
+	}
+
+	// 檢查是否已存在相同檔案 (透過 hash)
+	var existingFile models.File
+	if err := h.db.Where("sha256_hash = ? AND uploaded_by = ?", req.FileHash, userID).First(&existingFile).Error; err == nil {
+		// 檔案已存在，直接返回
+		api.SuccessResponse(c, gin.H{
+			"existing": true,
+			"file": existingFile,
+			"message": "檔案已存在，跳過上傳",
+		})
+		return
+	}
+
+	// 生成會話ID
+	sessionID := uuid.New().String()
+
+	// 處理相對路徑，確定父資料夾
+	var parentID *uint
+	if req.RelativePath != "" {
+		var err error
+		parentID, err = h.ensureFolderStructure(userID.(uint), nil, filepath.Dir(req.RelativePath))
+		if err != nil {
+			api.ErrorResponse(c, http.StatusInternalServerError, "建立資料夾結構失敗: "+err.Error())
+			return
+		}
+	}
+
+	// 建立分塊會話
+	session := models.ChunkSession{
+		ID:             sessionID,
+		UserID:         userID.(uint),
+		FileName:       req.FileName,
+		FileSize:       req.FileSize,
+		FileHash:       req.FileHash,
+		TotalChunks:    req.TotalChunks,
+		ChunkSize:      req.ChunkSize,
+		UploadedChunks: "[]", // 初始為空陣列
+		RelativePath:   req.RelativePath,
+		ParentID:       parentID,
+		Status:         "active",
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+		ExpiresAt:      time.Now().Add(24 * time.Hour), // 24小時過期
+	}
+
+	if err := h.db.Create(&session).Error; err != nil {
+		api.ErrorResponse(c, http.StatusInternalServerError, "建立上傳會話失敗: "+err.Error())
+		return
+	}
+
+	// 建立臨時目錄
+	tempDir := filepath.Join(h.cfg.Upload.UploadPath, "chunks", sessionID)
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		api.ErrorResponse(c, http.StatusInternalServerError, "建立臨時目錄失敗: "+err.Error())
+		return
+	}
+
+	api.SuccessResponse(c, gin.H{
+		"sessionId": sessionID,
+		"chunkSize": req.ChunkSize,
+		"totalChunks": req.TotalChunks,
+		"existing": false,
+	})
+}
+
+// ChunkUpload 上傳檔案分塊
+func (h *FileHandler) ChunkUpload(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		api.ErrorResponse(c, http.StatusUnauthorized, "未認證")
+		return
+	}
+
+	sessionID := c.PostForm("sessionId")
+	chunkIndexStr := c.PostForm("chunkIndex")
+	chunkHash := c.PostForm("chunkHash")
+
+	if sessionID == "" || chunkIndexStr == "" || chunkHash == "" {
+		api.ErrorResponse(c, http.StatusBadRequest, "缺少必要參數")
+		return
+	}
+
+	chunkIndex, err := strconv.Atoi(chunkIndexStr)
+	if err != nil {
+		api.ErrorResponse(c, http.StatusBadRequest, "分塊索引格式錯誤")
+		return
+	}
+
+	// 查找會話
+	var session models.ChunkSession
+	if err := h.db.Where("id = ? AND user_id = ? AND status = ?", sessionID, userID, "active").First(&session).Error; err != nil {
+		api.ErrorResponse(c, http.StatusNotFound, "上傳會話不存在或已過期")
+		return
+	}
+
+	// 檢查會話是否過期
+	if time.Now().After(session.ExpiresAt) {
+		h.db.Model(&session).Update("status", "expired")
+		api.ErrorResponse(c, http.StatusBadRequest, "上傳會話已過期")
+		return
+	}
+
+	// 取得上傳的分塊檔案
+	fileHeader, err := c.FormFile("chunkData")
+	if err != nil {
+		api.ErrorResponse(c, http.StatusBadRequest, "無法取得分塊資料: "+err.Error())
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		api.ErrorResponse(c, http.StatusBadRequest, "無法開啟分塊檔案: "+err.Error())
+		return
+	}
+	defer file.Close()
+
+	// 讀取分塊內容
+	content, err := io.ReadAll(file)
+	if err != nil {
+		api.ErrorResponse(c, http.StatusInternalServerError, "讀取分塊內容失敗: "+err.Error())
+		return
+	}
+
+	// 驗證分塊 hash
+	actualHash := fmt.Sprintf("%x", sha256.Sum256(content))
+	if actualHash != chunkHash {
+		api.ErrorResponse(c, http.StatusBadRequest, "分塊 hash 驗證失敗")
+		return
+	}
+
+	// 儲存分塊到臨時目錄
+	chunkDir := filepath.Join(h.cfg.Upload.UploadPath, "chunks", sessionID)
+	chunkPath := filepath.Join(chunkDir, fmt.Sprintf("chunk_%d", chunkIndex))
+	
+	if err := os.WriteFile(chunkPath, content, 0644); err != nil {
+		api.ErrorResponse(c, http.StatusInternalServerError, "儲存分塊失敗: "+err.Error())
+		return
+	}
+
+	// 更新已上傳分塊列表
+	var uploadedChunks []int
+	if err := json.Unmarshal([]byte(session.UploadedChunks), &uploadedChunks); err != nil {
+		uploadedChunks = []int{}
+	}
+
+	// 檢查分塊是否已存在
+	chunkExists := false
+	for _, idx := range uploadedChunks {
+		if idx == chunkIndex {
+			chunkExists = true
+			break
+		}
+	}
+
+	if !chunkExists {
+		uploadedChunks = append(uploadedChunks, chunkIndex)
+		uploadedChunksJSON, _ := json.Marshal(uploadedChunks)
+		
+		if err := h.db.Model(&session).Update("uploaded_chunks", string(uploadedChunksJSON)).Error; err != nil {
+			api.ErrorResponse(c, http.StatusInternalServerError, "更新上傳進度失敗: "+err.Error())
+			return
+		}
+	}
+
+	// 檢查是否所有分塊都已上傳完成
+	completed := len(uploadedChunks) >= session.TotalChunks
+
+	api.SuccessResponse(c, gin.H{
+		"success": true,
+		"chunkIndex": chunkIndex,
+		"uploadedChunks": uploadedChunks,
+		"completed": completed,
+		"progress": float64(len(uploadedChunks)) / float64(session.TotalChunks) * 100,
+	})
+}
+
+// ChunkUploadFinalize 完成分塊上傳，合併檔案
+func (h *FileHandler) ChunkUploadFinalize(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		api.ErrorResponse(c, http.StatusUnauthorized, "未認證")
+		return
+	}
+
+	var req struct {
+		SessionID string `json:"sessionId" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.ErrorResponse(c, http.StatusBadRequest, "請求參數錯誤: "+err.Error())
+		return
+	}
+
+	// 查找會話
+	var session models.ChunkSession
+	if err := h.db.Where("id = ? AND user_id = ? AND status = ?", req.SessionID, userID, "active").First(&session).Error; err != nil {
+		api.ErrorResponse(c, http.StatusNotFound, "上傳會話不存在或已過期")
+		return
+	}
+
+	// 檢查所有分塊是否都已上傳
+	var uploadedChunks []int
+	if err := json.Unmarshal([]byte(session.UploadedChunks), &uploadedChunks); err != nil {
+		api.ErrorResponse(c, http.StatusInternalServerError, "解析上傳進度失敗")
+		return
+	}
+
+	if len(uploadedChunks) < session.TotalChunks {
+		api.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("分塊上傳未完成: %d/%d", len(uploadedChunks), session.TotalChunks))
+		return
+	}
+
+	// 合併分塊檔案
+	chunkDir := filepath.Join(h.cfg.Upload.UploadPath, "chunks", req.SessionID)
+	
+	// 建立最終檔案
+	uploadDir := h.cfg.Upload.UploadPath
+	uniqueFilename := uuid.New().String() + filepath.Ext(session.FileName)
+	finalPath := filepath.Join(uploadDir, uniqueFilename)
+
+	finalFile, err := os.Create(finalPath)
+	if err != nil {
+		api.ErrorResponse(c, http.StatusInternalServerError, "建立最終檔案失敗: "+err.Error())
+		return
+	}
+	defer finalFile.Close()
+
+	// 按順序合併分塊
+	var totalSize int64
+	for i := 0; i < session.TotalChunks; i++ {
+		chunkPath := filepath.Join(chunkDir, fmt.Sprintf("chunk_%d", i))
+		chunkData, err := os.ReadFile(chunkPath)
+		if err != nil {
+			os.Remove(finalPath) // 清理已建立的檔案
+			api.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("讀取分塊 %d 失敗: %v", i, err))
+			return
+		}
+
+		if _, err := finalFile.Write(chunkData); err != nil {
+			os.Remove(finalPath) // 清理已建立的檔案
+			api.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("寫入分塊 %d 失敗: %v", i, err))
+			return
+		}
+
+		totalSize += int64(len(chunkData))
+	}
+
+	// 驗證檔案大小
+	if totalSize != session.FileSize {
+		os.Remove(finalPath) // 清理已建立的檔案
+		api.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("檔案大小不匹配: 期望 %d，實際 %d", session.FileSize, totalSize))
+		return
+	}
+
+	// 重新計算檔案 hash 進行驗證
+	finalFile.Seek(0, 0)
+	hash := sha256.New()
+	if _, err := io.Copy(hash, finalFile); err != nil {
+		os.Remove(finalPath) // 清理已建立的檔案
+		api.ErrorResponse(c, http.StatusInternalServerError, "計算檔案 hash 失敗: "+err.Error())
+		return
+	}
+
+	actualHash := fmt.Sprintf("%x", hash.Sum(nil))
+	if actualHash != session.FileHash {
+		os.Remove(finalPath) // 清理已建立的檔案
+		api.ErrorResponse(c, http.StatusBadRequest, "檔案 hash 驗證失敗")
+		return
+	}
+
+	// 讀取檔案內容以取得 MIME type
+	fileContent, err := os.ReadFile(finalPath)
+	if err != nil {
+		os.Remove(finalPath)
+		api.ErrorResponse(c, http.StatusInternalServerError, "讀取檔案內容失敗: "+err.Error())
+		return
+	}
+
+	// 建立檔案記錄
+	fileRecord := models.File{
+		Name:         session.FileName,
+		OriginalName: session.FileName,
+		FilePath:     finalPath,
+		FileSize:     session.FileSize,
+		MimeType:     http.DetectContentType(fileContent),
+		SHA256Hash:   session.FileHash,
+		VirtualPath:  h.buildVirtualPath(session.ParentID, session.FileName),
+		ParentID:     session.ParentID,
+		UploadedBy:   session.UserID,
+		IsDirectory:  false,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+
+	if err := h.db.Create(&fileRecord).Error; err != nil {
+		os.Remove(finalPath) // 清理已建立的檔案
+		api.ErrorResponse(c, http.StatusInternalServerError, "建立檔案記錄失敗: "+err.Error())
+		return
+	}
+
+	// 標記會話為已完成
+	now := time.Now()
+	if err := h.db.Model(&session).Updates(map[string]interface{}{
+		"status": "completed",
+		"completed_at": &now,
+	}).Error; err != nil {
+		// 這不是致命錯誤，記錄日誌即可
+		fmt.Printf("更新會話狀態失敗: %v\n", err)
+	}
+
+	// 清理臨時分塊檔案
+	go func() {
+		time.Sleep(5 * time.Minute) // 延遲5分鐘清理，確保操作完成
+		os.RemoveAll(chunkDir)
+	}()
+
+	api.SuccessResponse(c, gin.H{
+		"file": fileRecord,
+		"message": "檔案上傳完成",
+	})
+}
+
+// GetChunkUploadStatus 取得分塊上傳狀態
+func (h *FileHandler) GetChunkUploadStatus(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		api.ErrorResponse(c, http.StatusUnauthorized, "未認證")
+		return
+	}
+
+	sessionID := c.Param("sessionId")
+	if sessionID == "" {
+		api.ErrorResponse(c, http.StatusBadRequest, "缺少會話ID")
+		return
+	}
+
+	// 查找會話
+	var session models.ChunkSession
+	if err := h.db.Where("id = ? AND user_id = ?", sessionID, userID).First(&session).Error; err != nil {
+		api.ErrorResponse(c, http.StatusNotFound, "上傳會話不存在")
+		return
+	}
+
+	// 解析已上傳分塊
+	var uploadedChunks []int
+	if err := json.Unmarshal([]byte(session.UploadedChunks), &uploadedChunks); err != nil {
+		uploadedChunks = []int{}
+	}
+
+	api.SuccessResponse(c, gin.H{
+		"sessionId": session.ID,
+		"fileName": session.FileName,
+		"fileSize": session.FileSize,
+		"totalChunks": session.TotalChunks,
+		"uploadedChunks": uploadedChunks,
+		"completed": len(uploadedChunks) >= session.TotalChunks,
+		"progress": float64(len(uploadedChunks)) / float64(session.TotalChunks) * 100,
+		"status": session.Status,
+		"createdAt": session.CreatedAt,
+		"expiresAt": session.ExpiresAt,
+	})
 }

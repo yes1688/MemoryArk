@@ -13,6 +13,7 @@ export { default as AppDropZone } from './drop-zone/AppDropZone.vue'
 export { default as AppFileDragger } from './file-dragger/AppFileDragger.vue'
 export { default as AppFilePreview } from './file-preview/AppFilePreview.vue'
 export { default as AppSearchFilter } from './search-filter/AppSearchFilter.vue'
+export { default as UnifiedUploader } from './upload/UnifiedUploader.vue'
 
 // Advanced Features
 export { default as AppTagManager } from './tag-manager/AppTagManager.vue'

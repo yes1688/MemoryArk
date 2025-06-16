@@ -22,7 +22,13 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       // Cloudflare Access 認證失敗，重定向到 Cloudflare 登入
       if (typeof window !== 'undefined') {
-        window.location.href = '/cloudflare-auth'
+        // 避免循環重定向：如果已經在 cloudflare-auth 頁面，就不再跳轉
+        if (window.location.pathname !== '/cloudflare-auth') {
+          console.log('401 認證失敗，重定向到 cloudflare-auth')
+          window.location.href = '/cloudflare-auth'
+        } else {
+          console.error('401 錯誤 (已在 cloudflare-auth 頁面，避免循環):', error.response?.data)
+        }
       }
     } else if (error.response?.status === 403) {
       const errorCode = errorData?.error?.code

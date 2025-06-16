@@ -9,7 +9,8 @@ import type {
   Category,
   StreamExportRequest,
   ExportJob,
-  DuplicateFile
+  DuplicateFile,
+  BatchUploadResult
 } from '@/types/files'
 
 export const useFilesStore = defineStore('files', () => {
@@ -145,6 +146,43 @@ export const useFilesStore = defineStore('files', () => {
         return fileInfo
       } else {
         throw new Error(response.message || '檔案上傳失敗')
+      }
+    } catch (err: any) {
+      error.value = err.message || '網路連線錯誤'
+      throw err
+    } finally {
+      isLoading.value = false
+      uploadProgress.value = 0
+    }
+  }
+
+  // 批量上傳檔案
+  const batchUploadFiles = async (
+    files: File[], 
+    folderId?: number, 
+    onProgress?: (progress: number) => void
+  ): Promise<BatchUploadResult> => {
+    try {
+      isLoading.value = true
+      error.value = null
+      uploadProgress.value = 0
+      
+      const metadata: FileUploadRequest = {}
+      if (folderId !== undefined) {
+        metadata.parentId = folderId
+      }
+      
+      const response = await filesApi.batchUploadFiles(files, metadata, (progress) => {
+        uploadProgress.value = progress
+        onProgress?.(progress)
+      })
+      
+      if (response.success && response.data) {
+        // 重新獲取當前資料夾檔案列表
+        await fetchFiles(currentFolderId.value || null)
+        return response.data
+      } else {
+        throw new Error(response.message || '批量上傳失敗')
       }
     } catch (err: any) {
       error.value = err.message || '網路連線錯誤'
@@ -754,6 +792,7 @@ export const useFilesStore = defineStore('files', () => {
     // 檔案管理方法
     fetchFiles,
     uploadFile,
+    batchUploadFiles,
     createFolder,
     renameFile,
     moveFiles,

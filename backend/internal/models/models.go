@@ -182,3 +182,30 @@ func (Category) TableName() string {
 func (ExportJob) TableName() string {
 	return "export_jobs"
 }
+
+// ChunkSession 分塊上傳會話模型
+type ChunkSession struct {
+	ID             string      `json:"id" gorm:"primaryKey;size:100"`
+	UserID         uint        `json:"user_id" gorm:"not null;index"`
+	FileName       string      `json:"file_name" gorm:"size:255;not null"`
+	FileSize       int64       `json:"file_size" gorm:"not null"`
+	FileHash       string      `json:"file_hash" gorm:"size:64;not null"`
+	TotalChunks    int         `json:"total_chunks" gorm:"not null"`
+	ChunkSize      int         `json:"chunk_size" gorm:"not null"`
+	UploadedChunks string      `json:"uploaded_chunks" gorm:"type:text;default:'[]'"` // JSON array of chunk indexes
+	RelativePath   string      `json:"relative_path" gorm:"size:1000"`
+	ParentID       *uint       `json:"parent_id"`
+	Status         string      `json:"status" gorm:"size:20;default:'active'"` // active, completed, expired, failed
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+	ExpiresAt      time.Time   `json:"expires_at"`
+	CompletedAt    *time.Time  `json:"completed_at"`
+	
+	// 關聯
+	User           User        `json:"user" gorm:"foreignKey:UserID"`
+	Parent         *File       `json:"parent,omitempty" gorm:"foreignKey:ParentID"`
+}
+
+func (ChunkSession) TableName() string {
+	return "chunk_sessions"
+}

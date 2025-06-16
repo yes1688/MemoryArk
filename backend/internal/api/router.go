@@ -37,6 +37,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	public := v1.Group("/")
 	{
 		public.GET("/health", handlers.HealthCheck)
+		public.HEAD("/health", handlers.HealthCheck)
 		public.GET("/auth/status", authHandler.GetAuthStatus)
 		public.POST("/auth/register", authHandler.Register)
 		public.GET("/features/config", authHandler.GetFeatureConfig)
@@ -53,6 +54,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		protected.GET("/files", fileHandler.GetFiles)
 		protected.GET("/files/:id", fileHandler.GetFileDetails)
 		protected.POST("/files/upload", fileHandler.UploadFile)
+		protected.POST("/files/batch-upload", fileHandler.BatchUploadFile)
 		protected.PUT("/files/:id", fileHandler.UpdateFile)
 		protected.DELETE("/files/:id", fileHandler.DeleteFile)
 		protected.POST("/files/:id/restore", fileHandler.RestoreFile)
@@ -60,6 +62,12 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		protected.GET("/files/:id/download", fileHandler.DownloadFile)
 		protected.GET("/files/:id/preview", fileHandler.PreviewFile)
 		protected.POST("/files/:id/share", fileHandler.CreateShareLink)
+		
+		// 分塊上傳 API
+		protected.POST("/files/chunk-init", fileHandler.ChunkUploadInit)
+		protected.POST("/files/chunk-upload", fileHandler.ChunkUpload)
+		protected.POST("/files/chunk-finalize", fileHandler.ChunkUploadFinalize)
+		protected.GET("/files/chunk-status/:sessionId", fileHandler.GetChunkUploadStatus)
 		
 		// 儲存空間統計
 		protected.GET("/storage/stats", fileHandler.GetStorageStats)

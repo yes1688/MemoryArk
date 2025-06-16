@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { UnifiedUploadService } from '@/services/unifiedUploadService'
+import type { UploadMethod, UploadOptions, UnifiedUploadResult } from '@/services/unifiedUploadService'
+import type { UploadProgress } from '@/types/upload'
+import { AppFileIcon } from '@/components/ui'
 
 interface Props {
   selectedFile: File | null
@@ -7,24 +11,46 @@ interface Props {
   isUploading: boolean
   uploadProgress: number
   supportFolder?: boolean  // 是否支援資料夾上傳
+  parentId?: number      // 上傳到指定的父目錄
+  enableAutoUpload?: boolean  // 是否自動開始上傳
 }
 
 interface Emits {
   (e: 'file-select', file: File): void
   (e: 'files-select', files: File[]): void  // 多檔案選擇
   (e: 'upload'): void
+  (e: 'upload-start'): void
+  (e: 'upload-progress', progress: UploadProgress): void
+  (e: 'upload-complete', results: UnifiedUploadResult[]): void
+  (e: 'upload-error', error: string): void
+  (e: 'method-change', method: UploadMethod): void
   (e: 'reset'): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
   supportFolder: false,
-  selectedFiles: () => []
+  selectedFiles: () => [],
+  enableAutoUpload: false
 })
 const emit = defineEmits<Emits>()
 
 const fileInput = ref<HTMLInputElement>()
 const folderInput = ref<HTMLInputElement>()
 const isDragOver = ref(false)
+
+// 統一上傳服務相關
+const uploadService = ref<UnifiedUploadService>()
+const uploadMethod = ref<UploadMethod | null>(null)
+const isInternalUploading = ref(false)
+const uploadResults = ref<UnifiedUploadResult[]>([])
+const currentUploadProgress = ref<UploadProgress | null>(null)
+const networkStatus = ref<string>('good')
+const uploadStats = ref({
+  completedChunks: 0,
+  totalChunks: 0,
+  uploadSpeed: 0,
+  estimatedTime: 0
+})
 
 const allowedTypes = [
   'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml',
@@ -41,6 +67,28 @@ const allowedTypes = [
   'application/json', 'application/xml', 'application/zip', 'application/x-rar-compressed'
 ]
 
+// 生命週期
+onMounted(async () => {
+  // 初始化統一上傳服務
+  uploadService.value = new UnifiedUploadService({
+    chunkConfig: {
+      chunkSize: 5 * 1024 * 1024, // 5MB
+      maxRetries: 3,
+      timeout: 30000
+    },
+    thresholds: {
+      largeFileSize: 50 * 1024 * 1024,      // 50MB
+      totalSizeThreshold: 100 * 1024 * 1024  // 100MB
+    }
+  })
+})
+
+onUnmounted(() => {
+  if (uploadService.value) {
+    uploadService.value.destroy()
+  }
+})
+
 const maxFileSize = 100 * 1024 * 1024 // 100MB
 
 const filePreview = computed(() => {
@@ -50,6 +98,79 @@ const filePreview = computed(() => {
     return URL.createObjectURL(props.selectedFile)
   }
   return null
+})
+
+// 計算屬性
+const uploadTitle = computed(() => {
+  const hasSelectedFiles = (props.selectedFiles && props.selectedFiles.length > 0) || props.selectedFile
+  
+  if (!hasSelectedFiles) {
+    return props.supportFolder ? '拖拽檔案或資料夾到此處' : '拖拽檔案到此處'
+  }
+  
+  const fileCount = props.selectedFiles?.length || (props.selectedFile ? 1 : 0)
+  const method = uploadMethod.value
+  
+  if (isInternalUploading.value) {
+    return method?.name === 'chunked' 
+      ? `分塊上傳中... (${fileCount} 個檔案)`
+      : `上傳中... (${fileCount} 個檔案)`
+  }
+  
+  return method?.name === 'chunked' 
+    ? `準備進行分塊上傳 (${fileCount} 個檔案)`
+    : `準備上傳 (${fileCount} 個檔案)`
+})
+
+const uploadDescription = computed(() => {
+  if (isInternalUploading.value) {
+    return uploadMethod.value?.name === 'chunked' 
+      ? '正在使用分塊上傳，支援斷點續傳' 
+      : '正在使用標準上傳'
+  }
+  
+  if (uploadMethod.value?.name === 'chunked') {
+    return '大檔案將使用分塊上傳，確保穩定傳輸'
+  }
+  return '支援多檔案同時上傳，單檔最大 100MB'
+})
+
+const totalProgress = computed(() => {
+  if (props.isUploading) {
+    return props.uploadProgress
+  }
+  if (currentUploadProgress.value) {
+    const progress = currentUploadProgress.value
+    return Math.round((progress.uploadedBytes / progress.totalBytes) * 100)
+  }
+  return 0
+})
+
+const networkQuality = computed(() => {
+  return `network-${networkStatus.value}`
+})
+
+const networkStatusText = computed(() => {
+  switch (networkStatus.value) {
+    case 'excellent': return '網路狀態優秀'
+    case 'good': return '網路狀態良好'
+    case 'fair': return '網路狀態一般'
+    case 'poor': return '網路狀態較差'
+    default: return '網路狀態未知'
+  }
+})
+
+const uploadingFiles = computed(() => {
+  if (!isInternalUploading.value) return []
+  
+  const files = props.selectedFiles || (props.selectedFile ? [props.selectedFile] : [])
+  return files.map((file, index) => ({
+    id: `file-${index}`,
+    name: file.name,
+    size: file.size,
+    progress: index === 0 ? totalProgress.value : 0, // 簡化進度顯示
+    status: index === 0 ? 'uploading' : 'pending'
+  }))
 })
 
 const formatFileSize = (bytes: number) => {
@@ -324,11 +445,179 @@ const getParentPath = (relativePath: string): string => {
   return parts.join('/') || '根目錄'
 }
 
+// 監聽檔案選擇變化，自動選擇上傳方式
+watch(() => props.selectedFiles, (newFiles) => {
+  if (newFiles && newFiles.length > 0 && uploadService.value) {
+    const method = uploadService.value.selectUploadMethod(newFiles)
+    uploadMethod.value = method
+    emit('method-change', method)
+    
+    // 自動上傳
+    if (props.enableAutoUpload) {
+      startUpload()
+    }
+  }
+}, { immediate: true })
+
+watch(() => props.selectedFile, (newFile) => {
+  if (newFile && uploadService.value) {
+    const method = uploadService.value.selectUploadMethod([newFile])
+    uploadMethod.value = method
+    emit('method-change', method)
+    
+    // 自動上傳
+    if (props.enableAutoUpload) {
+      startUpload()
+    }
+  }
+}, { immediate: true })
+
+// 開始上傳
+const startUpload = async () => {
+  if (!uploadService.value) {
+    emit('upload-error', '上傳服務未初始化')
+    return
+  }
+
+  const filesToUpload = props.selectedFiles && props.selectedFiles.length > 0 
+    ? props.selectedFiles 
+    : props.selectedFile 
+      ? [props.selectedFile] 
+      : []
+
+  if (filesToUpload.length === 0) {
+    emit('upload-error', '沒有選擇要上傳的檔案')
+    return
+  }
+
+  isInternalUploading.value = true
+  emit('upload-start')
+
+  try {
+    const options: UploadOptions = {
+      parentId: props.parentId,
+      onProgress: (progress) => {
+        currentUploadProgress.value = progress
+        emit('upload-progress', progress)
+        
+        // 更新統計資訊
+        if (uploadMethod.value?.name === 'chunked') {
+          uploadStats.value = {
+            completedChunks: progress.completedChunks.length,
+            totalChunks: progress.totalChunks,
+            uploadSpeed: calculateUploadSpeed(progress),
+            estimatedTime: calculateEstimatedTime(progress)
+          }
+        }
+      }
+    }
+
+    const results = await uploadService.value.upload(filesToUpload, options)
+    uploadResults.value = results
+    emit('upload-complete', results)
+  } catch (error: any) {
+    console.error('上傳失敗:', error)
+    emit('upload-error', error.message || '上傳失敗')
+  } finally {
+    isInternalUploading.value = false
+  }
+}
+
+// 計算上傳速度
+const calculateUploadSpeed = (progress: UploadProgress): number => {
+  // 簡單的速度計算（字節/秒）
+  const elapsed = (Date.now() - progress.lastUpdated.getTime()) / 1000
+  return elapsed > 0 ? progress.uploadedBytes / elapsed : 0
+}
+
+// 計算預估時間
+const calculateEstimatedTime = (progress: UploadProgress): number => {
+  const speed = calculateUploadSpeed(progress)
+  const remainingBytes = progress.totalBytes - progress.uploadedBytes
+  return speed > 0 ? remainingBytes / speed : 0
+}
+
+// 格式化速度
+const formatSpeed = (bytesPerSecond: number): string => {
+  if (bytesPerSecond < 1024) {
+    return `${Math.round(bytesPerSecond)} B/s`
+  } else if (bytesPerSecond < 1024 * 1024) {
+    return `${Math.round(bytesPerSecond / 1024)} KB/s`
+  } else {
+    return `${(bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s`
+  }
+}
+
+// 格式化時間
+const formatTime = (seconds: number): string => {
+  if (seconds < 60) {
+    return `${Math.round(seconds)}秒`
+  } else if (seconds < 3600) {
+    const minutes = Math.floor(seconds / 60)
+    return `${minutes}分鐘`
+  } else {
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    return `${hours}小時${minutes}分鐘`
+  }
+}
+
+// 獲取上傳圖標
+const getUploadIcon = (): string => {
+  if (uploadMethod.value?.name === 'chunked') {
+    return 'layers'
+  }
+  return 'upload'
+}
+
+// 獲取網路狀態圖標
+const getNetworkIcon = (): string => {
+  switch (networkStatus.value) {
+    case 'excellent':
+    case 'good':
+      return 'wifi'
+    case 'fair':
+      return 'wifi-low'
+    case 'poor':
+      return 'wifi-off'
+    default:
+      return 'wifi'
+  }
+}
+
+// 獲取檔案狀態圖標
+const getFileStatusIcon = (status: string): string => {
+  switch (status) {
+    case 'completed':
+      return 'check-circle'
+    case 'uploading':
+      return 'upload'
+    case 'error':
+      return 'x-circle'
+    case 'paused':
+      return 'pause-circle'
+    default:
+      return 'clock'
+  }
+}
+
 const handleUpload = () => {
+  if (isInternalUploading.value) return
+  startUpload()
   emit('upload')
 }
 
 const handleReset = () => {
+  uploadMethod.value = null
+  currentUploadProgress.value = null
+  uploadResults.value = []
+  uploadStats.value = {
+    completedChunks: 0,
+    totalChunks: 0,
+    uploadSpeed: 0,
+    estimatedTime: 0
+  }
+  
   emit('reset')
   if (fileInput.value) {
     fileInput.value.value = ''
@@ -337,6 +626,20 @@ const handleReset = () => {
     folderInput.value.value = ''
   }
 }
+
+// 暴露方法給父組件
+defineExpose({
+  startUpload,
+  clearFiles: handleReset,
+  cancelUpload: () => {
+    if (uploadService.value) {
+      uploadService.value.cancelUpload()
+    }
+  },
+  getUploadStats: () => {
+    return uploadService.value?.getUploadStats() || null
+  }
+})
 </script>
 
 <style scoped>
