@@ -139,6 +139,11 @@ func isValidFileExtension(filename string) bool {
 		return false
 	}
 	
+	// 如果沒有副檔名，拒絕上傳（要求所有檔案都必須有副檔名）
+	if ext == "" {
+		return false
+	}
+	
 	// 檢查是否在允許名單中
 	return allowedExtensions[ext]
 }
@@ -2152,6 +2157,7 @@ func (h *FileHandler) ChunkUploadInit(c *gin.Context) {
 	}
 
 	api.SuccessResponse(c, gin.H{
+		"id": sessionID,
 		"sessionId": sessionID,
 		"chunkSize": req.ChunkSize,
 		"totalChunks": req.TotalChunks,

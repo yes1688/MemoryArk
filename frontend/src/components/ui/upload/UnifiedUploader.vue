@@ -94,9 +94,36 @@
         <div
           v-for="(file, index) in selectedFiles"
           :key="`${file.name}-${file.size}-${index}`"
-          class="flex items-center justify-between p-3 rounded-md"
-          :style="{ backgroundColor: 'var(--bg-secondary)' }"
+          class="flex items-center p-3 rounded-md transition-colors"
+          :style="{ 
+            backgroundColor: getFileUploadStatus(index) === 'completed' ? 'rgba(34, 197, 94, 0.1)' : 'var(--bg-secondary)',
+            border: getFileUploadStatus(index) === 'completed' ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid transparent'
+          }"
         >
+          <!-- 上傳狀態指示器 -->
+          <div class="w-4 h-4 mr-3 flex-shrink-0 flex items-center justify-center">
+            <CheckCircleIcon 
+              v-if="getFileUploadStatus(index) === 'completed'"
+              class="w-4 h-4" 
+              :style="{ color: 'rgb(34, 197, 94)' }" 
+            />
+            <div 
+              v-else-if="getFileUploadStatus(index) === 'uploading'"
+              class="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"
+            />
+            <div 
+              v-else-if="getFileUploadStatus(index) === 'error'"
+              class="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center"
+            >
+              <XMarkIcon class="w-2.5 h-2.5 text-white" />
+            </div>
+            <div 
+              v-else
+              class="w-3 h-3 rounded-full border-2"
+              :style="{ borderColor: 'var(--border-medium)' }"
+            />
+          </div>
+          
           <div class="flex items-center flex-1 min-w-0">
             <DocumentIcon class="w-5 h-5 mr-3 flex-shrink-0" :style="{ color: 'var(--text-tertiary)' }" />
             <div class="min-w-0 flex-1">
@@ -107,6 +134,15 @@
                 {{ formatFileSize(file.size) }}
                 <span v-if="file.webkitRelativePath" class="ml-2">
                   • {{ getParentPath(file.webkitRelativePath) }}
+                </span>
+                <span v-if="getFileUploadStatus(index) === 'uploading'" class="ml-2 text-blue-600">
+                  • 上傳中...
+                </span>
+                <span v-else-if="getFileUploadStatus(index) === 'completed'" class="ml-2 text-green-600">
+                  • 上傳完成
+                </span>
+                <span v-else-if="getFileUploadStatus(index) === 'error'" class="ml-2 text-red-600">
+                  • 上傳失敗
                 </span>
               </div>
             </div>
@@ -250,7 +286,7 @@
             檔案上傳中，請勿離開此頁面
           </p>
           <p class="text-xs mt-0.5" :style="{ color: 'rgb(180, 83, 9)' }">
-            使用分塊上傳技術，網路中斷可自動恢復
+            上傳過程中請保持網路連接穩定
           </p>
         </div>
       </div>
@@ -355,6 +391,9 @@ const uploadProgress = ref(0)
 const currentUploadFile = ref('')
 const error = ref('')
 
+// 檔案上傳狀態追蹤
+const fileUploadStatuses = ref<Map<number, 'pending' | 'uploading' | 'completed' | 'error'>>(new Map())
+
 // 內部表單狀態
 const internalForm = ref({
   category: '',
@@ -413,6 +452,34 @@ watch(selectedFiles, (newFiles) => {
     }
   }
 }, { deep: true })
+
+// 監聽檔案列表變化，更新狀態追蹤
+watch(selectedFiles, (newFiles) => {
+  // 清除超出範圍的狀態項目
+  const validStatuses = new Map<number, 'pending' | 'uploading' | 'completed' | 'error'>()
+  fileUploadStatuses.value.forEach((status, index) => {
+    if (index < newFiles.length) {
+      validStatuses.set(index, status)
+    }
+  })
+  fileUploadStatuses.value = validStatuses
+  
+  // 為新檔案設定初始狀態
+  for (let i = 0; i < newFiles.length; i++) {
+    if (!fileUploadStatuses.value.has(i)) {
+      fileUploadStatuses.value.set(i, 'pending')
+    }
+  }
+}, { deep: true })
+
+// 上傳狀態相關方法
+const getFileUploadStatus = (index: number): 'pending' | 'uploading' | 'completed' | 'error' => {
+  return fileUploadStatuses.value.get(index) || 'pending'
+}
+
+const setFileUploadStatus = (index: number, status: 'pending' | 'uploading' | 'completed' | 'error') => {
+  fileUploadStatuses.value.set(index, status)
+}
 
 // 檔案選擇
 const selectFiles = () => {
@@ -486,6 +553,15 @@ const addFiles = (files: File[]) => {
       continue
     }
     
+    // 檢查是否有副檔名
+    const fileExtension = file.name.lastIndexOf('.') > 0 ? file.name.substring(file.name.lastIndexOf('.')).toLowerCase() : ''
+    if (!fileExtension) {
+      error.value = `檔案 "${file.name}" 沒有副檔名，請重新命名後再上傳`
+      emit('error', error.value)
+      console.log(`🚫 跳過沒有副檔名的檔案: ${file.name}`)
+      continue
+    }
+    
     // 檢查檔案大小
     if (file.size > props.maxFileSize) {
       error.value = `檔案 "${file.name}" 超過大小限制 (${formatFileSize(props.maxFileSize)})`
@@ -530,11 +606,13 @@ const autoSelectCategory = (file: File) => {
 // 移除檔案
 const removeFile = (index: number) => {
   selectedFiles.value.splice(index, 1)
+  // 移除檔案後，狀態會在 watch 中自動調整
 }
 
 // 清除所有檔案
 const clearFiles = () => {
   selectedFiles.value = []
+  fileUploadStatuses.value.clear()
   error.value = ''
   uploadProgress.value = 0
   currentUploadFile.value = ''
@@ -578,6 +656,11 @@ const startUpload = async () => {
   uploadProgress.value = 0
   error.value = ''
   
+  // 初始化所有檔案為 pending 狀態
+  for (let i = 0; i < selectedFiles.value.length; i++) {
+    setFileUploadStatus(i, 'pending')
+  }
+  
   // 通知父組件上傳開始
   emit('upload-start')
   emit('upload-status', true)
@@ -599,12 +682,34 @@ const startUpload = async () => {
         const fileIndex = parseInt(fileId.split('-')[1]) || 0
         if (selectedFiles.value[fileIndex]) {
           currentUploadFile.value = selectedFiles.value[fileIndex].name
+          
+          // 更新檔案狀態
+          if (progress > 0 && progress < 100) {
+            setFileUploadStatus(fileIndex, 'uploading')
+          } else if (progress === 100) {
+            setFileUploadStatus(fileIndex, 'completed')
+          }
         }
       }
     }
     
     console.log(`🚀 開始${uploadMethod.value?.name === 'chunked' ? '分塊' : '標準'}上傳 ${selectedFiles.value.length} 個檔案`)
+    
+    // 在開始上傳時，將所有檔案設為 uploading 狀態
+    for (let i = 0; i < selectedFiles.value.length; i++) {
+      setFileUploadStatus(i, 'uploading')
+    }
+    
     const results = await uploadService.value.upload(selectedFiles.value, options)
+    
+    // 根據結果更新狀態
+    results.forEach((result, index) => {
+      if (result.success) {
+        setFileUploadStatus(index, 'completed')
+      } else {
+        setFileUploadStatus(index, 'error')
+      }
+    })
     
     // 統計結果
     const successCount = results.filter(r => r.success).length
@@ -618,14 +723,21 @@ const startUpload = async () => {
     
     emit('upload-complete', results)
     
-    // 成功後清除
+    // 成功後延遲清除，讓用戶看到完成狀態
     if (successCount > 0) {
-      clearFiles()
+      setTimeout(() => {
+        clearFiles()
+      }, 2000) // 2秒後清除
     }
   } catch (err: any) {
     console.error('上傳失敗:', err)
     error.value = err.message || '上傳失敗'
     emit('error', error.value)
+    
+    // 將所有檔案設為錯誤狀態
+    for (let i = 0; i < selectedFiles.value.length; i++) {
+      setFileUploadStatus(i, 'error')
+    }
   } finally {
     isUploading.value = false
     currentUploadFile.value = ''

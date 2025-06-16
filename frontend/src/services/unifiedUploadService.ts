@@ -92,13 +92,13 @@ export class UnifiedUploadService {
   selectUploadMethod(files: File[]): UploadMethod {
     const largeFileThreshold = this.config.thresholds!.largeFileSize!
 
-    // 🚀 強制使用分塊上傳，提供更穩定的上傳體驗
-    console.log('🚀 強制使用分塊上傳模式（生產環境測試）')
+    // 🔄 暫時改用標準上傳系統
+    console.log('🔄 暫時改用標準上傳系統')
     return {
-      name: 'chunked',
+      name: 'standard',
       threshold: largeFileThreshold,
       suitable: true,
-      description: '分塊上傳，支援斷點續傳和進度追蹤'
+      description: '標準上傳，適合小檔案快速傳輸'
     }
 
     // 原智能選擇邏輯（已停用）
