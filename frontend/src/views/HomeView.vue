@@ -141,7 +141,7 @@ const formatFileSize = (bytes: number): string => {
 <template>
   <div class="home-view min-h-screen" style="background-color: var(--bg-secondary);">
     <!-- 極簡主義頭部 -->
-    <header class="hero-section relative overflow-hidden" style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-info) 100%); min-height: 380px;">
+    <header class="hero-section relative overflow-hidden" style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-info) 100%); min-height: 380px; display: flex; align-items: center;">
       <!-- 背景裝飾 -->
       <div class="absolute inset-0 opacity-10">
         <div class="absolute -top-24 -right-24 w-96 h-96 bg-white rounded-full blur-3xl"></div>
@@ -159,7 +159,7 @@ const formatFileSize = (bytes: number): string => {
           </p>
           
           <!-- 極簡統計 -->
-          <div class="mt-12 flex items-center space-x-12 animate-slide-up">
+          <div class="mt-12 flex items-center justify-start gap-12 animate-slide-up">
             <div class="text-center">
               <div class="text-4xl font-light">{{ fileStore.files.length }}</div>
               <div class="text-sm opacity-80 mt-1">檔案總數</div>
@@ -183,12 +183,12 @@ const formatFileSize = (bytes: number): string => {
     <main class="main-content relative -mt-20 z-20">
       <div class="max-w-7xl mx-auto px-6">
         <!-- 快速操作卡片 - 極簡風格 -->
-        <div class="quick-actions grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+        <div class="quick-actions grid grid-cols-1 md:grid-cols-2 gap-6 mb-12" style="align-items: stretch;">
           <!-- 上傳檔案 -->
           <button
             @click="handleQuickAction('upload')"
             class="action-card group"
-            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth);"
+            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth); border: none; cursor: pointer; width: 100%;"
           >
             <div class="flex flex-col items-center text-center">
               <div class="icon-wrapper mb-4" style="width: 64px; height: 64px; background: var(--color-primary); background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; transition: transform var(--duration-normal) var(--ease-bounce);">
@@ -239,7 +239,7 @@ const formatFileSize = (bytes: number): string => {
           <button
             @click="handleQuickAction('files')"
             class="action-card group"
-            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth);"
+            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth); border: none; cursor: pointer; width: 100%;"
           >
             <div class="flex flex-col items-center text-center">
               <div class="icon-wrapper mb-4" style="width: 64px; height: 64px; background: var(--color-warning); background: linear-gradient(135deg, var(--color-warning) 0%, #FFAC33 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; transition: transform var(--duration-normal) var(--ease-bounce);">
@@ -396,6 +396,37 @@ const formatFileSize = (bytes: number): string => {
 .action-card,
 .file-item {
   transition: all var(--duration-normal) var(--ease-smooth);
+}
+
+/* 響應式調整 */
+@media (max-width: 768px) {
+  .hero-section {
+    min-height: 320px !important;
+    align-items: flex-start !important;
+    padding-top: calc(env(safe-area-inset-top) + 2rem) !important;
+  }
+  
+  .hero-section h1 {
+    font-size: 2rem !important;
+  }
+  
+  .hero-section .flex {
+    flex-wrap: wrap;
+    gap: 1.5rem !important;
+  }
+  
+  .main-content {
+    margin-top: -3rem !important;
+  }
+  
+  .storage-details {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 1rem !important;
+  }
+  
+  .storage-details > div > div:first-child {
+    font-size: 1.25rem !important;
+  }
 }
 
 /* 工具函數 */
