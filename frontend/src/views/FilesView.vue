@@ -26,6 +26,11 @@ const route = useRoute()
 const authStore = useAuthStore()
 const filesStore = useFilesStore()
 
+// 響應式檢測
+const isMobile = computed(() => window.innerWidth < 768)
+const isTablet = computed(() => window.innerWidth >= 768 && window.innerWidth < 1024)
+const orientation = computed(() => window.innerWidth > window.innerHeight ? 'landscape' : 'portrait')
+
 // 狀態管理
 const searchQuery = ref('')
 const viewMode = ref<'grid' | 'list'>('grid')
@@ -220,56 +225,134 @@ const handleUploadComplete = async (results?: UnifiedUploadResult[]) => {
 
 // 已移除 getFileIcon 函數，改用 AppFileIcon 組件
 
-// 監聽路由變化
-watch(() => [props.folderId, route.params.folderId], 
-  async ([propsFolderId, routeFolderId]) => {
-    const targetFolderId = propsFolderId || (routeFolderId ? Number(routeFolderId) : null)
-    
-    console.log('🗂️ FilesView 路由變化:', { propsFolderId, routeFolderId, targetFolderId })
-    
-    if (targetFolderId) {
-      await filesStore.navigateToFolder(Number(targetFolderId))
-    } else {
-      await filesStore.navigateToFolder(null)
-    }
-  },
-  { immediate: true }
-)
-
-// 生命週期
-onMounted(async () => {
-  // 根據路由參數決定載入哪個資料夾
-  const targetFolderId = props.folderId || (route.params.folderId ? Number(route.params.folderId) : null)
+// 導航處理函數
+const handleNavigation = async (propsFolderId?: number | null, routeFolderId?: string | string[] | number | undefined) => {
+  let routeId: string | undefined
+  if (Array.isArray(routeFolderId)) {
+    routeId = routeFolderId[0]
+  } else if (typeof routeFolderId === 'number') {
+    routeId = String(routeFolderId)
+  } else {
+    routeId = routeFolderId
+  }
+  const targetFolderId = propsFolderId || (routeId ? Number(routeId) : null)
   
-  console.log('🚀 FilesView 掛載:', { props: props.folderId, route: route.params.folderId, target: targetFolderId })
+  console.log('🗂️ FilesView 導航處理:', { propsFolderId, routeFolderId, targetFolderId })
+  
+  // 防止重複導航到相同資料夾
+  if (targetFolderId === filesStore.currentFolderId) {
+    console.log('⚠️ 已在目標資料夾，跳過導航')
+    return
+  }
   
   if (targetFolderId) {
     await filesStore.navigateToFolder(Number(targetFolderId))
   } else {
     await filesStore.navigateToFolder(null)
   }
-})
+}
+
+// 監聽路由變化 (immediate: true 會在掛載時自動執行一次)
+watch(() => [props.folderId, route.params.folderId], 
+  async ([propsFolderId, routeFolderId]) => {
+    await handleNavigation(propsFolderId, routeFolderId)
+  },
+  { immediate: true }
+)
 </script>
+
+<style scoped>
+/* 觸控友善的樣式 */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 手機版特定樣式 */
+@media (max-width: 767px) {
+  .files-header {
+    padding: var(--space-3) !important;
+  }
+  
+  .breadcrumbs {
+    margin-bottom: var(--space-3) !important;
+  }
+  
+  .toolbar {
+    gap: var(--space-3) !important;
+  }
+  
+  .view-btn {
+    padding: var(--space-2) !important;
+  }
+  
+  .file-row {
+    border-radius: var(--radius-lg);
+  }
+  
+  .search-input {
+    font-size: 16px !important; /* 防止 iOS 縮放 */
+  }
+}
+
+/* 平板版特定樣式 */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .files-grid {
+    gap: var(--space-3);
+  }
+}
+
+/* 觸控設備特定樣式 */
+@media (hover: none) and (pointer: coarse) {
+  .hover\:underline:hover {
+    text-decoration: none;
+  }
+  
+  .file-row:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+  
+  .view-btn:active {
+    transform: scale(0.95);
+    transition: transform 0.1s ease;
+  }
+}
+
+/* 響應式網格優化 */
+.files-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (max-width: 479px) {
+  .files-grid.grid-cols-1 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 480px) and (max-width: 767px) {
+  .files-grid.grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+</style>
 
 <template>
   <div class="files-view h-full flex flex-col" style="background: var(--bg-primary);">
     <!-- 極簡頂部導航 -->
     <header class="files-header" style="background: var(--bg-elevated); border-bottom: 1px solid var(--border-light); padding: var(--space-4);">
       <!-- 麵包屑導航 -->
-      <div class="breadcrumbs flex items-center space-x-2 mb-4">
-        <button
-          @click="navigateToPath(null)"
-          class="text-sm hover:underline"
-          style="color: var(--text-secondary);"
-        >
-          檔案
-        </button>
-        <template v-for="(crumb, index) in breadcrumbs.slice(1)" :key="crumb.id || index">
-          <span style="color: var(--text-tertiary);">/</span>
+      <div class="breadcrumbs flex items-center gap-1 sm:gap-2 mb-4 overflow-x-auto">
+        <template v-for="(crumb, index) in breadcrumbs" :key="crumb.id || index">
+          <span v-if="index > 0" class="text-xs sm:text-sm shrink-0" style="color: var(--text-tertiary);">/</span>
           <button
             @click="navigateToPath(crumb.id)"
-            class="text-sm hover:underline"
-            style="color: var(--text-secondary);"
+            class="text-xs sm:text-sm hover:underline whitespace-nowrap touch-target shrink-0"
+            style="color: var(--text-secondary); min-height: 32px; padding: var(--space-1) var(--space-2);"
           >
             {{ crumb.name }}
           </button>
@@ -277,13 +360,14 @@ onMounted(async () => {
       </div>
       
       <!-- 工具欄 -->
-      <div class="toolbar flex items-center justify-between">
+      <div class="toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <!-- 左側操作 -->
-        <div class="flex items-center space-x-3">
+        <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
           <MinimalButton
             variant="primary"
-            size="small"
+            :size="isMobile ? 'medium' : 'small'"
             @click="showUploadModal = true"
+            class="touch-target"
           >
             <template #icon-left>
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -295,8 +379,9 @@ onMounted(async () => {
           
           <MinimalButton
             variant="secondary"
-            size="small"
+            :size="isMobile ? 'medium' : 'small'"
             @click="showCreateFolderModal = true"
+            class="touch-target"
           >
             <template #icon-left>
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -308,16 +393,15 @@ onMounted(async () => {
         </div>
         
         <!-- 右側工具 -->
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
           <!-- 搜尋框 -->
-          <div class="search-box relative">
+          <div class="search-box relative flex-1 sm:flex-none">
             <input
               v-model="searchQuery"
               type="text"
               placeholder="搜尋檔案..."
-              class="search-input"
+              class="search-input w-full sm:w-60 lg:w-80"
               style="
-                width: 240px;
                 padding: var(--space-2) var(--space-3);
                 padding-left: 36px;
                 background: var(--bg-tertiary);
@@ -326,6 +410,7 @@ onMounted(async () => {
                 font-size: var(--text-sm);
                 color: var(--text-primary);
                 transition: all var(--duration-fast) var(--ease-smooth);
+                min-height: 44px;
               "
             >
             <svg 
@@ -340,32 +425,42 @@ onMounted(async () => {
           </div>
           
           <!-- 檢視模式切換 -->
-          <div class="view-toggle flex items-center" style="background: var(--bg-tertiary); border-radius: var(--radius-full); padding: 2px;">
+          <div class="view-toggle flex items-center shrink-0" style="background: var(--bg-tertiary); border-radius: var(--radius-full); padding: 2px;">
             <button
               @click="viewMode = 'grid'"
-              class="view-btn"
+              class="view-btn touch-target"
               :class="{ active: viewMode === 'grid' }"
               style="
-                padding: var(--space-1) var(--space-2);
+                padding: var(--space-2);
                 border-radius: var(--radius-full);
                 transition: all var(--duration-fast) var(--ease-smooth);
+                min-width: 44px;
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
               "
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
               </svg>
             </button>
             <button
               @click="viewMode = 'list'"
-              class="view-btn"
+              class="view-btn touch-target"
               :class="{ active: viewMode === 'list' }"
               style="
-                padding: var(--space-1) var(--space-2);
+                padding: var(--space-2);
                 border-radius: var(--radius-full);
                 transition: all var(--duration-fast) var(--ease-smooth);
+                min-width: 44px;
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
               "
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
               </svg>
             </button>
@@ -375,7 +470,10 @@ onMounted(async () => {
     </header>
     
     <!-- 檔案內容區 -->
-    <main class="files-content flex-1 overflow-auto" style="padding: var(--space-6);">
+    <main class="files-content flex-1 overflow-auto" 
+          :style="{
+            padding: isMobile ? 'var(--space-4)' : 'var(--space-6)'
+          }">
       <!-- 載入中 -->
       <div v-if="isLoading" class="loading-state flex items-center justify-center h-64">
         <div class="spinner animate-spin rounded-full h-12 w-12 border-b-2" style="border-color: var(--color-primary);"></div>
@@ -393,7 +491,12 @@ onMounted(async () => {
       </div>
       
       <!-- 網格視圖 - 使用統一的 FileCard 組件 -->
-      <div v-else-if="viewMode === 'grid'" class="files-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div v-else-if="viewMode === 'grid'" class="files-grid grid gap-3 sm:gap-4" 
+           :class="{
+             'grid-cols-1': isMobile && orientation === 'portrait',
+             'grid-cols-2': (isMobile && orientation === 'landscape') || isTablet,
+             'grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6': !isMobile && !isTablet
+           }">
         <FileCard
           v-for="file in filteredFiles"
           :key="file.id"
@@ -408,17 +511,21 @@ onMounted(async () => {
       </div>
       
       <!-- 列表視圖 -->
-      <div v-else class="files-list space-y-2">
+      <div v-else class="files-list space-y-1 sm:space-y-2">
         <div
           v-for="file in filteredFiles"
           :key="file.id"
           @click="openFile(file)"
-          class="file-row flex items-center p-3 cursor-pointer rounded-lg"
+          class="file-row flex items-center cursor-pointer rounded-lg touch-target"
+          :class="{ 'hover:bg-gray-50 dark:hover:bg-gray-800': true }"
           style="
             background: var(--bg-elevated);
             transition: all var(--duration-fast) var(--ease-smooth);
+            min-height: 60px;
           "
-          :class="{ 'hover:bg-gray-50 dark:hover:bg-gray-800': true }"
+          :style="{
+            padding: isMobile ? 'var(--space-4) var(--space-3)' : 'var(--space-3)',
+          }"
         >
           <div class="file-icon mr-4">
             <AppFileIcon 

@@ -455,6 +455,11 @@ export const useFilesStore = defineStore('files', () => {
   // 導航到資料夾
   const navigateToFolder = async (folderId?: number | null): Promise<void> => {
     try {
+      // 防止重複導航到相同資料夾
+      if (folderId === currentFolderIdValue.value) {
+        console.log('⚠️ Store: 已在目標資料夾，跳過導航')
+        return
+      }
       // 在導航前先獲取資料夾信息（如果需要）
       let folderInfo: FileInfo | null = null
       if (folderId) {
@@ -528,20 +533,26 @@ export const useFilesStore = defineStore('files', () => {
         const buildBreadcrumbs = async (folder: FileInfo): Promise<BreadcrumbItem[]> => {
           const crumbs: BreadcrumbItem[] = []
           let currentFolder = folder
+          const visitedIds = new Set<number>() // 防止循環引用
+          
+          // 確保先添加當前資料夾到麵包屑
+          crumbs.unshift({
+            id: currentFolder.id,
+            name: currentFolder.name,
+            path: `/${currentFolder.name}`
+          })
+          visitedIds.add(currentFolder.id)
           
           // 從當前資料夾往上遍歷到根目錄
-          while (currentFolder.parentId) {
-            crumbs.unshift({
-              id: currentFolder.id,
-              name: currentFolder.name,
-              path: `/${currentFolder.name}`
-            })
-            
-            // 嘗試獲取父資料夾信息
+          while (currentFolder.parentId && !visitedIds.has(currentFolder.parentId)) {
             try {
+              console.log(`🔍 獲取父資料夾信息: ${currentFolder.parentId}`)
               const parentResponse = await filesApi.getFileDetails(currentFolder.parentId)
+              
               if (parentResponse.success && parentResponse.data) {
                 const parentData = parentResponse.data as any
+                visitedIds.add(currentFolder.parentId)
+                
                 currentFolder = {
                   id: parentData.id,
                   name: parentData.name,
@@ -559,26 +570,41 @@ export const useFilesStore = defineStore('files', () => {
                   updatedAt: '',
                   url: ''
                 }
+                
+                // 添加父資料夾到麵包屑開頭
+                crumbs.unshift({
+                  id: currentFolder.id,
+                  name: currentFolder.name,
+                  path: `/${currentFolder.name}`
+                })
+                
+                console.log(`✅ 成功添加父資料夾: ${currentFolder.name}`)
               } else {
+                console.warn(`⚠️ 無法獲取父資料夾 ${currentFolder.parentId} 的詳細信息`)
+                // 即使失敗也嘗試添加一個佔位符，保持路徑的連續性
+                crumbs.unshift({
+                  id: currentFolder.parentId ?? null,
+                  name: '資料夾',
+                  path: '/unknown'
+                })
                 break
               }
-            } catch {
+            } catch (error) {
+              console.error(`❌ 獲取父資料夾 ${currentFolder.parentId} 時發生錯誤:`, error)
+              // 即使失敗也嘗試添加一個佔位符
+              crumbs.unshift({
+                id: currentFolder.parentId ?? null,
+                name: '資料夾',
+                path: '/unknown'
+              })
               break
             }
           }
           
-          // 添加最後一層（沒有父資料夾的）
-          if (!currentFolder.parentId) {
-            crumbs.unshift({
-              id: currentFolder.id,
-              name: currentFolder.name,
-              path: `/${currentFolder.name}`
-            })
-          }
-          
           // 添加根目錄
-          crumbs.unshift({ id: null, name: '根目錄', path: '/' })
+          crumbs.unshift({ id: null, name: '檔案', path: '/' })
           
+          console.log(`🍞 構建的麵包屑:`, crumbs)
           return crumbs
         }
         
