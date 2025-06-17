@@ -149,30 +149,30 @@ const formatFileSize = (bytes: number): string => {
       </div>
       
       <!-- 內容 -->
-      <div class="relative z-10 max-w-7xl mx-auto px-6 py-16">
+      <div class="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 py-16">
         <div class="text-white">
-          <h1 class="text-5xl font-light mb-2 animate-fade-in">
+          <h1 class="text-3xl sm:text-5xl font-light mb-2 animate-fade-in">
             {{ greeting }}，{{ authStore.user?.name }}
           </h1>
-          <p class="text-lg opacity-90 font-light animate-fade-in-delay">
+          <p class="text-base sm:text-lg opacity-90 font-light animate-fade-in-delay">
             {{ formattedDate }}
           </p>
           
           <!-- 極簡統計 -->
-          <div class="mt-12 flex items-center justify-start gap-12 animate-slide-up">
+          <div class="mt-12 flex items-center justify-start gap-6 sm:gap-12 animate-slide-up">
             <div class="text-center">
-              <div class="text-4xl font-light">{{ fileStore.files.length }}</div>
-              <div class="text-sm opacity-80 mt-1">檔案總數</div>
+              <div class="text-2xl sm:text-4xl font-light">{{ fileStore.files.length }}</div>
+              <div class="text-xs sm:text-sm opacity-80 mt-1">檔案總數</div>
             </div>
-            <div class="w-px h-12 bg-white opacity-20"></div>
+            <div class="w-px h-8 sm:h-12 bg-white opacity-20"></div>
             <div class="text-center">
-              <div class="text-4xl font-light">{{ storagePercent }}%</div>
-              <div class="text-sm opacity-80 mt-1">儲存空間</div>
+              <div class="text-2xl sm:text-4xl font-light">{{ storagePercent }}%</div>
+              <div class="text-xs sm:text-sm opacity-80 mt-1">儲存空間</div>
             </div>
-            <div class="w-px h-12 bg-white opacity-20"></div>
+            <div class="w-px h-8 sm:h-12 bg-white opacity-20"></div>
             <div class="text-center">
-              <div class="text-4xl font-light">{{ authStore.user ? 1 : 0 }}</div>
-              <div class="text-sm opacity-80 mt-1">當前用戶</div>
+              <div class="text-2xl sm:text-4xl font-light">{{ authStore.user ? 1 : 0 }}</div>
+              <div class="text-xs sm:text-sm opacity-80 mt-1">當前用戶</div>
             </div>
           </div>
         </div>
@@ -183,12 +183,12 @@ const formatFileSize = (bytes: number): string => {
     <main class="main-content relative -mt-20 z-20">
       <div class="content-container max-w-7xl mx-auto px-4 sm:px-6">
         <!-- 快速操作卡片 - 極簡風格 -->
-        <div class="quick-actions grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-12" style="align-items: stretch;">
+        <div class="quick-actions flex flex-col sm:flex-row gap-4 sm:gap-6 mb-8 sm:mb-12 justify-center">
           <!-- 上傳檔案 -->
           <button
             @click="handleQuickAction('upload')"
             class="action-card group"
-            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth); border: none; cursor: pointer; width: 100%;"
+            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth); border: none; cursor: pointer; width: 100%; max-width: 320px;"
           >
             <div class="flex flex-col items-center text-center">
               <div class="icon-wrapper mb-4" style="width: 64px; height: 64px; background: var(--color-primary); background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; transition: transform var(--duration-normal) var(--ease-bounce);">
@@ -239,7 +239,7 @@ const formatFileSize = (bytes: number): string => {
           <button
             @click="handleQuickAction('files')"
             class="action-card group"
-            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth); border: none; cursor: pointer; width: 100%;"
+            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth); border: none; cursor: pointer; width: 100%; max-width: 320px;"
           >
             <div class="flex flex-col items-center text-center">
               <div class="icon-wrapper mb-4" style="width: 64px; height: 64px; background: var(--color-warning); background: linear-gradient(135deg, var(--color-warning) 0%, #FFAC33 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; transition: transform var(--duration-normal) var(--ease-bounce);">
@@ -437,9 +437,12 @@ const formatFileSize = (bytes: number): string => {
   }
   
   .quick-actions {
-    grid-template-columns: 1fr !important;
-    max-width: 400px;
-    margin: 0 auto;
+    flex-direction: column !important;
+    align-items: center;
+  }
+  
+  .quick-actions .action-card {
+    max-width: 320px !important;
   }
   
   .recent-files,
