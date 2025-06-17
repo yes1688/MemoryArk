@@ -166,10 +166,12 @@ const hapticFeedback = () => {
       class="nav-container"
       style="
         display: flex;
-        justify-content: space-around;
+        justify-content: center;
         align-items: center;
-        padding: 8px 16px 12px 16px;
-        max-width: 100%;
+        padding: 8px 0 12px 0;
+        max-width: 500px;
+        margin: 0 auto;
+        width: 100%;
       "
     >
       <button
@@ -317,9 +319,8 @@ const hapticFeedback = () => {
 
 /* 適配大螢幕手機 */
 @media (min-width: 414px) {
-  .nav-container {
-    max-width: 500px;
-    margin: 0 auto;
+  .nav-item {
+    max-width: 85px;
   }
 }
 

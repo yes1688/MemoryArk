@@ -307,6 +307,17 @@ watch(() => [props.folderId, route.params.folderId],
   .search-input {
     font-size: 16px !important; /* 防止 iOS 縮放 */
   }
+  
+  /* 網格置中 */
+  .files-grid {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .files-list {
+    width: 100%;
+    max-width: 100%;
+  }
 }
 
 /* 平板版特定樣式 */
@@ -350,15 +361,15 @@ watch(() => [props.folderId, route.params.folderId],
   gap: var(--space-4);
 }
 
-@media (max-width: 479px) {
-  .files-grid.grid-cols-1 {
-    grid-template-columns: 1fr;
+@media (max-width: 767px) {
+  .files-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-items: center;
   }
-}
-
-@media (min-width: 480px) and (max-width: 767px) {
-  .files-grid.grid-cols-2 {
-    grid-template-columns: repeat(2, 1fr);
+  
+  .file-item-wrapper {
+    width: 100%;
+    max-width: 180px;
   }
 }
 </style>
@@ -639,8 +650,11 @@ watch(() => [props.folderId, route.params.folderId],
     <!-- 檔案內容區 -->
     <main class="files-content flex-1 overflow-auto" 
           :style="{
-            padding: isMobile ? '16px 16px 100px 16px' : 'var(--space-6)',
-            background: isMobile ? 'var(--bg-primary)' : 'var(--bg-primary)'
+            padding: isMobile ? '16px' : 'var(--space-6)',
+            paddingBottom: isMobile ? '100px' : 'var(--space-6)',
+            background: 'var(--bg-primary)',
+            maxWidth: isMobile ? '100%' : 'none',
+            margin: '0 auto'
           }">
       <!-- 載入中 -->
       <div v-if="isLoading" class="loading-state flex items-center justify-center h-64">
@@ -663,11 +677,12 @@ watch(() => [props.folderId, route.params.folderId],
            class="files-grid grid transition-all duration-300 ease-in-out" 
            :style="{
              gap: isMobile ? '12px' : '16px',
-             padding: isMobile ? '0' : '0'
+             padding: '0',
+             maxWidth: isMobile ? '100%' : 'none',
+             margin: '0 auto'
            }"
            :class="{
-             'grid-cols-1': isMobile && orientation === 'portrait',
-             'grid-cols-2': (isMobile && orientation === 'landscape') || isTablet,
+             'grid-cols-2': isMobile,
              'grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6': !isMobile && !isTablet
            }">
         <div 

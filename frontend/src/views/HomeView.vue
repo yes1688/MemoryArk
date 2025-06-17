@@ -181,9 +181,9 @@ const formatFileSize = (bytes: number): string => {
 
     <!-- 主要內容區 -->
     <main class="main-content relative -mt-20 z-20">
-      <div class="max-w-7xl mx-auto px-6">
+      <div class="content-container max-w-7xl mx-auto px-4 sm:px-6">
         <!-- 快速操作卡片 - 極簡風格 -->
-        <div class="quick-actions grid grid-cols-1 md:grid-cols-2 gap-6 mb-12" style="align-items: stretch;">
+        <div class="quick-actions grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-12" style="align-items: stretch;">
           <!-- 上傳檔案 -->
           <button
             @click="handleQuickAction('upload')"
@@ -254,7 +254,7 @@ const formatFileSize = (bytes: number): string => {
         </div>
 
         <!-- 最近檔案 - 極簡列表 -->
-        <div class="recent-files mb-12">
+        <div class="recent-files mb-8 sm:mb-12">
           <div class="section-header flex items-center justify-between mb-6">
             <h2 class="text-2xl font-light" style="color: var(--text-primary);">最近使用</h2>
             <router-link 
@@ -303,7 +303,7 @@ const formatFileSize = (bytes: number): string => {
         </div>
 
         <!-- 儲存空間 - 極簡視覺化 -->
-        <div class="storage-widget" style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md);">
+        <div class="storage-widget" style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-4) var(--space-4) var(--space-5) var(--space-4); box-shadow: var(--shadow-md);">
           <div class="widget-header flex items-center justify-between mb-6">
             <h3 class="text-xl font-light" style="color: var(--text-primary);">儲存空間</h3>
             <span class="text-sm" style="color: var(--text-secondary);">{{ formatStorage(storageStats.used) }} / {{ formatStorage(storageStats.total) }}</span>
@@ -426,6 +426,29 @@ const formatFileSize = (bytes: number): string => {
   
   .storage-details > div > div:first-child {
     font-size: 1.25rem !important;
+  }
+  
+  /* 手機版內容置中 */
+  .content-container {
+    width: 100%;
+    max-width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .quick-actions {
+    grid-template-columns: 1fr !important;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  
+  .recent-files,
+  .storage-widget {
+    max-width: 100%;
+  }
+  
+  .files-grid {
+    grid-template-columns: 1fr !important;
   }
 }
 
