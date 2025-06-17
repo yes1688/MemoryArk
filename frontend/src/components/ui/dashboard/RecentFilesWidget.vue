@@ -55,7 +55,9 @@
           >
             <div class="flex items-center space-x-3">
               <AppFileIcon
-                :file-type="file.mimeType"
+                :mime-type="file.mimeType"
+                :file-name="file.originalName"
+                :is-folder="file.isDirectory"
                 size="md"
               />
               <div class="flex-1 min-w-0">
@@ -78,14 +80,27 @@
           class="file-list-item flex items-center space-x-4 p-4 bg-surface-hover cursor-pointer border-b border-surface-light last:border-b-0"
         >
           <AppFileIcon
-            :file-type="file.mimeType"
+            :mime-type="file.mimeType"
+            :file-name="file.originalName"
+            :is-folder="file.isDirectory"
             size="sm"
           />
           
           <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between">
               <p class="file-name">{{ file.originalName }}</p>
-              <span class="file-meta ml-2">{{ formatFileSize(file.size) }}</span>
+              <span class="file-meta ml-2" v-if="!file.isDirectory">
+                <svg class="w-3 h-3 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                檔案
+              </span>
+              <span class="file-meta ml-2" v-else>
+                <svg class="w-3 h-3 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
+                資料夾
+              </span>
             </div>
             <div class="flex items-center space-x-4 mt-1">
               <span class="file-meta">{{ formatAccessTime(file.lastAccessedAt) }}</span>
@@ -93,7 +108,7 @@
             </div>
           </div>
           
-          <div class="flex space-x-2">
+          <div class="flex space-x-2" v-if="!file.isDirectory">
             <button
               @click.stop="downloadFile(file)"
               class="p-1 text-tertiary hover:text-secondary transition-colors"
@@ -127,7 +142,9 @@
             >
               <div class="flex items-center space-x-3">
                 <AppFileIcon
-                  :file-type="file.mimeType"
+                  :mime-type="file.mimeType"
+                  :file-name="file.originalName"
+                  :is-folder="file.isDirectory"
                   size="sm"
                 />
                 <div class="flex-1 min-w-0">
@@ -188,15 +205,15 @@ const isLoading = ref(false)
 // 使用真實數據 - 從檔案 store 取得最近檔案
 const recentFiles = computed(() => {
   return filesStore.files
-    .filter(file => !file.isDirectory && !file.isDeleted)
+    .filter(file => !file.isDeleted) // 包含檔案和資料夾
     .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
     .slice(0, 15)
     .map(file => ({
       id: file.id,
       name: file.name,
       originalName: file.originalName || file.name,
-      mimeType: file.mimeType || 'application/octet-stream',
-      size: file.size || 0,
+      mimeType: file.isDirectory ? 'folder' : (file.mimeType || 'application/octet-stream'),
+      size: file.isDirectory ? 0 : (file.size || 0), // 資料夾大小設為 0，避免計算負擔
       uploaderName: file.uploaderName || '未知',
       createdAt: file.createdAt,
       updatedAt: file.updatedAt,

@@ -271,6 +271,23 @@ onMounted(() => {
                   {{ registration.phone }}
                 </p>
               </div>
+
+              <!-- 申請理由 - 這是重要的資訊！ -->
+              <div class="mt-4" v-if="registration.reason">
+                <h4 class="text-sm font-medium mb-2" style="color: var(--color-primary);">申請理由：</h4>
+                <div class="text-sm admin-reason-text p-3 rounded-md border-l-4" 
+                     style="border-left-color: var(--color-primary); background: var(--bg-secondary);">
+                  {{ registration.reason }}
+                </div>
+              </div>
+
+              <!-- 如果沒有填寫申請理由，顯示提示 -->
+              <div class="mt-4" v-else>
+                <h4 class="text-sm font-medium mb-2 text-gray-500">申請理由：</h4>
+                <div class="text-sm p-3 rounded-md bg-gray-50 text-gray-500 italic">
+                  使用者未填寫申請理由
+                </div>
+              </div>
               
               <div class="mt-4" v-if="registration.rejection_reason">
                 <h4 class="text-sm font-medium mb-2 text-red-600">拒絕原因：</h4>

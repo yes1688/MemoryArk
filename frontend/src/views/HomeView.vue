@@ -5,6 +5,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import { storageApi } from '@/api'
 import type { FileInfo } from '@/types/files'
+import DailyVerse from '@/components/DailyVerse.vue'
+import { AppFileIcon } from '@/components/ui'
 
 const router = useRouter()
 const fileStore = useFilesStore()
@@ -74,6 +76,17 @@ const handleQuickAction = (action: string) => {
   }
 }
 
+// 處理檔案點擊
+const handleFileClick = (file: FileInfo) => {
+  if (file.isDirectory) {
+    // 如果是資料夾，跳轉到該資料夾（使用正確的路由格式）
+    navigateTo(`/files/folder/${file.id}`)
+  } else {
+    // 如果是檔案，跳轉到檔案列表頁面
+    navigateTo('/files')
+  }
+}
+
 // 生命週期
 onMounted(() => {
   // 更新時間
@@ -136,6 +149,30 @@ const formatFileSize = (bytes: number): string => {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
+
+// 格式化時間為相對時間
+const formatRelativeTime = (dateString: string): string => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffInMs = now.getTime() - date.getTime()
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
+  const diffInDays = Math.floor(diffInHours / 24)
+  
+  if (diffInHours < 1) {
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60))
+    return diffInMinutes < 1 ? '剛剛' : `${diffInMinutes} 分鐘前`
+  } else if (diffInHours < 24) {
+    return `${diffInHours} 小時前`
+  } else if (diffInDays < 7) {
+    return `${diffInDays} 天前`
+  } else {
+    return date.toLocaleDateString('zh-TW', {
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+}
 </script>
 
 <template>
@@ -182,6 +219,11 @@ const formatFileSize = (bytes: number): string => {
     <!-- 主要內容區 -->
     <main class="main-content relative -mt-20 z-20">
       <div class="content-container max-w-7xl mx-auto px-4 sm:px-6">
+        <!-- 每日經節提醒 -->
+        <div class="daily-verse-section mb-8 sm:mb-12">
+          <DailyVerse />
+        </div>
+        
         <!-- 快速操作卡片 - 極簡風格 -->
         <div class="quick-actions flex flex-col sm:flex-row gap-4 sm:gap-6 mb-8 sm:mb-12 justify-center">
           <!-- 上傳檔案 -->
@@ -280,62 +322,25 @@ const formatFileSize = (bytes: number): string => {
               :key="file.id"
               class="file-item flex items-center p-4 hover-lift cursor-pointer"
               style="background: var(--bg-elevated); border-radius: var(--radius-lg); transition: all var(--duration-normal) var(--ease-smooth);"
+              @click="handleFileClick(file)"
             >
               <div class="file-icon mr-4">
-                <div 
-                  class="icon-box"
-                  style="width: 48px; height: 48px; background: var(--bg-tertiary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;"
-                >
-                  <svg class="w-6 h-6" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                  </svg>
-                </div>
+                <AppFileIcon 
+                  :mime-type="file.mimeType"
+                  :file-name="file.name"
+                  :is-directory="file.isDirectory"
+                  :thumbnail-url="file.thumbnailUrl"
+                  size="lg"
+                />
               </div>
               <div class="file-info flex-1">
                 <h4 class="font-medium" style="color: var(--text-primary);">{{ file.name }}</h4>
-                <p class="text-sm" style="color: var(--text-tertiary);">{{ file.updatedAt }}</p>
-              </div>
-              <div class="file-size text-sm" style="color: var(--text-secondary);">
-                {{ formatFileSize(file.size) }}
+                <p class="text-sm" style="color: var(--text-tertiary);">{{ formatRelativeTime(file.updatedAt) }}</p>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 儲存空間 - 極簡視覺化 -->
-        <div class="storage-widget" style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-4) var(--space-4) var(--space-5) var(--space-4); box-shadow: var(--shadow-md);">
-          <div class="widget-header flex items-center justify-between mb-6">
-            <h3 class="text-xl font-light" style="color: var(--text-primary);">儲存空間</h3>
-            <span class="text-sm" style="color: var(--text-secondary);">{{ formatStorage(storageStats.used) }} / {{ formatStorage(storageStats.total) }}</span>
-          </div>
-          
-          <div class="storage-bar" style="height: 8px; background: var(--bg-tertiary); border-radius: var(--radius-full); overflow: hidden;">
-            <div 
-              class="storage-fill"
-              :style="{
-                width: storagePercent + '%',
-                height: '100%',
-                background: 'linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-light) 100%)',
-                transition: 'width var(--duration-slow) var(--ease-smooth)'
-              }"
-            ></div>
-          </div>
-          
-          <div class="storage-details mt-6 grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div class="text-2xl font-light" style="color: var(--text-primary);">{{ storagePercent }}%</div>
-              <div class="text-sm" style="color: var(--text-tertiary);">已使用</div>
-            </div>
-            <div>
-              <div class="text-2xl font-light" style="color: var(--text-primary);">{{ formatStorage(storageStats.total - storageStats.used) }}</div>
-              <div class="text-sm" style="color: var(--text-tertiary);">可用</div>
-            </div>
-            <div>
-              <div class="text-2xl font-light" style="color: var(--text-primary);">{{ formatStorage(storageStats.total) }}</div>
-              <div class="text-sm" style="color: var(--text-tertiary);">總容量</div>
-            </div>
-          </div>
-        </div>
       </div>
     </main>
   </div>

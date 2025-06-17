@@ -455,9 +455,9 @@ export const useFilesStore = defineStore('files', () => {
   // 導航到資料夾
   const navigateToFolder = async (folderId?: number | null): Promise<void> => {
     try {
-      // 防止重複導航到相同資料夾
-      if (folderId === currentFolderIdValue.value) {
-        console.log('⚠️ Store: 已在目標資料夾，跳過導航')
+      // 防止重複導航到相同資料夾（但如果檔案列表為空則重新載入）
+      if (folderId === currentFolderIdValue.value && files.value.length > 0) {
+        console.log('⚠️ Store: 已在目標資料夾且有檔案數據，跳過導航')
         return
       }
       // 在導航前先獲取資料夾信息（如果需要）

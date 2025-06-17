@@ -35,6 +35,14 @@ const updateScreenSize = () => {
   isMobile.value = window.innerWidth < 768
   isTablet.value = window.innerWidth >= 768 && window.innerWidth < 1024
   orientation.value = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait'
+  
+  // 調試日誌
+  console.log('🖥️ Screen size updated:', {
+    width: window.innerWidth,
+    isMobile: isMobile.value,
+    isTablet: isTablet.value,
+    orientation: orientation.value
+  })
 }
 
 onMounted(() => {
@@ -237,16 +245,8 @@ const handleUploadComplete = async (results?: UnifiedUploadResult[]) => {
 // 已移除 getFileIcon 函數，改用 AppFileIcon 組件
 
 // 導航處理函數
-const handleNavigation = async (propsFolderId?: number | null, routeFolderId?: string | string[] | number | undefined) => {
-  let routeId: string | undefined
-  if (Array.isArray(routeFolderId)) {
-    routeId = routeFolderId[0]
-  } else if (typeof routeFolderId === 'number') {
-    routeId = String(routeFolderId)
-  } else {
-    routeId = routeFolderId
-  }
-  const targetFolderId = propsFolderId || (routeId ? Number(routeId) : null)
+const handleNavigation = async (propsFolderId?: number | null, routeFolderId?: number | null | undefined) => {
+  const targetFolderId = propsFolderId || routeFolderId || null
   
   console.log('🗂️ FilesView 導航處理:', { propsFolderId, routeFolderId, targetFolderId })
   
@@ -264,9 +264,18 @@ const handleNavigation = async (propsFolderId?: number | null, routeFolderId?: s
 }
 
 // 監聽路由變化 (immediate: true 會在掛載時自動執行一次)
-watch(() => [props.folderId, route.params.folderId], 
+watch(
+  [() => props.folderId, () => route.params.folderId], 
   async ([propsFolderId, routeFolderId]) => {
-    await handleNavigation(propsFolderId, routeFolderId as string | string[] | number | undefined)
+    let targetRouteId: number | null = null
+    if (typeof routeFolderId === 'string') {
+      targetRouteId = parseInt(routeFolderId)
+    } else if (typeof routeFolderId === 'number') {
+      targetRouteId = routeFolderId
+    } else if (Array.isArray(routeFolderId) && routeFolderId[0]) {
+      targetRouteId = parseInt(String(routeFolderId[0]))
+    }
+    await handleNavigation(propsFolderId ?? null, targetRouteId)
   },
   { immediate: true }
 )
@@ -355,21 +364,39 @@ watch(() => [props.folderId, route.params.folderId],
   }
 }
 
-/* 響應式網格優化 */
-.files-grid {
-  display: grid;
-  gap: var(--space-4);
+/* 統一檔案網格樣式 - 桌面檔案管理器風格 */
+.unified-files-grid {
+  /* 確保所有檔案卡片左上角對齊 */
+  justify-items: start;
+  align-items: start;
+  align-content: start;
 }
 
+/* 檔案卡片包裝器 */
+.file-item-wrapper {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+/* 手機版優化 */
 @media (max-width: 767px) {
-  .files-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    justify-items: center;
+  .unified-files-grid {
+    padding: 12px !important;
+    gap: 8px !important;
   }
   
   .file-item-wrapper {
-    width: 100%;
-    max-width: 180px;
+    justify-content: center; /* 手機版檔案卡片居中 */
+  }
+}
+
+/* 平板版優化 */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .unified-files-grid {
+    padding: 14px !important;
+    gap: 12px !important;
   }
 }
 </style>
@@ -672,18 +699,24 @@ watch(() => [props.folderId, route.params.folderId],
         <p class="text-sm mt-1" style="color: var(--text-tertiary);">{{ searchQuery ? '試試其他關鍵字' : '開始上傳一些檔案吧' }}</p>
       </div>
       
-      <!-- 網格視圖 - 使用統一的 FileCard 組件 -->
+      <!-- 網格視圖 - 統一桌面檔案管理器風格 -->
       <div v-else-if="viewMode === 'grid'" 
-           class="files-grid grid transition-all duration-300 ease-in-out" 
+           class="unified-files-grid"
            :style="{
-             gap: isMobile ? '12px' : '16px',
-             padding: '0',
-             maxWidth: isMobile ? '100%' : 'none',
-             margin: '0 auto'
-           }"
-           :class="{
-             'grid-cols-2': isMobile,
-             'grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6': !isMobile && !isTablet
+             display: 'grid',
+             gridTemplateColumns: isMobile 
+               ? 'repeat(2, 1fr)'
+               : isTablet 
+                 ? 'repeat(4, 1fr)'
+                 : 'repeat(6, 1fr)',
+             gap: isMobile ? '12px' : isTablet ? '16px' : '20px',
+             padding: '20px',
+             margin: '0',
+             justifyContent: 'start',
+             alignItems: 'start',
+             justifyItems: 'start',
+             alignContent: 'start',
+             width: '100%'
            }">
         <div 
           v-for="(file, index) in filteredFiles" 
@@ -692,7 +725,9 @@ watch(() => [props.folderId, route.params.folderId],
           :style="{
             animationDelay: `${index * 50}ms`,
             transform: 'translateY(0)',
-            opacity: '1'
+            opacity: '1',
+            width: '100%',
+            minHeight: 'fit-content'
           }"
         >
           <FileCard

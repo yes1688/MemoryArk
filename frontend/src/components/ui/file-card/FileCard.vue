@@ -168,7 +168,15 @@ const cardStyle = computed(() => {
       border: '1px solid transparent',
       borderColor: props.hoveredFile?.id === props.file.id ? 'var(--color-primary)' : 'transparent',
       transform: props.hoveredFile?.id === props.file.id ? 'translateY(-2px)' : 'none',
-      boxShadow: props.hoveredFile?.id === props.file.id ? 'var(--shadow-lg)' : 'var(--shadow-sm)'
+      boxShadow: props.hoveredFile?.id === props.file.id ? 'var(--shadow-lg)' : 'var(--shadow-sm)',
+      width: '100%',
+      maxWidth: '180px',
+      minWidth: '140px',
+      height: 'fit-content',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      alignItems: 'center',
+      justifyContent: 'flex-start'
     }
   }
   return {}
