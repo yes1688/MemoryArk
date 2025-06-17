@@ -4,6 +4,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
 import MinimalSidebar from '@/components/ui/navigation/MinimalSidebar.vue'
+import MobileNavigation from '@/components/ui/navigation/MobileNavigation.vue'
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -12,6 +13,12 @@ const route = useRoute()
 const { theme, setTheme } = useTheme()
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
+
+// 響應式檢測
+const isMobile = ref(false)
+const updateScreenSize = () => {
+  isMobile.value = window.innerWidth < 768
+}
 
 // 檢查是否需要全屏顯示（如登入頁面）
 const isFullScreen = computed(() => {
@@ -36,6 +43,10 @@ onMounted(() => {
     setTheme('light')
   }
   
+  // 響應式檢測
+  updateScreenSize()
+  window.addEventListener('resize', updateScreenSize)
+  
   // 在 console 顯示版本資訊
   console.log(`%c🚀 MemoryArk Frontend v2.0.11`, 
     'color: #2563eb; font-size: 16px; font-weight: bold; background: #eff6ff; padding: 8px 12px; border-radius: 4px;')
@@ -53,8 +64,8 @@ onMounted(() => {
       <RouterView />
     </div>
 
-    <!-- 主應用佈局 -->
-    <div v-else class="app-layout">
+    <!-- 桌面版佈局 -->
+    <div v-else-if="!isMobile" class="app-layout desktop-layout">
       <!-- 極簡側邊欄 -->
       <MinimalSidebar />
       
@@ -67,6 +78,21 @@ onMounted(() => {
         </RouterView>
       </main>
     </div>
+
+    <!-- 手機版佈局 -->
+    <div v-else class="app-layout mobile-layout">
+      <!-- 全屏主內容 -->
+      <main class="mobile-main-content">
+        <RouterView v-slot="{ Component }">
+          <Transition :name="transitionName" mode="out-in">
+            <component :is="Component" :key="route.path" />
+          </Transition>
+        </RouterView>
+      </main>
+      
+      <!-- 底部導航欄 -->
+      <MobileNavigation />
+    </div>
   </div>
 </template>
 
@@ -78,11 +104,26 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-/* 應用佈局 */
-.app-layout {
+/* 桌面版佈局 */
+.desktop-layout {
   display: flex;
   height: 100vh;
   overflow: hidden;
+}
+
+/* 手機版佈局 */
+.mobile-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.mobile-main-content {
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* 主內容區滾動條美化 */
