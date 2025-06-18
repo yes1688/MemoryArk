@@ -28,6 +28,7 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const filesStore = useFilesStore()
+const workerCacheStore = useWorkerCacheStore()
 
 // 響應式檢測
 const isMobile = ref(false)
@@ -63,12 +64,23 @@ const selectedFile = ref<FileInfo | null>(null)
 const hoveredFile = ref<FileInfo | null>(null)
 const currentPreviewIndex = ref(-1)
 
+// Worker 快取狀態
+const isDevelopment = process.env.NODE_ENV === 'development'
+const showWorkerStatus = ref(isDevelopment) // 只在開發模式顯示
+const isWorkerInitialized = ref(false)
+const workerPreloadQueue = ref<Set<number>>(new Set())
+
 // 計算屬性
 const files = computed(() => filesStore.files)
 const currentFolder = computed(() => filesStore.currentFolder)
 const breadcrumbs = computed(() => filesStore.breadcrumbs)
 const selectedFiles = computed(() => filesStore.selectedFiles)
 const isLoading = computed(() => filesStore.isLoading)
+
+// Worker 相關計算屬性
+const workerStatus = computed(() => workerCacheStore.operationStatus)
+const workerMetrics = computed(() => workerCacheStore.performanceMetrics)
+const isWorkerHealthy = computed(() => workerCacheStore.isHealthy)
 
 // 篩選檔案
 const filteredFiles = computed(() => {
@@ -208,6 +220,16 @@ const deleteFile = async (file: FileInfo) => {
       
       // 強制重新加載文件列表以確保UI更新
       await filesStore.fetchFiles(filesStore.currentFolderId)
+      
+      // 失效 Worker 快取
+      if (isWorkerInitialized.value) {
+        await invalidateFolderCache(filesStore.currentFolderId)
+        
+        // 如果刪除的是資料夾，也要失效該資料夾的快取
+        if (file.isDirectory) {
+          await invalidateFolderCache(file.id ?? null)
+        }
+      }
       
       // 刪除成功後顯示通知
       if (file.isDirectory) {
@@ -377,8 +399,135 @@ const handleUploadComplete = async (results?: UnifiedUploadResult[]) => {
   try {
     await filesStore.fetchFiles(filesStore.currentFolderId)
     console.log('✅ 檔案列表已更新')
+    
+    // 失效 Worker 快取
+    if (isWorkerInitialized.value) {
+      await invalidateFolderCache(filesStore.currentFolderId)
+    }
   } catch (error) {
     console.error('❌ 重新載入檔案列表失敗:', error)
+  }
+}
+
+// Worker 快取整合方法
+
+/**
+ * 初始化 Worker 快取系統
+ */
+const initializeWorkerCache = async () => {
+  if (isWorkerInitialized.value) return
+  
+  try {
+    console.log('🔧 初始化 Worker 快取系統...')
+    
+    // 等待 Worker 準備就緒
+    let retries = 0
+    const maxRetries = 10
+    
+    while (!workerStatus.value.ready && retries < maxRetries) {
+      await new Promise(resolve => setTimeout(resolve, 200))
+      retries++
+    }
+    
+    if (!workerStatus.value.ready) {
+      console.warn('⚠️ Worker 初始化超時，將繼續但可能影響性能')
+      return
+    }
+    
+    // 標記為已初始化
+    isWorkerInitialized.value = true
+    
+    console.log('✅ Worker 快取系統初始化成功', {
+      ready: workerStatus.value.ready,
+      healthy: isWorkerHealthy.value,
+      metrics: workerMetrics.value
+    })
+    
+    // 初始化成功後，立即預載當前資料夾
+    if (filesStore.currentFolderId !== undefined) {
+      await triggerBackgroundPreload(filesStore.currentFolderId ?? null)
+    }
+    
+  } catch (error) {
+    console.error('❌ Worker 快取系統初始化失敗:', error)
+  }
+}
+
+/**
+ * 觸發背景預載
+ */
+const triggerBackgroundPreload = async (folderId: number | null, priority?: number) => {
+  if (!isWorkerInitialized.value || !isWorkerHealthy.value) {
+    console.log('⚠️ Worker 未就緒，跳過預載')
+    return
+  }
+  
+  // 避免重複預載
+  const preloadKey = folderId || -1
+  if (workerPreloadQueue.value.has(preloadKey)) {
+    console.log(`⚠️ 資料夾 ${folderId} 預載已在佇列中`)
+    return
+  }
+  
+  try {
+    workerPreloadQueue.value.add(preloadKey)
+    console.log(`🔄 觸發背景預載: 資料夾 ${folderId}`)
+    
+    const success = await workerCacheStore.preloadFolder(folderId, priority)
+    
+    if (success) {
+      console.log(`✅ 資料夾 ${folderId} 預載成功`)
+    } else {
+      console.warn(`⚠️ 資料夾 ${folderId} 預載失敗`)
+    }
+    
+  } catch (error) {
+    console.error(`❌ 資料夾 ${folderId} 預載錯誤:`, error)
+  } finally {
+    // 延遲移除，避免短時間內重複觸發
+    setTimeout(() => {
+      workerPreloadQueue.value.delete(preloadKey)
+    }, 2000)
+  }
+}
+
+/**
+ * 智能預載相鄰資料夾
+ */
+const preloadAdjacentFolders = async () => {
+  if (!isWorkerInitialized.value || !files.value) return
+  
+  // 找出當前檢視中的資料夾
+  const folders = files.value.filter(file => 
+    file.isDirectory === true || file.mimeType === 'folder'
+  )
+  
+  // 預載前3個資料夾（低優先級）
+  for (let i = 0; i < Math.min(3, folders.length); i++) {
+    const folder = folders[i]
+    await triggerBackgroundPreload(folder.id, 2) // 優先級 2 (低)
+    
+    // 避免同時預載太多，間隔 500ms
+    if (i < folders.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+  }
+}
+
+/**
+ * 失效資料夾快取
+ */
+const invalidateFolderCache = async (folderId: number | null) => {
+  if (!isWorkerInitialized.value || !isWorkerHealthy.value) {
+    return
+  }
+  
+  try {
+    console.log(`🗑️ 失效資料夾快取: ${folderId}`)
+    const itemsRemoved = await workerCacheStore.invalidateFolder(folderId)
+    console.log(`✅ 已清除 ${itemsRemoved} 個快取項目`)
+  } catch (error) {
+    console.error(`❌ 失效資料夾快取失敗:`, error)
   }
 }
 
@@ -516,6 +665,18 @@ const handleNavigation = async (propsFolderId?: number | null, routeFolderId?: n
     if (folderPath && folderPath.length > 0 && targetFolderId) {
       buildBreadcrumbsFromPath(folderPath)
     }
+    
+    // 觸發 Worker 預載（非阻塞）
+    if (isWorkerInitialized.value && targetFolderId !== null) {
+      nextTick(() => {
+        triggerBackgroundPreload(targetFolderId, 1) // 高優先級預載當前資料夾
+        
+        // 延遲預載相鄰資料夾
+        setTimeout(() => {
+          preloadAdjacentFolders()
+        }, 1000)
+      })
+    }
   } finally {
     isNavigating.value = false
   }
@@ -609,6 +770,9 @@ watch(
 onMounted(async () => {
   updateScreenSize()
   window.addEventListener('resize', updateScreenSize)
+  
+  // 初始化 Worker 快取系統
+  await initializeWorkerCache()
   
   // 組件掛載時，如果不是從點擊資料夾來的，清除標誌
   if (!isProgrammaticNavigation.value) {
@@ -1208,6 +1372,109 @@ onUnmounted(() => {
       @download="handlePreviewDownload"
       @navigate="handlePreviewNavigate"
     />
+    
+    <!-- 開發模式 Worker 狀態顯示 -->
+    <div v-if="showWorkerStatus" 
+         class="fixed bottom-4 right-4 z-50 max-w-sm">
+      <div class="worker-status-panel" style="
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-light);
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: var(--shadow-lg);
+        font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+      ">
+        <!-- 標題列 -->
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="text-sm font-semibold" style="color: var(--text-primary);">
+            🔧 Worker 快取狀態
+          </h4>
+          <button 
+            @click="showWorkerStatus = false"
+            class="text-xs px-2 py-1 rounded"
+            style="background: var(--bg-tertiary); color: var(--text-secondary);"
+          >
+            ✕
+          </button>
+        </div>
+        
+        <!-- 狀態指示器 -->
+        <div class="status-grid grid grid-cols-2 gap-2 mb-3 text-xs">
+          <div class="status-item">
+            <span style="color: var(--text-tertiary);">狀態:</span>
+            <span :style="{ 
+              color: isWorkerHealthy ? 'var(--color-success)' : 'var(--color-danger)' 
+            }">
+              {{ isWorkerHealthy ? '🟢 健康' : '🔴 異常' }}
+            </span>
+          </div>
+          <div class="status-item">
+            <span style="color: var(--text-tertiary);">就緒:</span>
+            <span :style="{ 
+              color: workerStatus.ready ? 'var(--color-success)' : 'var(--color-warning)' 
+            }">
+              {{ workerStatus.ready ? '✅' : '⏳' }}
+            </span>
+          </div>
+          <div class="status-item">
+            <span style="color: var(--text-tertiary);">工作中:</span>
+            <span style="color: var(--text-secondary);">
+              {{ workerStatus.working ? '🔄' : '💤' }}
+            </span>
+          </div>
+          <div class="status-item">
+            <span style="color: var(--text-tertiary);">待處理:</span>
+            <span style="color: var(--text-secondary);">
+              {{ workerStatus.pendingOps }}
+            </span>
+          </div>
+        </div>
+        
+        <!-- 性能指標 -->
+        <div class="metrics-grid text-xs space-y-1">
+          <div class="metric-row flex justify-between">
+            <span style="color: var(--text-tertiary);">命中率:</span>
+            <span style="color: var(--text-primary);">
+              {{ workerMetrics.hitRate?.toFixed(1) || '0' }}%
+            </span>
+          </div>
+          <div class="metric-row flex justify-between">
+            <span style="color: var(--text-tertiary);">響應時間:</span>
+            <span style="color: var(--text-primary);">
+              {{ workerMetrics.averageResponseTime?.toFixed(1) || '0' }}ms
+            </span>
+          </div>
+          <div class="metric-row flex justify-between">
+            <span style="color: var(--text-tertiary);">操作數:</span>
+            <span style="color: var(--text-primary);">
+              {{ workerMetrics.totalOperations || 0 }}
+            </span>
+          </div>
+          <div class="metric-row flex justify-between">
+            <span style="color: var(--text-tertiary);">快取大小:</span>
+            <span style="color: var(--text-primary);">
+              {{ workerMetrics.cacheSize || 0 }}
+            </span>
+          </div>
+        </div>
+        
+        <!-- 預載佇列 -->
+        <div v-if="workerPreloadQueue.size > 0" class="mt-3 pt-3" 
+             style="border-top: 1px solid var(--border-light);">
+          <div class="text-xs" style="color: var(--text-tertiary);">
+            預載佇列: {{ workerPreloadQueue.size }} 項
+          </div>
+        </div>
+        
+        <!-- Worker Store 錯誤狀態 -->
+        <div v-if="workerCacheStore.state.lastError" class="mt-3 pt-3"
+             style="border-top: 1px solid var(--border-light);">
+          <div class="text-xs" style="color: var(--color-danger);">
+            ❌ {{ workerCacheStore.state.lastError }}
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 

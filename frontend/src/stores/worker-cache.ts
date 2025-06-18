@@ -232,6 +232,99 @@ export const useWorkerCacheStore = defineStore('workerCache', () => {
   }
 
   /**
+   * 批量預載資料夾
+   */
+  async function batchPreload(items: Array<{ folderId: number | null, priority: number }>): Promise<{
+    totalItems: number
+    successfulItems: number
+    failedItems: number
+    skippedItems: number
+  }> {
+    try {
+      const response = await sendMessage('BATCH_PRELOAD', { items })
+      return response
+    } catch (error) {
+      console.error('[WorkerCacheStore] Failed to batch preload:', error)
+      return {
+        totalItems: items.length,
+        successfulItems: 0,
+        failedItems: items.length,
+        skippedItems: 0
+      }
+    }
+  }
+
+  /**
+   * 智能預載 - 基於預測器的預載
+   */
+  async function smartPreload(currentFolderId: number | null, folderStructure?: any): Promise<{
+    predictionsGenerated: number
+    preloadsTriggered: number
+    success: boolean
+  }> {
+    try {
+      // 動態導入預測器（避免循環依賴）
+      const { predictNextFolders } = await import('@/utils/prediction')
+      
+      // 生成預測
+      const predictions = predictNextFolders(currentFolderId, folderStructure)
+      
+      if (predictions.length === 0) {
+        console.log('[WorkerCacheStore] No predictions generated for smart preload')
+        return {
+          predictionsGenerated: 0,
+          preloadsTriggered: 0,
+          success: true
+        }
+      }
+
+      // 轉換為批量預載格式
+      const preloadItems = predictions.map(pred => ({
+        folderId: pred.folderId,
+        priority: pred.priority
+      }))
+
+      // 執行批量預載
+      const result = await batchPreload(preloadItems)
+      
+      console.log(`[WorkerCacheStore] Smart preload completed: ${predictions.length} predictions, ${result.successfulItems} preloaded`)
+      
+      return {
+        predictionsGenerated: predictions.length,
+        preloadsTriggered: result.successfulItems,
+        success: true
+      }
+      
+    } catch (error) {
+      console.error('[WorkerCacheStore] Smart preload failed:', error)
+      return {
+        predictionsGenerated: 0,
+        preloadsTriggered: 0,
+        success: false
+      }
+    }
+  }
+
+  /**
+   * 取消預載
+   */
+  async function cancelPreload(folderId?: number | null, cancelAll?: boolean): Promise<{
+    cancelled: boolean
+    itemsCancelled: number
+  }> {
+    try {
+      const response = await sendMessage('CANCEL_PRELOAD', { folderId, cancelAll })
+      return response
+    } catch (error) {
+      console.error('[WorkerCacheStore] Failed to cancel preload:', error)
+      return {
+        cancelled: false,
+        itemsCancelled: 0
+      }
+    }
+  }
+
+  /**
    * 失效資料夾快取
    */
   async function invalidateFolder(folderId?: number | null): Promise<number> {
@@ -337,6 +430,9 @@ export const useWorkerCacheStore = defineStore('workerCache', () => {
     deleteCache,
     clearCache,
     preloadFolder,
+    batchPreload,
+    smartPreload,
+    cancelPreload,
     invalidateFolder,
     
     // 統計和管理

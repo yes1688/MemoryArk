@@ -50,6 +50,18 @@ export interface CacheWorkerMessage {
     priority?: number
   }
   
+  BATCH_PRELOAD: {
+    items: Array<{
+      folderId: number | null
+      priority: number
+    }>
+  }
+  
+  CANCEL_PRELOAD: {
+    folderId?: number | null
+    cancelAll?: boolean
+  }
+  
   INVALIDATE_FOLDER: {
     folderId?: number | null
   }
@@ -85,6 +97,19 @@ export interface CacheWorkerResponse {
   PRELOAD_FOLDER: {
     loaded: boolean
     itemsPreloaded: number
+    reason?: string
+  }
+  
+  BATCH_PRELOAD: {
+    totalItems: number
+    successfulItems: number
+    failedItems: number
+    skippedItems: number
+  }
+  
+  CANCEL_PRELOAD: {
+    cancelled: boolean
+    itemsCancelled: number
   }
   
   INVALIDATE_FOLDER: {
