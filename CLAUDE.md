@@ -28,6 +28,36 @@
 - 使用 Tailwind CSS，教會配色（深藍+金色）
 - 使用 TodoWrite 追蹤複雜任務
 
+## 🚀 並行開發協調 (2025-06-19 新增)
+
+### 📋 任務分配原則
+- 查看 `CACHE_OPTIMIZATION_PARALLEL_PLAN.md` 了解所有可執行任務
+- 查看 `TASK_COORDINATION.md` 了解當前任務狀態和認領情況
+- 每個任務都是獨立的，可以並行執行
+- 任務間有明確的依賴關係，按階段進行
+
+### 🔄 協作流程
+1. **認領任務**: 在 `TASK_COORDINATION.md` 更新負責者和狀態
+2. **開始工作**: 按照任務文檔中的具體步驟執行
+3. **提交更改**: 完成後立即提交，避免衝突
+4. **更新狀態**: 在協調文檔中標記任務完成
+5. **通知下游**: 如有依賴任務，通知可以開始
+
+### 📁 關鍵檔案分工
+- `frontend/src/stores/files.ts`: Task 1, 3, 5 主要修改
+- `frontend/src/workers/`: Task 6, 10, 11 專用目錄
+- `frontend/src/composables/`: Task 7 專用目錄
+- `frontend/src/types/`: Task 2, 6 類型定義
+- `frontend/tests/`: Task 12, 13 測試檔案
+
+### 🚨 衝突預防
+- 每個任務操作的檔案已明確分離
+- 如需修改共同檔案，請在此記錄變更
+- 重大架構變更需要團隊討論
+
+### 📊 當前狀態追蹤
+請參考 `TASK_COORDINATION.md` 了解最新任務分配狀態
+
 ## 🐳 容器管理
 
 - **強制使用 Podman**：安全性優於 Docker

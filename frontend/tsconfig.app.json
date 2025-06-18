@@ -4,7 +4,8 @@
     "env.d.ts",
     "src/**/*",
     "src/**/*.vue",
-    "src/**/*.json"
+    "src/**/*.json",
+    "src/**/*.worker.ts"
   ],
   "exclude": [
     "src/**/__tests__/*"
@@ -16,6 +17,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "noEmit": true
+    "noEmit": true,
+    "lib": ["ESNext", "DOM", "WebWorker"]
   }
 }

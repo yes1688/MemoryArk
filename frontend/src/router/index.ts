@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useFilesStore } from '@/stores/files'
 import { featureApi } from '@/api/index'
 
 const router = createRouter({
@@ -113,8 +114,19 @@ const router = createRouter({
 // 路由守衛
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
+  const filesStore = useFilesStore()
   
   console.log('🛣️ 路由守衛 - 前往:', to.path)
+  
+  // 檢查是否為檔案相關路由且正在導航
+  if ((to.name === 'files-folder' || to.name === 'files-nested') && 
+      filesStore.navigationState?.isNavigating) {
+    const targetFolderId = to.name === 'files-folder' ? Number(to.params.folderId) : null
+    if (filesStore.navigationState.currentNavigation === targetFolderId) {
+      console.log('⚠️ 路由守衛: 正在導航到相同資料夾，取消路由')
+      return
+    }
+  }
   
   // 初始化認證狀態
   if (!authStore.initialized) {
@@ -195,6 +207,11 @@ router.beforeEach(async (to, from, next) => {
         return
       }
     }
+  }
+  
+  // 如果是檔案路由，更新導航狀態時間
+  if (to.name === 'files' || to.name === 'files-folder' || to.name === 'files-nested') {
+    filesStore.navigationState.lastNavigationTime = Date.now()
   }
   
   console.log('✅ 路由守衛通過，繼續到目標頁面')

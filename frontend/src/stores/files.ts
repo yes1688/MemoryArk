@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { fileApi as filesApi } from '@/api/files'
+import { globalCache, CacheKeyGenerator } from '@/utils/cache'
 import type { 
   FileInfo, 
   FileShare, 
@@ -36,6 +37,21 @@ export const useFilesStore = defineStore('files', () => {
   // 檔案去重相關狀態
   const duplicateFiles = ref<DuplicateFile[]>([])
   const isDuplicateScanning = ref(false)
+  
+  // 導航狀態管理
+  const navigationState = ref<{
+    currentNavigation: number | null
+    isNavigating: boolean
+    lastNavigationTime: number
+  }>({
+    currentNavigation: null,
+    isNavigating: false,
+    lastNavigationTime: 0
+  })
+  
+  // 快取相關狀態
+  const cacheEnabled = ref(true)
+  const cacheStatistics = computed(() => globalCache.getStatistics())
 
   // 計算屬性
   const canPaste = computed(() => clipboard.value !== null)
@@ -455,11 +471,35 @@ export const useFilesStore = defineStore('files', () => {
   // 導航到資料夾
   const navigateToFolder = async (folderId?: number | null): Promise<void> => {
     try {
-      // 防止重複導航到相同資料夾（但如果檔案列表為空則重新載入）
-      if (folderId === currentFolderIdValue.value && files.value.length > 0) {
+      // 防重複導航機制
+      const currentTime = Date.now()
+      const sameFolder = folderId === currentFolderIdValue.value
+      const hasFiles = files.value.length > 0
+      const recentNavigation = currentTime - navigationState.value.lastNavigationTime < 500
+      
+      // 如果已在目標資料夾且有檔案數據，跳過導航
+      if (sameFolder && hasFiles) {
         console.log('⚠️ Store: 已在目標資料夾且有檔案數據，跳過導航')
         return
       }
+      
+      // 如果正在導航到相同資料夾，跳過
+      if (navigationState.value.isNavigating && 
+          navigationState.value.currentNavigation === folderId) {
+        console.log('⚠️ Store: 正在導航到相同資料夾，跳過重複請求')
+        return
+      }
+      
+      // 如果最近已導航到相同資料夾，跳過
+      if (sameFolder && recentNavigation) {
+        console.log('⚠️ Store: 最近已導航到相同資料夾，跳過重複請求')
+        return
+      }
+      
+      // 設置導航狀態
+      navigationState.value.isNavigating = true
+      navigationState.value.currentNavigation = folderId || null
+      navigationState.value.lastNavigationTime = currentTime
       // 在導航前先獲取資料夾信息（如果需要）
       let folderInfo: FileInfo | null = null
       if (folderId) {
@@ -620,6 +660,10 @@ export const useFilesStore = defineStore('files', () => {
     } catch (err: any) {
       error.value = err.message || '導航失敗'
       throw err
+    } finally {
+      // 清理導航狀態
+      navigationState.value.isNavigating = false
+      navigationState.value.currentNavigation = null
     }
   }
   
@@ -632,6 +676,26 @@ export const useFilesStore = defineStore('files', () => {
   // 清除錯誤
   const clearError = (): void => {
     error.value = null
+  }
+  
+  // 快取管理方法
+  const clearCache = (): void => {
+    globalCache.clear()
+    console.log('🗑️ 已清空所有快取')
+  }
+  
+  const clearFolderCache = (folderId?: number | null): void => {
+    const prefix = `files:${folderId || 'root'}`
+    const count = globalCache.clearByPrefix(prefix)
+    console.log(`🗑️ 已清空資料夾 ${folderId || 'root'} 的快取 (${count} 項)`)
+  }
+  
+  const toggleCache = (): void => {
+    cacheEnabled.value = !cacheEnabled.value
+    if (!cacheEnabled.value) {
+      clearCache()
+    }
+    console.log(`🔄 快取已${cacheEnabled.value ? '啟用' : '停用'}`)
   }
 
   // 設置麵包屑
@@ -815,6 +879,7 @@ export const useFilesStore = defineStore('files', () => {
     isExporting,
     duplicateFiles,
     isDuplicateScanning,
+    navigationState,
     
     // 計算屬性
     canPaste,
@@ -842,6 +907,13 @@ export const useFilesStore = defineStore('files', () => {
     navigateUp,
     clearError,
     setBreadcrumbs,
+    
+    // 快取管理方法
+    clearCache,
+    clearFolderCache,
+    toggleCache,
+    cacheEnabled,
+    cacheStatistics,
     
     // 分類管理方法
     fetchCategories,
