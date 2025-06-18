@@ -457,6 +457,10 @@ describe('MockWorker 行為測試', () => {
 
   describe('生命週期管理', () => {
     it('應該能正常終止 Worker', () => {
+      // 先設置處理器
+      worker.onmessage = () => {}
+      worker.onerror = () => {}
+      
       const initialMessageHandler = worker.onmessage
       const initialErrorHandler = worker.onerror
       
