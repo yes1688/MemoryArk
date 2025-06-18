@@ -634,6 +634,11 @@ export const useFilesStore = defineStore('files', () => {
     error.value = null
   }
 
+  // 設置麵包屑
+  const setBreadcrumbs = (newBreadcrumbs: BreadcrumbItem[]): void => {
+    breadcrumbs.value = newBreadcrumbs
+  }
+
   // 分類管理方法
   const fetchCategories = async (): Promise<void> => {
     try {
@@ -797,6 +802,7 @@ export const useFilesStore = defineStore('files', () => {
     // 狀態
     files,
     currentFolder,
+    currentFolderIdValue,
     breadcrumbs,
     selectedFiles,
     clipboard,
@@ -835,6 +841,7 @@ export const useFilesStore = defineStore('files', () => {
     navigateToFolder,
     navigateUp,
     clearError,
+    setBreadcrumbs,
     
     // 分類管理方法
     fetchCategories,

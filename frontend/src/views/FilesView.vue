@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useFilesStore } from '@/stores/files'
 import { useAuthStore } from '@/stores/auth'
-import type { FileInfo } from '@/types/files'
+import type { FileInfo, BreadcrumbItem } from '@/types/files'
 import { fileApi } from '@/api/files'
 import type { UnifiedUploadResult } from '@/services/unifiedUploadService'
 
 // Props
 interface Props {
   folderId?: number
+  folderPath?: string[]
 }
 const props = withDefaults(defineProps<Props>(), {
-  folderId: undefined
+  folderId: undefined,
+  folderPath: () => []
 })
 
 // UI 組件
@@ -82,8 +84,41 @@ const previewableFiles = computed(() => {
   return filteredFiles.value.filter(file => !file.isDirectory)
 })
 
-// 方法
-const openFile = (file: FileInfo) => {
+// 獲取當前URL路徑
+const getCurrentPath = (): string => {
+  const pathMatch = route.params.pathMatch
+  if (typeof pathMatch === 'string') {
+    return pathMatch
+  } else if (Array.isArray(pathMatch)) {
+    return pathMatch.join('/')
+  }
+  return ''
+}
+
+// 根據路徑構建麵包屑，避免額外API調用
+const buildBreadcrumbsFromPath = (pathSegments: string[]) => {
+  const breadcrumbs: BreadcrumbItem[] = [
+    { id: null, name: '檔案', path: '/files' }  // 根目錄路徑
+  ]
+  
+  // 為每個路徑段構建完整的嵌套路徑
+  pathSegments.forEach((segment, index) => {
+    // 構建到當前層級的完整路徑，使用絕對路徑
+    const pathToHere = pathSegments.slice(0, index + 1).map(s => encodeURIComponent(s)).join('/')
+    breadcrumbs.push({
+      id: index + 1, // 使用索引作為臨時ID
+      name: decodeURIComponent(segment),
+      path: `/files/${pathToHere}` // 使用完整的絕對路徑
+    })
+  })
+  
+  // 使用store的setBreadcrumbs方法
+  filesStore.setBreadcrumbs(breadcrumbs)
+  console.log('🍞 從路徑構建麵包屑:', breadcrumbs)
+}
+
+// 方法 - 支援嵌套URL的導航邏輯
+const openFile = async (file: FileInfo) => {
   console.log('🔍 Opening file:', {
     name: file.name,
     isDirectory: file.isDirectory,
@@ -93,16 +128,47 @@ const openFile = (file: FileInfo) => {
   })
   
   if (file.isDirectory === true || file.mimeType === 'folder') {
-    // 導航到資料夾，更新路由
-    console.log('📁 Navigating to folder:', file.id, 'name:', file.name)
-    router.push({ 
-      name: 'files-folder', 
-      params: { folderId: file.id.toString() } 
-    }).then(() => {
-      console.log('✅ Navigation successful')
-    }).catch(err => {
-      console.error('❌ Navigation failed:', err)
-    })
+    // 防止重複點擊
+    if (isNavigating.value) {
+      console.log('⚠️ 正在導航中，忽略點擊')
+      return
+    }
+    
+    // 構建嵌套URL路徑
+    console.log('📁 Building nested path for folder:', file.id, 'name:', file.name)
+    const currentPath = getCurrentPath()
+    const newPath = currentPath ? `${currentPath}/${encodeURIComponent(file.name)}` : encodeURIComponent(file.name)
+    
+    // 優化：直接使用資料夾ID導航，避免路徑解析的額外請求
+    console.log('🛣️ Navigating directly with folder ID:', file.id)
+    
+    // 先設置導航標誌
+    isNavigating.value = true
+    
+    // 設置程式化導航標誌（在 try 外面，確保先設置）
+    isProgrammaticNavigation.value = true
+    
+    try {
+      // 直接使用 store 導航到資料夾
+      // navigateToFolder 會自動構建正確的麵包屑，所以不需要手動構建
+      await filesStore.navigateToFolder(file.id)
+      
+      // 最後更新路由
+      router.push(`/files/${newPath}`)
+      // 不等待 push 完成，讓路由監聽器能看到標誌
+    } catch (error) {
+      console.error('導航失敗:', error)
+      // 如果失敗，立即重置標誌
+      isNavigating.value = false
+      isProgrammaticNavigation.value = false
+    }
+    
+    // 延遲重置導航標誌，確保路由變化處理完成
+    setTimeout(() => {
+      isNavigating.value = false
+      isProgrammaticNavigation.value = false
+      console.log('🔄 重置導航標誌')
+    }, 300)
   } else {
     // 預覽檔案
     console.log('📄 Setting up preview for file:', file.name)
@@ -155,11 +221,84 @@ const deleteFile = async (file: FileInfo) => {
   }
 }
 
-const navigateToPath = (folderId: number | null) => {
+// 根據資料夾ID構建完整路徑字串
+const buildFolderPath = async (folderId: number): Promise<string> => {
+  try {
+    const pathSegments: string[] = []
+    let currentId: number | null = folderId
+    const visitedIds = new Set<number>()
+    
+    // 從目標資料夾往上遍歷，構建完整路徑
+    while (currentId && !visitedIds.has(currentId)) {
+      visitedIds.add(currentId)
+      
+      const response = await fileApi.getFileDetails(currentId)
+      if (response.success && response.data) {
+        const folderData = response.data as any
+        console.log('📁 資料夾詳情:', { id: currentId, name: folderData.name, parent_id: folderData.parent_id })
+        pathSegments.unshift(encodeURIComponent(folderData.name))
+        currentId = folderData.parent_id || null
+      } else {
+        console.error('❌ 無法獲取資料夾詳情:', currentId)
+        break
+      }
+    }
+    
+    console.log('🛣️ 構建的完整路徑:', pathSegments.join('/'))
+    return pathSegments.join('/')
+  } catch (error) {
+    console.error('❌ 構建資料夾路徑失敗:', error)
+    return ''
+  }
+}
+
+// 基於當前麵包屑構建路徑的替代方法
+const buildPathFromBreadcrumbs = (targetFolderName: string): string => {
+  const currentBreadcrumbs = filesStore.breadcrumbs
+  const pathSegments = currentBreadcrumbs
+    .filter(crumb => crumb.id !== null) // 過濾掉根目錄
+    .map(crumb => encodeURIComponent(crumb.name))
+  
+  // 添加目標資料夾
+  pathSegments.push(encodeURIComponent(targetFolderName))
+  
+  console.log('🍞 基於麵包屑的路徑:', pathSegments.join('/'))
+  return pathSegments.join('/')
+}
+
+const navigateToPath = async (folderId: number | null) => {
   if (folderId === null) {
     router.push({ name: 'files' })
   } else {
-    router.push({ name: 'files-folder', params: { folderId: folderId.toString() } })
+    // 嘗試使用新的路徑模式
+    try {
+      const folderPath = await buildFolderPath(folderId)
+      if (folderPath) {
+        router.push(`/files/${folderPath}`)
+      } else {
+        // 降級到舊的 ID 模式
+        router.push({ name: 'files-folder', params: { folderId: folderId.toString() } })
+      }
+    } catch (error) {
+      console.error('❌ 路徑導航失敗，降級到 ID 模式:', error)
+      router.push({ name: 'files-folder', params: { folderId: folderId.toString() } })
+    }
+  }
+}
+
+// 新的基於路徑的麵包屑導航
+const navigateToBreadcrumbPath = (breadcrumbPath: string) => {
+  if (breadcrumbPath === '/' || breadcrumbPath === '/files') {
+    router.push('/files')
+  } else {
+    // 如果路徑已經是完整的絕對路徑，直接使用
+    // 否則添加 /files 前綴
+    if (breadcrumbPath.startsWith('/files/')) {
+      router.push(breadcrumbPath)
+    } else {
+      const cleanPath = breadcrumbPath.startsWith('/') ? breadcrumbPath.slice(1) : breadcrumbPath
+      router.push(`/files/${cleanPath}`)
+    }
   }
 }
 
@@ -244,41 +383,247 @@ const handleUploadComplete = async (results?: UnifiedUploadResult[]) => {
 
 // 已移除 getFileIcon 函數，改用 AppFileIcon 組件
 
-// 導航處理函數
-const handleNavigation = async (propsFolderId?: number | null, routeFolderId?: number | null | undefined) => {
-  const targetFolderId = propsFolderId || routeFolderId || null
-  
-  console.log('🗂️ FilesView 導航處理:', { propsFolderId, routeFolderId, targetFolderId })
-  
-  // 防止重複導航到相同資料夾
-  if (targetFolderId === filesStore.currentFolderId) {
-    console.log('⚠️ 已在目標資料夾，跳過導航')
-    return
+// 路徑解析函數 - 將資料夾名稱路徑轉換為ID
+const resolveFolderPath = async (pathSegments: string[]): Promise<number | null> => {
+  if (!pathSegments || pathSegments.length === 0) {
+    return null
   }
   
-  if (targetFolderId) {
-    await filesStore.navigateToFolder(Number(targetFolderId))
-  } else {
-    await filesStore.navigateToFolder(null)
+  console.log('🔍 解析資料夾路徑:', pathSegments)
+  
+  // 如果當前已經載入了檔案，檢查是否能在本地找到匹配的資料夾
+  if (filesStore.files.length > 0 && pathSegments.length === 1) {
+    const targetName = decodeURIComponent(pathSegments[0])
+    const localFolder = filesStore.files.find(file => {
+      const isDirectory = file.isDirectory || file.mimeType === 'folder'
+      return isDirectory && file.name === targetName
+    })
+    
+    if (localFolder) {
+      console.log(`✅ 從本地快取找到資料夾: "${targetName}" ID: ${localFolder.id}`)
+      return localFolder.id
+    }
+  }
+  
+  try {
+    let currentFolderId: number | null = null
+    
+    // 逐層解析路徑
+    for (const segment of pathSegments) {
+      console.log(`🔍 尋找資料夾: "${segment}" 在父級 ${currentFolderId}`)
+      
+      // 獲取當前層級的檔案列表
+      const response = await fileApi.getFiles(currentFolderId ? { parent_id: currentFolderId } : {})
+      
+      if (response.success && response.data?.files) {
+        console.log(`🔍 在父級 ${currentFolderId} 中找到的檔案:`, response.data.files.map((f: any) => ({ 
+          name: f.name, 
+          is_directory: f.is_directory 
+        })))
+        
+        // 在當前層級尋找匹配的資料夾，使用更寬鬆的匹配邏輯
+        const folder = response.data.files.find((file: any) => {
+          // 檢查是否為資料夾 - 處理不同的欄位名稱
+          const isDirectory = file.is_directory || file.isDirectory || file.mime_type === 'folder'
+          if (!isDirectory) return false
+          
+          const fileName = file.name
+          const searchName = decodeURIComponent(segment)
+          
+          console.log(`🔍 比較資料夾名稱: "${fileName}" vs "${searchName}"`)
+          
+          // 嘗試多種比較方式
+          return fileName === searchName || 
+                 fileName === segment ||
+                 decodeURIComponent(fileName) === searchName ||
+                 encodeURIComponent(fileName) === segment
+        })
+        
+        if (folder) {
+          currentFolderId = folder.id
+          console.log(`✅ 找到資料夾: "${segment}" ID: ${currentFolderId}`)
+        } else {
+          console.warn(`❌ 找不到資料夾: "${segment}"`)
+          return null
+        }
+      } else {
+        console.error('❌ 獲取檔案列表失敗')
+        return null
+      }
+    }
+    
+    return currentFolderId
+  } catch (error) {
+    console.error('❌ 路徑解析錯誤:', error)
+    return null
   }
 }
 
-// 監聽路由變化 (immediate: true 會在掛載時自動執行一次)
-watch(
-  [() => props.folderId, () => route.params.folderId], 
-  async ([propsFolderId, routeFolderId]) => {
-    let targetRouteId: number | null = null
-    if (typeof routeFolderId === 'string') {
-      targetRouteId = parseInt(routeFolderId)
-    } else if (typeof routeFolderId === 'number') {
-      targetRouteId = routeFolderId
-    } else if (Array.isArray(routeFolderId) && routeFolderId[0]) {
-      targetRouteId = parseInt(String(routeFolderId[0]))
+// 簡化導航處理，同時處理麵包屑
+const handleNavigation = async (propsFolderId?: number | null, routeFolderId?: number | null | undefined, folderPath?: string[]) => {
+  // 防止同時進行多個導航
+  if (isNavigating.value) {
+    console.log('⚠️ 導航進行中，跳過重複請求')
+    return
+  }
+  
+  // 如果是程式化導航（點擊資料夾觸發的），直接返回
+  // 因為點擊資料夾時已經在 openFile 中處理了所有邏輯
+  if (isProgrammaticNavigation.value) {
+    console.log('⚠️ 程式化導航已處理，跳過路由導航')
+    return
+  }
+  
+  let targetFolderId: number | null = null
+  
+  // 優先處理路徑模式
+  if (folderPath && folderPath.length > 0) {
+    console.log('🗂️ 使用路徑模式導航:', folderPath)
+    
+    // 先根據路徑構建麵包屑，避免額外的API調用
+    buildBreadcrumbsFromPath(folderPath)
+    
+    targetFolderId = await resolveFolderPath(folderPath)
+    
+    if (!targetFolderId) {
+      console.error('❌ 無法解析路徑:', folderPath)
+      return
     }
-    await handleNavigation(propsFolderId ?? null, targetRouteId)
+  } else {
+    targetFolderId = propsFolderId || routeFolderId || null
+  }
+  
+  console.log('🗂️ FilesView 導航處理:', { propsFolderId, routeFolderId, folderPath, targetFolderId })
+  
+  // 防止重複導航到相同資料夾，並檢查檔案是否已載入
+  if (targetFolderId === filesStore.currentFolderId && filesStore.files.length > 0) {
+    console.log('⚠️ 已在目標資料夾且檔案已載入，跳過導航')
+    // 但還是要確保麵包屑正確
+    if (folderPath && folderPath.length > 0) {
+      buildBreadcrumbsFromPath(folderPath)
+    }
+    return
+  }
+  
+  try {
+    isNavigating.value = true
+    
+    // 使用store的標準導航方法
+    await filesStore.navigateToFolder(targetFolderId)
+    
+    // 如果是路徑模式，覆蓋麵包屑
+    if (folderPath && folderPath.length > 0 && targetFolderId) {
+      buildBreadcrumbsFromPath(folderPath)
+    }
+  } finally {
+    isNavigating.value = false
+  }
+}
+
+// 處理路由變化和初次載入
+const handleRouteChange = async () => {
+  let targetRouteId: number | null = null
+  let folderPath: string[] | undefined = undefined
+  
+  // 處理嵌套路徑
+  if (props.folderPath && props.folderPath.length > 0) {
+    folderPath = props.folderPath
+  } else if (route.params.pathMatch && typeof route.params.pathMatch === 'string') {
+    folderPath = route.params.pathMatch.split('/').filter(Boolean)
+  }
+  
+  // 處理傳統的資料夾 ID
+  const routeFolderId = route.params.folderId
+  if (typeof routeFolderId === 'string') {
+    targetRouteId = parseInt(routeFolderId)
+  } else if (typeof routeFolderId === 'number') {
+    targetRouteId = routeFolderId
+  } else if (Array.isArray(routeFolderId) && routeFolderId[0]) {
+    targetRouteId = parseInt(String(routeFolderId[0]))
+  }
+  
+  console.log('🔄 路由變化處理:', { 
+    propsFolderId: props.folderId, 
+    routeFolderId, 
+    propsPath: props.folderPath, 
+    routePathMatch: route.params.pathMatch,
+    folderPath, 
+    targetRouteId 
+  })
+  
+  await handleNavigation(props.folderId ?? null, targetRouteId, folderPath)
+}
+
+// 追蹤是否正在導航，避免重複請求
+const isNavigating = ref(false)
+
+// 使用 sessionStorage 來跟踪程式化導航狀態，避免組件重新創建時丟失
+const PROGRAMMATIC_NAV_KEY = 'filesView_isProgrammaticNavigation'
+
+// 追蹤是否是程式化導航（點擊資料夾）
+const isProgrammaticNavigation = computed({
+  get: () => sessionStorage.getItem(PROGRAMMATIC_NAV_KEY) === 'true',
+  set: (value) => {
+    if (value) {
+      sessionStorage.setItem(PROGRAMMATIC_NAV_KEY, 'true')
+    } else {
+      sessionStorage.removeItem(PROGRAMMATIC_NAV_KEY)
+    }
+  }
+})
+
+// 監聽路由變化
+watch(
+  () => route.fullPath,
+  async (newPath, oldPath) => {
+    console.log('👀 路由變化監聽:', { 
+      newPath, 
+      oldPath, 
+      isProgrammaticNavigation: isProgrammaticNavigation.value,
+      isNavigating: isNavigating.value 
+    })
+    
+    // 如果是程式化導航（點擊資料夾），跳過路由變化處理
+    if (isProgrammaticNavigation.value) {
+      console.log('⚠️ 程式化導航中，跳過路由變化處理')
+      return
+    }
+    
+    // 如果正在導航中，跳過路由變化處理
+    if (isNavigating.value) {
+      console.log('⚠️ 正在導航中，跳過路由變化處理')
+      return
+    }
+    
+    // 如果路徑沒有實質變化，跳過
+    if (newPath === oldPath) {
+      return
+    }
+    
+    await handleRouteChange()
   },
   { immediate: true }
 )
+
+onMounted(async () => {
+  updateScreenSize()
+  window.addEventListener('resize', updateScreenSize)
+  
+  // 組件掛載時，如果不是從點擊資料夾來的，清除標誌
+  if (!isProgrammaticNavigation.value) {
+    console.log('🧹 組件掛載，清理導航標誌')
+  }
+})
+
+// 組件卸載時清理
+onUnmounted(() => {
+  window.removeEventListener('resize', updateScreenSize)
+  // 清理標誌，避免影響其他導航
+  if (isProgrammaticNavigation.value) {
+    isProgrammaticNavigation.value = false
+    console.log('🧹 組件卸載，清理導航標誌')
+  }
+})
 </script>
 
 <style scoped>
@@ -414,7 +759,7 @@ watch(
         <template v-for="(crumb, index) in breadcrumbs" :key="crumb.id || index">
           <span v-if="index > 0" class="text-sm shrink-0" style="color: var(--text-tertiary);">/</span>
           <button
-            @click="navigateToPath(crumb.id)"
+            @click="navigateToBreadcrumbPath(crumb.path)"
             class="text-sm font-medium whitespace-nowrap touch-target shrink-0"
             style="color: var(--text-primary); min-height: 32px; padding: 4px 8px; border-radius: 6px;"
             :style="{ 
@@ -555,7 +900,7 @@ watch(
         <template v-for="(crumb, index) in breadcrumbs" :key="crumb.id || index">
           <span v-if="index > 0" class="text-xs sm:text-sm shrink-0" style="color: var(--text-tertiary);">/</span>
           <button
-            @click="navigateToPath(crumb.id)"
+            @click="navigateToBreadcrumbPath(crumb.path)"
             class="text-xs sm:text-sm hover:underline whitespace-nowrap touch-target shrink-0"
             style="color: var(--text-secondary); min-height: 32px; padding: var(--space-1) var(--space-2);"
           >

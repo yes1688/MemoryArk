@@ -25,6 +25,18 @@ const router = createRouter({
       props: route => ({ folderId: Number(route.params.folderId) })
     },
     {
+      path: '/files/:pathMatch(.*)*',
+      name: 'files-nested',
+      component: () => import('@/views/FilesView.vue'),
+      meta: { requiresAuth: true },
+      props: route => {
+        // 解析路徑為資料夾名稱陣列
+        const pathMatch = route.params.pathMatch as string | string[]
+        const pathSegments = Array.isArray(pathMatch) ? pathMatch : (pathMatch ? pathMatch.split('/').filter(Boolean) : [])
+        return { folderPath: pathSegments }
+      }
+    },
+    {
       path: '/upload',
       name: 'upload',
       component: () => import('@/views/UploadView.vue'),

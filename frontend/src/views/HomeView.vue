@@ -4,6 +4,7 @@ import { useFilesStore } from '@/stores/files'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import { storageApi } from '@/api'
+import { fileApi } from '@/api/files'
 import type { FileInfo } from '@/types/files'
 import DailyVerse from '@/components/DailyVerse.vue'
 import { AppFileIcon } from '@/components/ui'
@@ -76,11 +77,40 @@ const handleQuickAction = (action: string) => {
   }
 }
 
-// 處理檔案點擊
-const handleFileClick = (file: FileInfo) => {
+// 根據資料夾ID構建路徑字串
+const buildFolderPath = async (folderId: number): Promise<string> => {
+  try {
+    const pathSegments: string[] = []
+    let currentId: number | null = folderId
+    const visitedIds = new Set<number>()
+    
+    // 從目標資料夾往上遍歷，構建路徑
+    while (currentId && !visitedIds.has(currentId)) {
+      visitedIds.add(currentId)
+      
+      const response = await fileApi.getFileDetails(currentId)
+      if (response.success && response.data) {
+        const folderData = response.data as any
+        pathSegments.unshift(encodeURIComponent(folderData.name))
+        currentId = folderData.parent_id || null
+      } else {
+        break
+      }
+    }
+    
+    return pathSegments.join('/')
+  } catch (error) {
+    console.error('❌ 構建資料夾路徑失敗:', error)
+    return ''
+  }
+}
+
+// 檔案點擊處理 - 支援嵌套URL
+const handleFileClick = async (file: FileInfo) => {
   if (file.isDirectory) {
-    // 如果是資料夾，跳轉到該資料夾（使用正確的路由格式）
-    navigateTo(`/files/folder/${file.id}`)
+    // 為首頁的資料夾使用簡單的路徑（第一層）
+    const folderPath = encodeURIComponent(file.name)
+    navigateTo(`/files/${folderPath}`)
   } else {
     // 如果是檔案，跳轉到檔案列表頁面
     navigateTo('/files')
