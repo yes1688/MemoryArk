@@ -63,7 +63,7 @@ export const useFilesStore = defineStore('files', () => {
   })
 
   // 獲取檔案列表
-  const fetchFiles = async (folderId?: number | null) => {
+  const fetchFiles = async (folderId?: number | null, forceRefresh = false) => {
     try {
       isLoading.value = true
       error.value = null
@@ -73,7 +73,20 @@ export const useFilesStore = defineStore('files', () => {
         params.parent_id = folderId
       }
       
-      console.log('📂 fetchFiles:', { folderId, params })
+      // 生成快取鍵
+      const cacheKey = CacheKeyGenerator.files(folderId, params)
+      
+      // 檢查快取（如果啟用且不強制刷新）
+      if (cacheEnabled.value && !forceRefresh) {
+        const cachedData = globalCache.get<{files: any[], metadata: any}>(cacheKey)
+        if (cachedData) {
+          console.log(`🎯 fetchFiles Cache HIT: ${cacheKey}`)
+          files.value = cachedData.files || []
+          return cachedData.metadata
+        }
+      }
+      
+      console.log(`📂 fetchFiles API Call: ${cacheKey}`, { folderId, params })
       
       const response = await filesApi.getFiles(params)
       
@@ -102,7 +115,22 @@ export const useFilesStore = defineStore('files', () => {
             thumbnailUrl: file.thumbnail_url || file.thumbnailUrl
           }
         })
+        
         files.value = transformedFiles
+        
+        // 快取結果（如果啟用快取）
+        if (cacheEnabled.value) {
+          const cacheData = {
+            files: transformedFiles,
+            metadata: {
+              folderId,
+              params,
+              timestamp: Date.now()
+            }
+          }
+          globalCache.set(cacheKey, cacheData, 5 * 60 * 1000) // 5分鐘 TTL
+          console.log(`💾 fetchFiles Cache SET: ${cacheKey}`)
+        }
         
         // 注意：這裡不設置當前資料夾和麵包屑
         // 因為 fetchFiles 只是獲取檔案列表，導航邏輯由 navigateToFolder 處理
@@ -140,8 +168,10 @@ export const useFilesStore = defineStore('files', () => {
       })
       
       if (response.success && response.data) {
+        // 清空相關快取
+        clearFolderCache(currentFolderId.value)
         // 重新獲取當前資料夾檔案列表
-        await fetchFiles(currentFolderId.value || null)
+        await fetchFiles(currentFolderId.value || null, true)
         // 將 UploadResult 轉換為 FileInfo 格式
         const fileInfo: FileInfo = {
           id: response.data.id,
@@ -194,8 +224,10 @@ export const useFilesStore = defineStore('files', () => {
       })
       
       if (response.success && response.data) {
+        // 清空相關快取
+        clearFolderCache(currentFolderId.value)
         // 重新獲取當前資料夾檔案列表
-        await fetchFiles(currentFolderId.value || null)
+        await fetchFiles(currentFolderId.value || null, true)
         return response.data
       } else {
         throw new Error(response.message || '批量上傳失敗')
@@ -216,8 +248,10 @@ export const useFilesStore = defineStore('files', () => {
       const response = await filesApi.createFolder(folderData)
       
       if (response.success && response.data) {
+        // 清空相關快取
+        clearFolderCache(currentFolderId.value)
         // 重新獲取當前資料夾檔案列表
-        await fetchFiles(currentFolderId.value || null)
+        await fetchFiles(currentFolderId.value || null, true)
         
         // 轉換返回的資料格式
         const rawData = response.data as any
@@ -310,8 +344,10 @@ export const useFilesStore = defineStore('files', () => {
         }
       }
       
+      // 清空相關快取
+      clearFolderCache(currentFolderId.value)
       // 重新獲取當前資料夾檔案列表
-      await fetchFiles(currentFolderId.value || null)
+      await fetchFiles(currentFolderId.value || null, true)
     } catch (err: any) {
       error.value = err.message || '網路連線錯誤'
       throw err
@@ -344,8 +380,10 @@ export const useFilesStore = defineStore('files', () => {
         clipboard.value = null // 剪下後清空剪貼簿
       }
 
+      // 清空相關快取
+      clearFolderCache(currentFolderId.value)
       // 重新獲取當前資料夾檔案列表
-      await fetchFiles(currentFolderId.value || null)
+      await fetchFiles(currentFolderId.value || null, true)
     } catch (err: any) {
       error.value = err.message || '網路連線錯誤'
       throw err
@@ -854,8 +892,10 @@ export const useFilesStore = defineStore('files', () => {
       // 從本地狀態移除
       duplicateFiles.value = duplicateFiles.value.filter(dup => dup.hash !== hash)
       
+      // 清空相關快取
+      clearFolderCache(currentFolderId.value)
       // 重新載入檔案列表
-      await fetchFiles(currentFolderId.value)
+      await fetchFiles(currentFolderId.value, true)
     } catch (err: any) {
       error.value = err.message || '移除重複檔案失敗'
       throw err
