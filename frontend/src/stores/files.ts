@@ -169,7 +169,7 @@ export const useFilesStore = defineStore('files', () => {
       
       if (response.success && response.data) {
         // 清空相關快取
-        clearFolderCache(currentFolderId.value)
+        clearRelatedCache(currentFolderId.value)
         // 重新獲取當前資料夾檔案列表
         await fetchFiles(currentFolderId.value || null, true)
         // 將 UploadResult 轉換為 FileInfo 格式
@@ -225,7 +225,7 @@ export const useFilesStore = defineStore('files', () => {
       
       if (response.success && response.data) {
         // 清空相關快取
-        clearFolderCache(currentFolderId.value)
+        clearRelatedCache(currentFolderId.value)
         // 重新獲取當前資料夾檔案列表
         await fetchFiles(currentFolderId.value || null, true)
         return response.data
@@ -249,7 +249,7 @@ export const useFilesStore = defineStore('files', () => {
       
       if (response.success && response.data) {
         // 清空相關快取
-        clearFolderCache(currentFolderId.value)
+        clearRelatedCache(currentFolderId.value)
         // 重新獲取當前資料夾檔案列表
         await fetchFiles(currentFolderId.value || null, true)
         
@@ -345,7 +345,7 @@ export const useFilesStore = defineStore('files', () => {
       }
       
       // 清空相關快取
-      clearFolderCache(currentFolderId.value)
+      clearRelatedCache(currentFolderId.value)
       // 重新獲取當前資料夾檔案列表
       await fetchFiles(currentFolderId.value || null, true)
     } catch (err: any) {
@@ -381,7 +381,7 @@ export const useFilesStore = defineStore('files', () => {
       }
 
       // 清空相關快取
-      clearFolderCache(currentFolderId.value)
+      clearRelatedCache(currentFolderId.value)
       // 重新獲取當前資料夾檔案列表
       await fetchFiles(currentFolderId.value || null, true)
     } catch (err: any) {
@@ -607,8 +607,20 @@ export const useFilesStore = defineStore('files', () => {
         console.log('🗂️ 設置當前資料夾:', folderInfo)
         currentFolder.value = folderInfo
         
-        // 構建麵包屑導航 - 需要遞迴構建完整路徑
+        // 構建麵包屑導航 - 支援快取的遞迴構建
         const buildBreadcrumbs = async (folder: FileInfo): Promise<BreadcrumbItem[]> => {
+          // 檢查麵包屑快取
+          const cacheKey = CacheKeyGenerator.breadcrumbs(folder.id)
+          if (cacheEnabled.value) {
+            const cachedBreadcrumbs = globalCache.get<BreadcrumbItem[]>(cacheKey)
+            if (cachedBreadcrumbs) {
+              console.log(`🍞 Breadcrumbs Cache HIT: ${cacheKey}`)
+              return cachedBreadcrumbs
+            }
+          }
+          
+          console.log(`🍞 Breadcrumbs Cache MISS: ${cacheKey}, building from API`)
+          
           const crumbs: BreadcrumbItem[] = []
           let currentFolder = folder
           const visitedIds = new Set<number>() // 防止循環引用
@@ -624,11 +636,43 @@ export const useFilesStore = defineStore('files', () => {
           // 從當前資料夾往上遍歷到根目錄
           while (currentFolder.parentId && !visitedIds.has(currentFolder.parentId)) {
             try {
-              console.log(`🔍 獲取父資料夾信息: ${currentFolder.parentId}`)
-              const parentResponse = await filesApi.getFileDetails(currentFolder.parentId)
+              // 先檢查父資料夾詳情快取
+              const parentDetailsCacheKey = CacheKeyGenerator.folderDetails(currentFolder.parentId)
+              let parentData: any = null
               
-              if (parentResponse.success && parentResponse.data) {
-                const parentData = parentResponse.data as any
+              if (cacheEnabled.value) {
+                parentData = globalCache.get(parentDetailsCacheKey)
+                if (parentData) {
+                  console.log(`📁 Parent folder Cache HIT: ${parentDetailsCacheKey}`)
+                }
+              }
+              
+              // 如果沒有快取，從 API 獲取
+              if (!parentData) {
+                console.log(`🔍 獲取父資料夾信息: ${currentFolder.parentId}`)
+                const parentResponse = await filesApi.getFileDetails(currentFolder.parentId)
+                
+                if (parentResponse.success && parentResponse.data) {
+                  parentData = parentResponse.data as any
+                  
+                  // 快取父資料夾詳情
+                  if (cacheEnabled.value) {
+                    globalCache.set(parentDetailsCacheKey, parentData, 10 * 60 * 1000) // 10分鐘 TTL
+                    console.log(`📁 Parent folder Cache SET: ${parentDetailsCacheKey}`)
+                  }
+                } else {
+                  console.warn(`⚠️ 無法獲取父資料夾 ${currentFolder.parentId} 的詳細信息`)
+                  // 即使失敗也嘗試添加一個佔位符，保持路徑的連續性
+                  crumbs.unshift({
+                    id: currentFolder.parentId ?? null,
+                    name: '資料夾',
+                    path: '/unknown'
+                  })
+                  break
+                }
+              }
+              
+              if (parentData) {
                 visitedIds.add(currentFolder.parentId)
                 
                 currentFolder = {
@@ -657,15 +701,6 @@ export const useFilesStore = defineStore('files', () => {
                 })
                 
                 console.log(`✅ 成功添加父資料夾: ${currentFolder.name}`)
-              } else {
-                console.warn(`⚠️ 無法獲取父資料夾 ${currentFolder.parentId} 的詳細信息`)
-                // 即使失敗也嘗試添加一個佔位符，保持路徑的連續性
-                crumbs.unshift({
-                  id: currentFolder.parentId ?? null,
-                  name: '資料夾',
-                  path: '/unknown'
-                })
-                break
               }
             } catch (error) {
               console.error(`❌ 獲取父資料夾 ${currentFolder.parentId} 時發生錯誤:`, error)
@@ -683,6 +718,13 @@ export const useFilesStore = defineStore('files', () => {
           crumbs.unshift({ id: null, name: '檔案', path: '/' })
           
           console.log(`🍞 構建的麵包屑:`, crumbs)
+          
+          // 快取麵包屑結果
+          if (cacheEnabled.value) {
+            globalCache.set(cacheKey, crumbs, 15 * 60 * 1000) // 15分鐘 TTL
+            console.log(`🍞 Breadcrumbs Cache SET: ${cacheKey}`)
+          }
+          
           return crumbs
         }
         
@@ -726,6 +768,33 @@ export const useFilesStore = defineStore('files', () => {
     const prefix = `files:${folderId || 'root'}`
     const count = globalCache.clearByPrefix(prefix)
     console.log(`🗑️ 已清空資料夾 ${folderId || 'root'} 的快取 (${count} 項)`)
+  }
+  
+  // 清除麵包屑快取
+  const clearBreadcrumbsCache = (folderId?: number | null): void => {
+    if (folderId) {
+      // 清除特定麵包屑快取
+      const breadcrumbKey = CacheKeyGenerator.breadcrumbs(folderId)
+      globalCache.delete(breadcrumbKey)
+      console.log(`🍞 已清空麵包屑快取: ${breadcrumbKey}`)
+      
+      // 清除父資料夾詳情快取
+      const folderDetailsKey = CacheKeyGenerator.folderDetails(folderId)
+      globalCache.delete(folderDetailsKey)
+      console.log(`📁 已清空資料夾詳情快取: ${folderDetailsKey}`)
+    } else {
+      // 清除所有麵包屑和資料夾詳情快取
+      const breadcrumbCount = globalCache.clearByPrefix('breadcrumbs:')
+      const folderDetailsCount = globalCache.clearByPrefix('folder-details:')
+      console.log(`🍞 已清空所有麵包屑快取 (${breadcrumbCount} 項)`)
+      console.log(`📁 已清空所有資料夾詳情快取 (${folderDetailsCount} 項)`)
+    }
+  }
+  
+  // 清除相關快取（包括麵包屑）
+  const clearRelatedCache = (folderId?: number | null): void => {
+    clearFolderCache(folderId)
+    clearBreadcrumbsCache(folderId)
   }
   
   const toggleCache = (): void => {
@@ -893,7 +962,7 @@ export const useFilesStore = defineStore('files', () => {
       duplicateFiles.value = duplicateFiles.value.filter(dup => dup.hash !== hash)
       
       // 清空相關快取
-      clearFolderCache(currentFolderId.value)
+      clearRelatedCache(currentFolderId.value)
       // 重新載入檔案列表
       await fetchFiles(currentFolderId.value, true)
     } catch (err: any) {
@@ -951,6 +1020,8 @@ export const useFilesStore = defineStore('files', () => {
     // 快取管理方法
     clearCache,
     clearFolderCache,
+    clearBreadcrumbsCache,
+    clearRelatedCache,
     toggleCache,
     cacheEnabled,
     cacheStatistics,

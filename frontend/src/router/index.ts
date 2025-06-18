@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useFilesStore } from '@/stores/files'
 import { featureApi } from '@/api/index'
+import { globalCache, CacheKeyGenerator } from '@/utils/cache'
+import type { AuthStatus } from '@/types/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -128,24 +130,47 @@ router.beforeEach(async (to, from, next) => {
     }
   }
   
-  // 初始化認證狀態
+  // 初始化認證狀態 - 優先使用快取
   if (!authStore.initialized) {
     console.log('⏳ 初始化認證狀態...')
-    await authStore.checkAuthStatus()
+    // 先檢查是否有快取的認證狀態
+    const cachedAuthStatus = globalCache.get<AuthStatus>(CacheKeyGenerator.authStatus())
+    if (cachedAuthStatus) {
+      console.log('🎯 路由守衛: 使用快取的認證狀態')
+      authStore.authStatus = cachedAuthStatus
+      authStore.initialized = true
+    } else {
+      console.log('🔍 路由守衛: 快取未命中，檢查認證狀態')
+      await authStore.checkAuthStatus()
+    }
   }
   
-  console.log('📊 認證狀態檢查:')
+  console.log('📊 認證狀態檢查 (快取優化):')
   console.log('  - hasCloudflareAccess:', authStore.hasCloudflareAccess)
   console.log('  - isAuthenticated:', authStore.isAuthenticated)
   console.log('  - needsRegistration:', authStore.needsRegistration)
   console.log('  - pendingApproval:', authStore.pendingApproval)
   console.log('  - authStatus:', authStore.authStatus)
+  console.log('  - initialized:', authStore.initialized)
   
   // 檢查是否需要 Cloudflare 認證
   if (to.meta.requiresCloudflareAuth && !authStore.hasCloudflareAccess) {
     console.log('🚫 需要 Cloudflare 認證但未通過，重定向到 cloudflare-auth')
     next('/cloudflare-auth')
     return
+  }
+  
+  // 快取統計日誌 (僅在開發模式)
+  if (import.meta.env.DEV) {
+    const cacheStats = globalCache.getStatistics()
+    if (cacheStats.totalRequests > 0) {
+      console.log('📈 認證快取統計:', {
+        命中率: `${cacheStats.hitRate.toFixed(1)}%`,
+        總請求: cacheStats.totalRequests,
+        快取命中: cacheStats.cacheHits,
+        快取未命中: cacheStats.cacheMisses
+      })
+    }
   }
   
   // 檢查是否需要完整認證（Cloudflare + 內部審核）
