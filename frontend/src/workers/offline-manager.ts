@@ -343,8 +343,8 @@ class OfflineManager {
       
       // 按優先級排序
       this.syncQueue.sort((a, b) => {
-        const priorityOrder = { high: 3, medium: 2, low: 1 }
-        return priorityOrder[b.priority] - priorityOrder[a.priority]
+        const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 }
+        return (priorityOrder[b.priority] || 1) - (priorityOrder[a.priority] || 1)
       })
 
       console.log(`[OfflineManager] 同步動作已加入佇列: ${action} (${priority})`)

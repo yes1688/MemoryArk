@@ -210,9 +210,11 @@ async function processBatchPreload(items: Array<{ folderId: number | null, prior
     } catch (error) {
       console.error(`[Worker] Batch preload failed for folder ${item.folderId}:`, error)
       
-      // 重試機制
-      if (item.retries < preloadConfig.maxPreloadRetries) {
-        preloadQueue.push({ ...item, retries: item.retries + 1 })
+      // 重試機制  
+      const queueItem = preloadQueue.find(q => q.folderId === item.folderId && q.priority === item.priority)
+      const retries = queueItem?.retries || 0
+      if (retries < preloadConfig.maxPreloadRetries) {
+        preloadQueue.push({ ...item, retries: retries + 1 })
       }
     } finally {
       activePreloads--
@@ -272,7 +274,7 @@ const messageHandlers: {
     try {
       console.log(`[Worker] Starting preload for folder ${payload.folderId} with priority ${payload.priority}`)
       
-      const folderId = payload.folderId
+      const folderId = payload.folderId ?? null
       const priority = payload.priority || 5
       
       // 生成快取鍵

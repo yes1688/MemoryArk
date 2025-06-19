@@ -237,7 +237,8 @@ class IndexedDBManager {
         return new Promise<OfflineFileData[]>((resolve, reject) => {
           const files: OfflineFileData[] = []
           const index = (store as IDBObjectStore).index('folderId')
-          const request = index.openCursor(IDBKeyRange.only(folderId ?? null))
+          const keyRange = folderId === null ? IDBKeyRange.only(null) : IDBKeyRange.only(folderId!)
+          const request = index.openCursor(keyRange)
           
           request.onsuccess = () => {
             const cursor = request.result
@@ -290,7 +291,7 @@ class IndexedDBManager {
     const result = await this.executeTransaction(
       this.stores.folders,
       'readonly', 
-      (store) => (store as IDBObjectStore).get(folderId)
+      (store) => (store as IDBObjectStore).get(folderId === null ? null : folderId)
     )
     
     return result || null
