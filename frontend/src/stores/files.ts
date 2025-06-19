@@ -515,10 +515,28 @@ export const useFilesStore = defineStore('files', () => {
       const hasFiles = files.value.length > 0
       const recentNavigation = currentTime - navigationState.value.lastNavigationTime < 500
       
-      // 如果已在目標資料夾且有檔案數據，跳過導航
-      if (sameFolder && hasFiles) {
-        console.log('⚠️ Store: 已在目標資料夾且有檔案數據，跳過導航')
-        return
+      // 如果已在目標資料夾且有檔案數據或快取，跳過導航
+      if (sameFolder) {
+        // 檢查是否有檔案數據或快取
+        const hasLocalFiles = hasFiles
+        let hasCachedFiles = false
+        
+        if (cacheEnabled.value) {
+          const cacheKey = CacheKeyGenerator.files(folderId, { 
+            folderId: folderId || null, 
+            sortBy: 'name', 
+            sortOrder: 'asc' 
+          })
+          hasCachedFiles = globalCache.has(cacheKey)
+        }
+        
+        if (hasLocalFiles || hasCachedFiles) {
+          console.log('⚠️ Store: 已在目標資料夾且有檔案數據或快取，跳過導航', {
+            hasLocalFiles,
+            hasCachedFiles
+          })
+          return
+        }
       }
       
       // 如果正在導航到相同資料夾，跳過
@@ -596,8 +614,36 @@ export const useFilesStore = defineStore('files', () => {
         }
       }
       
-      // 獲取目標資料夾的檔案列表
-      await fetchFiles(folderId)
+      // 檢查是否需要重新獲取檔案列表
+      const shouldFetchFiles = () => {
+        // 如果快取停用，總是獲取
+        if (!cacheEnabled.value) return true
+        
+        // 檢查快取中是否有檔案列表
+        const cacheKey = CacheKeyGenerator.files(folderId, { 
+          folderId: folderId || null, 
+          sortBy: 'name', 
+          sortOrder: 'asc' 
+        })
+        const cachedData = globalCache.get(cacheKey)
+        
+        // 如果有快取，使用快取
+        if (cachedData) {
+          console.log(`🎯 navigateToFolder 使用快取檔案列表: ${cacheKey}`)
+          files.value = (cachedData as any).files || []
+          return false // 不需要重新獲取
+        }
+        
+        // 如果沒有快取，需要獲取
+        return true
+      }
+      
+      // 只有在需要時才獲取檔案列表
+      if (shouldFetchFiles()) {
+        await fetchFiles(folderId)
+      } else {
+        console.log('📋 navigateToFolder 跳過 API 調用，使用快取資料')
+      }
       
       // 更新當前資料夾ID（無論是否有資料夾資訊都要設置）
       currentFolderIdValue.value = folderId || null
