@@ -137,7 +137,7 @@
               </div>
               <div class="metric-item">
                 <span class="metric-label">请求总数</span>
-                <span class="metric-value">{{ currentMetrics?.api.requests || 0 }}</span>
+                <span class="metric-value">{{ metricsStore.currentMetrics?.api.requests || 0 }}</span>
               </div>
             </div>
           </div>
@@ -157,7 +157,7 @@
               </div>
               <div class="metric-item">
                 <span class="metric-label">缓存大小</span>
-                <span class="metric-value">{{ formatBytes(currentMetrics?.cache.memoryCacheSize || 0) }}</span>
+                <span class="metric-value">{{ formatBytes(metricsStore.currentMetrics?.cache.memoryCacheSize || 0) }}</span>
               </div>
             </div>
           </div>
