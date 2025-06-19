@@ -223,7 +223,7 @@ const deleteFile = async (file: FileInfo) => {
       
       // 失效 Worker 快取
       if (isWorkerInitialized.value) {
-        await invalidateFolderCache(filesStore.currentFolderId)
+        await invalidateFolderCache(filesStore.currentFolderId ?? null)
         
         // 如果刪除的是資料夾，也要失效該資料夾的快取
         if (file.isDirectory) {
@@ -402,7 +402,7 @@ const handleUploadComplete = async (results?: UnifiedUploadResult[]) => {
     
     // 失效 Worker 快取
     if (isWorkerInitialized.value) {
-      await invalidateFolderCache(filesStore.currentFolderId)
+      await invalidateFolderCache(filesStore.currentFolderId ?? null)
     }
   } catch (error) {
     console.error('❌ 重新載入檔案列表失敗:', error)

@@ -288,10 +288,14 @@ class IndexedDBManager {
    * 獲取資料夾快取
    */
   async getCachedFolder(folderId: number | null): Promise<OfflineFolderData | null> {
+    if (folderId === null) {
+      return null
+    }
+    
     const result = await this.executeTransaction(
       this.stores.folders,
       'readonly', 
-      (store) => (store as IDBObjectStore).get(folderId === null ? null : folderId)
+      (store) => (store as IDBObjectStore).get(folderId)
     )
     
     return result || null

@@ -34,7 +34,7 @@ Object.defineProperty(global, 'performance', {
 })
 
 // Mock window.setInterval and clearInterval
-global.setInterval = vi.fn()
+global.setInterval = vi.fn() as any
 global.clearInterval = vi.fn()
 global.requestAnimationFrame = vi.fn((callback) => {
   setTimeout(callback, 16) // 模拟 60fps
