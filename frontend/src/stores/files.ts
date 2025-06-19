@@ -65,7 +65,6 @@ export const useFilesStore = defineStore('files', () => {
   // 獲取檔案列表
   const fetchFiles = async (folderId?: number | null, forceRefresh = false) => {
     try {
-      isLoading.value = true
       error.value = null
       
       const params: { parent_id?: number } = {}
@@ -80,11 +79,14 @@ export const useFilesStore = defineStore('files', () => {
       if (cacheEnabled.value && !forceRefresh) {
         const cachedData = globalCache.get<{files: any[], metadata: any}>(cacheKey)
         if (cachedData) {
-          console.log(`🎯 fetchFiles Cache HIT: ${cacheKey}`)
+          console.log(`🎯 fetchFiles Cache HIT: ${cacheKey} - 無閃爍更新`)
           files.value = cachedData.files || []
           return cachedData.metadata
         }
       }
+      
+      // 只有在需要 API 調用時才設置 loading
+      isLoading.value = true
       
       console.log(`📂 fetchFiles API Call: ${cacheKey}`, { folderId, params })
       

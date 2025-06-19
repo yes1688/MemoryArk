@@ -25,7 +25,7 @@ const files = computed(() => filesStore.files)
 const breadcrumbs = computed(() => filesStore.breadcrumbs)
 const currentFolderId = computed(() => filesStore.currentFolderId)
 
-// 核心導航邏輯 - 最簡單版本
+// 核心導航邏輯 - 防閃爍版本
 const navigateToFolder = async (folderId: number | null) => {
   // 如果已經在目標資料夾，直接返回
   if (folderId === currentFolderId.value) {
@@ -34,17 +34,15 @@ const navigateToFolder = async (folderId: number | null) => {
   }
   
   try {
-    isLoading.value = true
     console.log(`🗂️ 導航到資料夾: ${folderId}`)
     
-    // 使用 store 導航
+    // 關鍵：不顯示 loading，避免閃爍
+    // 直接使用 store 導航，讓 store 管理載入狀態
     await filesStore.navigateToFolder(folderId)
     
     console.log(`✅ 導航完成: ${folderId}`)
   } catch (error) {
     console.error('❌ 導航失敗:', error)
-  } finally {
-    isLoading.value = false
   }
 }
 
@@ -146,14 +144,8 @@ const formatDate = (dateString: string): string => {
       </button>
     </nav>
 
-    <!-- 載入狀態 -->
-    <div v-if="isLoading || filesStore.isLoading" class="loading">
-      <div class="spinner"></div>
-      載入中...
-    </div>
-
-    <!-- 檔案列表 -->
-    <div v-else-if="files.length > 0" class="files-grid">
+    <!-- 檔案列表 - 優先顯示，避免閃爍 -->
+    <div v-if="files.length > 0" class="files-grid">
       <div 
         v-for="file in files" 
         :key="file.id"
@@ -172,6 +164,12 @@ const formatDate = (dateString: string): string => {
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- 載入狀態 - 只在真正需要時顯示 -->
+    <div v-else-if="filesStore.isLoading" class="loading">
+      <div class="spinner"></div>
+      載入中...
     </div>
 
     <!-- 空狀態 -->
