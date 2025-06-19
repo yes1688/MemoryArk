@@ -137,7 +137,7 @@
               </div>
               <div class="metric-item">
                 <span class="metric-label">请求总数</span>
-                <span class="metric-value">{{ apiMetrics.totalRequests }}</span>
+                <span class="metric-value">{{ currentMetrics?.api.requests || 0 }}</span>
               </div>
             </div>
           </div>
@@ -157,7 +157,7 @@
               </div>
               <div class="metric-item">
                 <span class="metric-label">缓存大小</span>
-                <span class="metric-value">{{ formatBytes(cacheMetrics.cacheSize) }}</span>
+                <span class="metric-value">{{ formatBytes(currentMetrics?.cache.memoryCacheSize || 0) }}</span>
               </div>
             </div>
           </div>
@@ -507,27 +507,25 @@ const keyMetrics = computed(() => metricsStore.keyMetricsSummary)
 const apiMetrics = computed(() => keyMetrics.value?.api || {
   responseTime: 0,
   errorRate: 0,
-  totalRequests: 0,
-  status: 'good'
+  status: 'good' as const
 })
 
 const cacheMetrics = computed(() => keyMetrics.value?.cache || {
   hitRate: 0,
   responseTime: 0,
-  cacheSize: 0,
-  status: 'good'
+  status: 'good' as const
 })
 
 const memoryMetrics = computed(() => keyMetrics.value?.memory || {
   usage: 0,
   size: '0 B',
-  status: 'good'
+  status: 'good' as const
 })
 
 const uxMetrics = computed(() => keyMetrics.value?.ux || {
   fps: 60,
   lcp: 0,
-  status: 'good'
+  status: 'good' as const
 })
 
 // 警报相关
@@ -698,7 +696,7 @@ function getLcpClass(lcp: number): string {
 }
 
 function getStatusText(status: string): string {
-  const statusTexts = {
+  const statusTexts: Record<string, string> = {
     good: '良好',
     warning: '警告',
     error: '错误',
@@ -708,7 +706,7 @@ function getStatusText(status: string): string {
 }
 
 function getAlertIcon(type: string): string {
-  const icons = {
+  const icons: Record<string, string> = {
     warning: '⚠️',
     error: '❌',
     critical: '🚨'
@@ -717,7 +715,7 @@ function getAlertIcon(type: string): string {
 }
 
 function getMetricDisplayName(metric: string): string {
-  const names = {
+  const names: Record<string, string> = {
     api: 'API 性能',
     cache: '快取性能',
     memory: '内存使用',

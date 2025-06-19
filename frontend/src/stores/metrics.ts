@@ -369,7 +369,7 @@ export const useMetricsStore = defineStore('metrics', () => {
 
     // 更新趨勢方向
     const trend = performanceTrend.value
-    realtimeStatus.trendDirection = trend.direction
+    realtimeStatus.trendDirection = trend.direction as 'improving' | 'stable' | 'degrading'
   }
 
   /**

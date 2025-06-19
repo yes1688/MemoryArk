@@ -252,7 +252,8 @@ export class PerformanceMonitor {
   private updateDOMMetrics(): void {
     const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
     if (navigation) {
-      this.metrics.pageLoad.domContentLoaded = navigation.domContentLoadedEventEnd - navigation.navigationStart
+      // 使用 fetchStart 替代 navigationStart (已废弃)
+      this.metrics.pageLoad.domContentLoaded = navigation.domContentLoadedEventEnd - navigation.fetchStart
     }
   }
 
