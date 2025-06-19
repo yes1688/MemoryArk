@@ -30,6 +30,12 @@ const authStore = useAuthStore()
 const filesStore = useFilesStore()
 const workerCacheStore = useWorkerCacheStore()
 
+// === 核心狀態管理 ===
+const isInitialized = ref(false)
+const isNavigationInProgress = ref(false)
+const lastNavigationTarget = ref<number | null>(null)
+const lastNavigationTime = ref(0)
+
 // 響應式檢測
 const isMobile = ref(false)
 const isTablet = ref(false)
@@ -39,433 +45,206 @@ const updateScreenSize = () => {
   isMobile.value = window.innerWidth < 768
   isTablet.value = window.innerWidth >= 768 && window.innerWidth < 1024
   orientation.value = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait'
-  
-  // 調試日誌
-  console.log('🖥️ Screen size updated:', {
-    width: window.innerWidth,
-    isMobile: isMobile.value,
-    isTablet: isTablet.value,
-    orientation: orientation.value
-  })
 }
-
-onMounted(() => {
-  updateScreenSize()
-  window.addEventListener('resize', updateScreenSize)
-})
-
-// 狀態管理
-const searchQuery = ref('')
-const viewMode = ref<'grid' | 'list'>('grid')
-const showUploadModal = ref(false)
-const showCreateFolderModal = ref(false)
-const showFilePreview = ref(false)
-const selectedFile = ref<FileInfo | null>(null)
-const hoveredFile = ref<FileInfo | null>(null)
-const currentPreviewIndex = ref(-1)
 
 // Worker 快取狀態
 const isDevelopment = process.env.NODE_ENV === 'development'
-const showWorkerStatus = ref(isDevelopment) // 只在開發模式顯示
+const showWorkerStatus = ref(isDevelopment)
 const isWorkerInitialized = ref(false)
-const workerPreloadQueue = ref<Set<number>>(new Set())
+const workerPreloadQueue = ref(new Set<number>())
 
 // 計算屬性
 const files = computed(() => filesStore.files)
 const currentFolder = computed(() => filesStore.currentFolder)
 const breadcrumbs = computed(() => filesStore.breadcrumbs)
-const selectedFiles = computed(() => filesStore.selectedFiles)
 const isLoading = computed(() => filesStore.isLoading)
+const error = computed(() => filesStore.error)
 
 // Worker 相關計算屬性
-const workerStatus = computed(() => workerCacheStore.operationStatus)
-const workerMetrics = computed(() => workerCacheStore.performanceMetrics)
-const isWorkerHealthy = computed(() => workerCacheStore.isHealthy)
+const workerStatus = computed(() => ({
+  ready: workerCacheStore.state.isConnected && !workerCacheStore.state.isInitializing,
+  error: workerCacheStore.state.lastError
+}))
+const workerMetrics = computed(() => ({
+  hitRate: workerCacheStore.state.cacheStatistics.hitRate,
+  cacheSize: workerCacheStore.state.cacheStatistics.currentSize
+}))
+const isWorkerHealthy = computed(() => workerStatus.value.ready && !workerStatus.value.error)
 
-// 篩選檔案
-const filteredFiles = computed(() => {
-  if (!searchQuery.value) return files.value
+// 檔案過濾和UI狀態
+const selectedFiles = ref<FileInfo[]>([])
+const contextMenuVisible = ref(false)
+const contextMenuPosition = ref({ x: 0, y: 0 })
+const contextMenuFile = ref<FileInfo | null>(null)
+const viewMode = ref<'grid' | 'list'>('grid')
+const showUploadModal = ref(false)
+const showCreateFolderModal = ref(false)
+const searchQuery = ref('')
+const selectedFileType = ref<'all' | 'files' | 'folders'>('all')
+const sortBy = ref<'name' | 'date' | 'size'>('name')
+const sortOrder = ref<'asc' | 'desc'>('asc')
+const previewVisible = ref(false)
+const currentPreviewFile = ref<FileInfo | null>(null)
+const hoveredFile = ref<FileInfo | null>(null)
+const currentPreviewIndex = ref(-1)
+
+// === 核心導航邏輯 ===
+
+/**
+ * 穩定的導航系統 - 單一入口點
+ */
+const navigateToFolder = async (targetFolderId: number | null, source: 'route' | 'click' | 'breadcrumb' = 'route') => {
+  const now = Date.now()
   
-  const query = searchQuery.value.toLowerCase()
-  return files.value.filter(file => 
-    file.name.toLowerCase().includes(query)
-  )
-})
-
-// 只包含非目錄檔案的列表（用於預覽導航）
-const previewableFiles = computed(() => {
-  return filteredFiles.value.filter(file => !file.isDirectory)
-})
-
-// 獲取當前URL路徑
-const getCurrentPath = (): string => {
-  const pathMatch = route.params.pathMatch
-  if (typeof pathMatch === 'string') {
-    return pathMatch
-  } else if (Array.isArray(pathMatch)) {
-    return pathMatch.join('/')
+  // 防重複導航 - 500ms 內相同目標
+  if (targetFolderId === lastNavigationTarget.value && (now - lastNavigationTime.value) < 500) {
+    console.log('🚫 防重複導航:', targetFolderId)
+    return
   }
-  return ''
-}
-
-// 根據路徑構建麵包屑，避免額外API調用
-const buildBreadcrumbsFromPath = (pathSegments: string[]) => {
-  const breadcrumbs: BreadcrumbItem[] = [
-    { id: null, name: '檔案', path: '/files' }  // 根目錄路徑
-  ]
   
-  // 為每個路徑段構建完整的嵌套路徑
-  pathSegments.forEach((segment, index) => {
-    // 構建到當前層級的完整路徑，使用絕對路徑
-    const pathToHere = pathSegments.slice(0, index + 1).map(s => encodeURIComponent(s)).join('/')
-    breadcrumbs.push({
-      id: index + 1, // 使用索引作為臨時ID
-      name: decodeURIComponent(segment),
-      path: `/files/${pathToHere}` // 使用完整的絕對路徑
-    })
-  })
+  // 防並發導航
+  if (isNavigationInProgress.value) {
+    console.log('🚫 導航進行中，等待完成')
+    return
+  }
   
-  // 使用store的setBreadcrumbs方法
-  filesStore.setBreadcrumbs(breadcrumbs)
-  console.log('🍞 從路徑構建麵包屑:', breadcrumbs)
-}
-
-// 方法 - 支援嵌套URL的導航邏輯
-const openFile = async (file: FileInfo) => {
-  console.log('🔍 Opening file:', {
-    name: file.name,
-    isDirectory: file.isDirectory,
-    id: file.id,
-    parentId: file.parentId,
-    mimeType: file.mimeType
-  })
-  
-  if (file.isDirectory === true || file.mimeType === 'folder') {
-    // 防止重複點擊
-    if (isNavigating.value) {
-      console.log('⚠️ 正在導航中，忽略點擊')
+  try {
+    isNavigationInProgress.value = true
+    lastNavigationTarget.value = targetFolderId
+    lastNavigationTime.value = now
+    
+    console.log(`🗂️ 開始導航 [${source}]:`, targetFolderId)
+    
+    // 檢查是否已在目標位置且有數據
+    if (targetFolderId === filesStore.currentFolderId && files.value.length > 0) {
+      console.log('✅ 已在目標位置，跳過導航')
       return
     }
     
-    // 構建嵌套URL路徑
-    console.log('📁 Building nested path for folder:', file.id, 'name:', file.name)
-    const currentPath = getCurrentPath()
-    const newPath = currentPath ? `${currentPath}/${encodeURIComponent(file.name)}` : encodeURIComponent(file.name)
+    // 使用 store 的導航方法
+    await filesStore.navigateToFolder(targetFolderId)
     
-    // 優化：直接使用資料夾ID導航，避免路徑解析的額外請求
-    console.log('🛣️ Navigating directly with folder ID:', file.id)
-    
-    // 先設置導航標誌
-    isNavigating.value = true
-    
-    // 設置程式化導航標誌（在 try 外面，確保先設置）
-    isProgrammaticNavigation.value = true
-    
-    try {
-      // 直接使用 store 導航到資料夾
-      // navigateToFolder 會自動構建正確的麵包屑，所以不需要手動構建
-      await filesStore.navigateToFolder(file.id)
-      
-      // 最後更新路由
-      router.push(`/files/${newPath}`)
-      // 不等待 push 完成，讓路由監聽器能看到標誌
-    } catch (error) {
-      console.error('導航失敗:', error)
-      // 如果失敗，立即重置標誌
-      isNavigating.value = false
-      isProgrammaticNavigation.value = false
+    // 觸發 Worker 預載（非阻塞）
+    if (isWorkerInitialized.value && targetFolderId !== null) {
+      nextTick(() => {
+        triggerBackgroundPreload(targetFolderId, 1)
+      })
     }
     
-    // 延遲重置導航標誌，確保路由變化處理完成
-    setTimeout(() => {
-      isNavigating.value = false
-      isProgrammaticNavigation.value = false
-      console.log('🔄 重置導航標誌')
-    }, 300)
-  } else {
-    // 預覽檔案
-    console.log('📄 Setting up preview for file:', file.name)
-    selectedFile.value = file
+    console.log(`✅ 導航完成 [${source}]:`, targetFolderId)
     
-    // 找到當前檔案在可預覽檔案列表中的索引
-    currentPreviewIndex.value = previewableFiles.value.findIndex(f => f.id === file.id)
-    
-    showFilePreview.value = true
-    console.log('🎬 Preview state:', { 
-      showFilePreview: showFilePreview.value, 
-      selectedFile: selectedFile.value?.name,
-      currentIndex: currentPreviewIndex.value,
-      totalPreviewable: previewableFiles.value.length
-    })
-  }
-}
-
-const downloadFile = (file: FileInfo) => {
-  const url = fileApi.downloadFile(file.id)
-  window.open(url, '_blank')
-}
-
-const deleteFile = async (file: FileInfo) => {
-  let confirmMessage = `確定要刪除 "${file.name}" 嗎？`
-  
-  if (file.isDirectory) {
-    confirmMessage += '\n\n⚠️ 警告：這會同時刪除資料夾內的所有檔案和子資料夾！\n此操作會將所有項目移至垃圾桶。'
-  } else {
-    confirmMessage += '\n\n此操作會將檔案移至垃圾桶。'
-  }
-  
-  if (confirm(confirmMessage)) {
-    try {
-      await filesStore.deleteFiles([file.id])
-      
-      // 強制重新加載文件列表以確保UI更新
-      await filesStore.fetchFiles(filesStore.currentFolderId)
-      
-      // 失效 Worker 快取
-      if (isWorkerInitialized.value) {
-        await invalidateFolderCache(filesStore.currentFolderId ?? null)
-        
-        // 如果刪除的是資料夾，也要失效該資料夾的快取
-        if (file.isDirectory) {
-          await invalidateFolderCache(file.id ?? null)
-        }
-      }
-      
-      // 刪除成功後顯示通知
-      if (file.isDirectory) {
-        console.log('資料夾已移至垃圾桶')
-      } else {
-        console.log('檔案已移至垃圾桶')
-      }
-    } catch (error) {
-      console.error('刪除失敗:', error)
-      alert('刪除失敗，請稍後再試')
-    }
-  }
-}
-
-// 根據資料夾ID構建完整路徑字串
-const buildFolderPath = async (folderId: number): Promise<string> => {
-  try {
-    const pathSegments: string[] = []
-    let currentId: number | null = folderId
-    const visitedIds = new Set<number>()
-    
-    // 從目標資料夾往上遍歷，構建完整路徑
-    while (currentId && !visitedIds.has(currentId)) {
-      visitedIds.add(currentId)
-      
-      const response = await fileApi.getFileDetails(currentId)
-      if (response.success && response.data) {
-        const folderData = response.data as any
-        console.log('📁 資料夾詳情:', { id: currentId, name: folderData.name, parent_id: folderData.parent_id })
-        pathSegments.unshift(encodeURIComponent(folderData.name))
-        currentId = folderData.parent_id || null
-      } else {
-        console.error('❌ 無法獲取資料夾詳情:', currentId)
-        break
-      }
-    }
-    
-    console.log('🛣️ 構建的完整路徑:', pathSegments.join('/'))
-    return pathSegments.join('/')
   } catch (error) {
-    console.error('❌ 構建資料夾路徑失敗:', error)
-    return ''
+    console.error(`❌ 導航失敗 [${source}]:`, error)
+    throw error
+  } finally {
+    isNavigationInProgress.value = false
   }
 }
-
-// 基於當前麵包屑構建路徑的替代方法
-const buildPathFromBreadcrumbs = (targetFolderName: string): string => {
-  const currentBreadcrumbs = filesStore.breadcrumbs
-  const pathSegments = currentBreadcrumbs
-    .filter(crumb => crumb.id !== null) // 過濾掉根目錄
-    .map(crumb => encodeURIComponent(crumb.name))
-  
-  // 添加目標資料夾
-  pathSegments.push(encodeURIComponent(targetFolderName))
-  
-  console.log('🍞 基於麵包屑的路徑:', pathSegments.join('/'))
-  return pathSegments.join('/')
-}
-
-const navigateToPath = async (folderId: number | null) => {
-  if (folderId === null) {
-    router.push({ name: 'files' })
-  } else {
-    // 嘗試使用新的路徑模式
-    try {
-      const folderPath = await buildFolderPath(folderId)
-      if (folderPath) {
-        router.push(`/files/${folderPath}`)
-      } else {
-        // 降級到舊的 ID 模式
-        router.push({ name: 'files-folder', params: { folderId: folderId.toString() } })
-      }
-    } catch (error) {
-      console.error('❌ 路徑導航失敗，降級到 ID 模式:', error)
-      router.push({ name: 'files-folder', params: { folderId: folderId.toString() } })
-    }
-  }
-}
-
-// 新的基於路徑的麵包屑導航
-const navigateToBreadcrumbPath = (breadcrumbPath: string) => {
-  if (breadcrumbPath === '/' || breadcrumbPath === '/files') {
-    router.push('/files')
-  } else {
-    // 如果路徑已經是完整的絕對路徑，直接使用
-    // 否則添加 /files 前綴
-    if (breadcrumbPath.startsWith('/files/')) {
-      router.push(breadcrumbPath)
-    } else {
-      const cleanPath = breadcrumbPath.startsWith('/') ? breadcrumbPath.slice(1) : breadcrumbPath
-      router.push(`/files/${cleanPath}`)
-    }
-  }
-}
-
-const formatFileSize = (bytes: number): string => {
-  if (!bytes || bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-const formatDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleDateString('zh-TW', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
-}
-
-const handlePreviewClose = () => {
-  showFilePreview.value = false
-  selectedFile.value = null
-  currentPreviewIndex.value = -1
-}
-
-const handlePreviewDownload = (file: FileInfo) => {
-  downloadFile(file)
-}
-
-// 處理預覽導航
-const handlePreviewNavigate = (direction: 'next' | 'prev') => {
-  if (previewableFiles.value.length === 0) return
-  
-  let newIndex: number
-  if (direction === 'next') {
-    newIndex = (currentPreviewIndex.value + 1) % previewableFiles.value.length
-  } else {
-    newIndex = currentPreviewIndex.value <= 0 
-      ? previewableFiles.value.length - 1 
-      : currentPreviewIndex.value - 1
-  }
-  
-  currentPreviewIndex.value = newIndex
-  selectedFile.value = previewableFiles.value[newIndex]
-  
-  console.log('🔄 Preview navigation:', {
-    direction,
-    newIndex,
-    fileName: selectedFile.value?.name,
-    total: previewableFiles.value.length
-  })
-}
-
-// 處理上傳完成
-const handleUploadComplete = async (results?: UnifiedUploadResult[]) => {
-  console.log('🎉 上傳完成回調觸發')
-  
-  // 如果有統一上傳結果，顯示詳細統計
-  if (results && results.length > 0) {
-    const successCount = results.filter(r => r.success).length
-    const failureCount = results.length - successCount
-    
-    console.log(`📊 上傳統計: 成功 ${successCount}/${results.length} 個檔案`)
-    
-    if (failureCount > 0) {
-      const failedFiles = results.filter(r => !r.success)
-      console.error('❌ 上傳失敗的檔案:', failedFiles.map(f => ({
-        file: f.file,
-        error: f.error
-      })))
-    }
-  }
-  
-  // 重新載入檔案列表
-  try {
-    await filesStore.fetchFiles(filesStore.currentFolderId)
-    console.log('✅ 檔案列表已更新')
-    
-    // 失效 Worker 快取
-    if (isWorkerInitialized.value) {
-      await invalidateFolderCache(filesStore.currentFolderId ?? null)
-    }
-  } catch (error) {
-    console.error('❌ 重新載入檔案列表失敗:', error)
-  }
-}
-
-// Worker 快取整合方法
 
 /**
- * 初始化 Worker 快取系統
+ * 處理路由變化 - 統一路由解析
  */
+const handleRouteChange = async () => {
+  if (!isInitialized.value || isNavigationInProgress.value) {
+    return
+  }
+  
+  let targetFolderId: number | null = null
+  
+  // 解析路由參數
+  if (props.folderId !== undefined) {
+    targetFolderId = props.folderId
+  } else if (route.params.folderId) {
+    const id = parseInt(String(route.params.folderId))
+    targetFolderId = isNaN(id) ? null : id
+  } else if (route.params.pathMatch) {
+    // 路徑模式 - 暫時跳過複雜解析
+    console.log('⚠️ 路徑模式暫時使用根目錄')
+    targetFolderId = null
+  }
+  
+  console.log('📍 路由變化解析:', {
+    propsFolderId: props.folderId,
+    routeFolderId: route.params.folderId,
+    pathMatch: route.params.pathMatch,
+    targetFolderId
+  })
+  
+  await navigateToFolder(targetFolderId, 'route')
+}
+
+/**
+ * 處理資料夾點擊
+ */
+const handleFolderClick = async (folder: FileInfo) => {
+  if (!folder.isDirectory) return
+  
+  try {
+    // 先導航到資料夾
+    await navigateToFolder(folder.id, 'click')
+    
+    // 更新 URL (不觸發路由監聽)
+    const newPath = folder.name || `folder-${folder.id}`
+    await router.push(`/files/${newPath}`)
+    
+  } catch (error) {
+    console.error('❌ 資料夾點擊失敗:', error)
+  }
+}
+
+/**
+ * 處理麵包屑點擊
+ */
+const handleBreadcrumbClick = async (folderId: number | null) => {
+  await navigateToFolder(folderId, 'breadcrumb')
+  
+  // 更新 URL
+  if (folderId === null) {
+    await router.push('/files')
+  } else {
+    await router.push(`/files/folder/${folderId}`)
+  }
+}
+
+// === Worker 快取相關 ===
+
 const initializeWorkerCache = async () => {
   if (isWorkerInitialized.value) return
   
   try {
     console.log('🔧 初始化 Worker 快取系統...')
     
-    // 等待 Worker 準備就緒
     let retries = 0
     const maxRetries = 10
+    const retryDelay = 200
     
-    while (!workerStatus.value.ready && retries < maxRetries) {
-      await new Promise(resolve => setTimeout(resolve, 200))
+    while (retries < maxRetries && !workerStatus.value.ready) {
+      if (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, retryDelay))
+      }
       retries++
     }
     
     if (!workerStatus.value.ready) {
-      console.warn('⚠️ Worker 初始化超時，將繼續但可能影響性能')
+      console.warn('⚠️ Worker 未能在預期時間內準備就緒')
       return
     }
     
-    // 標記為已初始化
     isWorkerInitialized.value = true
-    
-    console.log('✅ Worker 快取系統初始化成功', {
-      ready: workerStatus.value.ready,
-      healthy: isWorkerHealthy.value,
-      metrics: workerMetrics.value
-    })
-    
-    // 初始化成功後，立即預載當前資料夾
-    if (filesStore.currentFolderId !== undefined) {
-      await triggerBackgroundPreload(filesStore.currentFolderId ?? null)
-    }
+    console.log('✅ Worker 快取系統初始化成功')
     
   } catch (error) {
     console.error('❌ Worker 快取系統初始化失敗:', error)
   }
 }
 
-/**
- * 觸發背景預載
- */
-const triggerBackgroundPreload = async (folderId: number | null, priority?: number) => {
+const triggerBackgroundPreload = async (folderId: number | null, priority: number = 2) => {
   if (!isWorkerInitialized.value || !isWorkerHealthy.value) {
-    console.log('⚠️ Worker 未就緒，跳過預載')
     return
   }
   
-  // 避免重複預載
   const preloadKey = folderId || -1
   if (workerPreloadQueue.value.has(preloadKey)) {
-    console.log(`⚠️ 資料夾 ${folderId} 預載已在佇列中`)
     return
   }
   
@@ -484,288 +263,76 @@ const triggerBackgroundPreload = async (folderId: number | null, priority?: numb
   } catch (error) {
     console.error(`❌ 資料夾 ${folderId} 預載錯誤:`, error)
   } finally {
-    // 延遲移除，避免短時間內重複觸發
     setTimeout(() => {
       workerPreloadQueue.value.delete(preloadKey)
     }, 2000)
   }
 }
 
-/**
- * 智能預載相鄰資料夾
- */
-const preloadAdjacentFolders = async () => {
-  if (!isWorkerInitialized.value || !files.value) return
-  
-  // 找出當前檢視中的資料夾
-  const folders = files.value.filter(file => 
-    file.isDirectory === true || file.mimeType === 'folder'
-  )
-  
-  // 預載前3個資料夾（低優先級）
-  for (let i = 0; i < Math.min(3, folders.length); i++) {
-    const folder = folders[i]
-    await triggerBackgroundPreload(folder.id, 2) // 優先級 2 (低)
-    
-    // 避免同時預載太多，間隔 500ms
-    if (i < folders.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 500))
-    }
+// === 檔案操作 ===
+
+const handleFileClick = (file: FileInfo) => {
+  if (file.isDirectory) {
+    handleFolderClick(file)
+  } else {
+    // 處理檔案點擊
+    console.log('📄 檔案點擊:', file.name)
   }
 }
 
-/**
- * 失效資料夾快取
- */
-const invalidateFolderCache = async (folderId: number | null) => {
-  if (!isWorkerInitialized.value || !isWorkerHealthy.value) {
-    return
-  }
-  
+const handleFileDelete = async (file: FileInfo) => {
   try {
-    console.log(`🗑️ 失效資料夾快取: ${folderId}`)
-    const itemsRemoved = await workerCacheStore.invalidateFolder(folderId)
-    console.log(`✅ 已清除 ${itemsRemoved} 個快取項目`)
-  } catch (error) {
-    console.error(`❌ 失效資料夾快取失敗:`, error)
-  }
-}
-
-// 已移除 getFileIcon 函數，改用 AppFileIcon 組件
-
-// 路徑解析函數 - 將資料夾名稱路徑轉換為ID
-const resolveFolderPath = async (pathSegments: string[]): Promise<number | null> => {
-  if (!pathSegments || pathSegments.length === 0) {
-    return null
-  }
-  
-  console.log('🔍 解析資料夾路徑:', pathSegments)
-  
-  // 如果當前已經載入了檔案，檢查是否能在本地找到匹配的資料夾
-  if (filesStore.files.length > 0 && pathSegments.length === 1) {
-    const targetName = decodeURIComponent(pathSegments[0])
-    const localFolder = filesStore.files.find(file => {
-      const isDirectory = file.isDirectory || file.mimeType === 'folder'
-      return isDirectory && file.name === targetName
-    })
+    console.log('🗑️ 刪除檔案:', file.name)
+    await filesStore.deleteFiles([file.id!])
     
-    if (localFolder) {
-      console.log(`✅ 從本地快取找到資料夾: "${targetName}" ID: ${localFolder.id}`)
-      return localFolder.id
-    }
-  }
-  
-  try {
-    let currentFolderId: number | null = null
+    // 重新載入當前資料夾
+    await filesStore.fetchFiles(filesStore.currentFolderId, true)
     
-    // 逐層解析路徑
-    for (const segment of pathSegments) {
-      console.log(`🔍 尋找資料夾: "${segment}" 在父級 ${currentFolderId}`)
-      
-      // 獲取當前層級的檔案列表
-      const response = await fileApi.getFiles(currentFolderId ? { parent_id: currentFolderId } : {})
-      
-      if (response.success && response.data?.files) {
-        console.log(`🔍 在父級 ${currentFolderId} 中找到的檔案:`, response.data.files.map((f: any) => ({ 
-          name: f.name, 
-          is_directory: f.is_directory 
-        })))
-        
-        // 在當前層級尋找匹配的資料夾，使用更寬鬆的匹配邏輯
-        const folder = response.data.files.find((file: any) => {
-          // 檢查是否為資料夾 - 處理不同的欄位名稱
-          const isDirectory = file.is_directory || file.isDirectory || file.mime_type === 'folder'
-          if (!isDirectory) return false
-          
-          const fileName = file.name
-          const searchName = decodeURIComponent(segment)
-          
-          console.log(`🔍 比較資料夾名稱: "${fileName}" vs "${searchName}"`)
-          
-          // 嘗試多種比較方式
-          return fileName === searchName || 
-                 fileName === segment ||
-                 decodeURIComponent(fileName) === searchName ||
-                 encodeURIComponent(fileName) === segment
-        })
-        
-        if (folder) {
-          currentFolderId = folder.id
-          console.log(`✅ 找到資料夾: "${segment}" ID: ${currentFolderId}`)
-        } else {
-          console.warn(`❌ 找不到資料夾: "${segment}"`)
-          return null
-        }
-      } else {
-        console.error('❌ 獲取檔案列表失敗')
-        return null
+    // 失效 Worker 快取
+    if (isWorkerInitialized.value) {
+      await workerCacheStore.invalidateFolder(filesStore.currentFolderId)
+      if (file.isDirectory) {
+        await workerCacheStore.invalidateFolder(file.id)
       }
     }
     
-    return currentFolderId
   } catch (error) {
-    console.error('❌ 路徑解析錯誤:', error)
-    return null
+    console.error('❌ 刪除檔案失敗:', error)
   }
 }
 
-// 簡化導航處理，同時處理麵包屑
-const handleNavigation = async (propsFolderId?: number | null, routeFolderId?: number | null | undefined, folderPath?: string[]) => {
-  // 防止同時進行多個導航
-  if (isNavigating.value) {
-    console.log('⚠️ 導航進行中，跳過重複請求')
-    return
-  }
-  
-  // 如果是程式化導航（點擊資料夾觸發的），直接返回
-  // 因為點擊資料夾時已經在 openFile 中處理了所有邏輯
-  if (isProgrammaticNavigation.value) {
-    console.log('⚠️ 程式化導航已處理，跳過路由導航')
-    return
-  }
-  
-  let targetFolderId: number | null = null
-  
-  // 優先處理路徑模式
-  if (folderPath && folderPath.length > 0) {
-    console.log('🗂️ 使用路徑模式導航:', folderPath)
-    
-    // 先根據路徑構建麵包屑，避免額外的API調用
-    buildBreadcrumbsFromPath(folderPath)
-    
-    targetFolderId = await resolveFolderPath(folderPath)
-    
-    if (!targetFolderId) {
-      console.error('❌ 無法解析路徑:', folderPath)
-      return
-    }
-  } else {
-    targetFolderId = propsFolderId || routeFolderId || null
-  }
-  
-  console.log('🗂️ FilesView 導航處理:', { propsFolderId, routeFolderId, folderPath, targetFolderId })
-  
-  // 防止重複導航到相同資料夾，並檢查檔案是否已載入
-  if (targetFolderId === filesStore.currentFolderId && filesStore.files.length > 0) {
-    console.log('⚠️ 已在目標資料夾且檔案已載入，跳過導航')
-    // 但還是要確保麵包屑正確
-    if (folderPath && folderPath.length > 0) {
-      buildBreadcrumbsFromPath(folderPath)
-    }
-    return
-  }
-  
+const handleUploadComplete = async (result: UnifiedUploadResult) => {
   try {
-    isNavigating.value = true
+    console.log('📤 上傳完成:', result)
     
-    // 使用store的標準導航方法
-    await filesStore.navigateToFolder(targetFolderId)
+    // 重新載入檔案列表
+    await filesStore.fetchFiles(filesStore.currentFolderId, true)
     
-    // 如果是路徑模式，覆蓋麵包屑
-    if (folderPath && folderPath.length > 0 && targetFolderId) {
-      buildBreadcrumbsFromPath(folderPath)
+    // 失效 Worker 快取
+    if (isWorkerInitialized.value) {
+      await workerCacheStore.invalidateFolder(filesStore.currentFolderId)
     }
     
-    // 觸發 Worker 預載（非阻塞）
-    if (isWorkerInitialized.value && targetFolderId !== null) {
-      nextTick(() => {
-        triggerBackgroundPreload(targetFolderId, 1) // 高優先級預載當前資料夾
-        
-        // 延遲預載相鄰資料夾
-        setTimeout(() => {
-          preloadAdjacentFolders()
-        }, 1000)
-      })
-    }
-  } finally {
-    isNavigating.value = false
+  } catch (error) {
+    console.error('❌ 重新載入檔案列表失敗:', error)
   }
 }
 
-// 處理路由變化和初次載入
-const handleRouteChange = async () => {
-  let targetRouteId: number | null = null
-  let folderPath: string[] | undefined = undefined
-  
-  // 處理嵌套路徑
-  if (props.folderPath && props.folderPath.length > 0) {
-    folderPath = props.folderPath
-  } else if (route.params.pathMatch && typeof route.params.pathMatch === 'string') {
-    folderPath = route.params.pathMatch.split('/').filter(Boolean)
-  }
-  
-  // 處理傳統的資料夾 ID
-  const routeFolderId = route.params.folderId
-  if (typeof routeFolderId === 'string') {
-    targetRouteId = parseInt(routeFolderId)
-  } else if (typeof routeFolderId === 'number') {
-    targetRouteId = routeFolderId
-  } else if (Array.isArray(routeFolderId) && routeFolderId[0]) {
-    targetRouteId = parseInt(String(routeFolderId[0]))
-  }
-  
-  console.log('🔄 路由變化處理:', { 
-    propsFolderId: props.folderId, 
-    routeFolderId, 
-    propsPath: props.folderPath, 
-    routePathMatch: route.params.pathMatch,
-    folderPath, 
-    targetRouteId 
-  })
-  
-  await handleNavigation(props.folderId ?? null, targetRouteId, folderPath)
-}
+// === 生命週期 ===
 
-// 追蹤是否正在導航，避免重複請求
-const isNavigating = ref(false)
-
-// 使用 sessionStorage 來跟踪程式化導航狀態，避免組件重新創建時丟失
-const PROGRAMMATIC_NAV_KEY = 'filesView_isProgrammaticNavigation'
-
-// 追蹤是否是程式化導航（點擊資料夾）
-const isProgrammaticNavigation = computed({
-  get: () => sessionStorage.getItem(PROGRAMMATIC_NAV_KEY) === 'true',
-  set: (value) => {
-    if (value) {
-      sessionStorage.setItem(PROGRAMMATIC_NAV_KEY, 'true')
-    } else {
-      sessionStorage.removeItem(PROGRAMMATIC_NAV_KEY)
-    }
+// 監聽路由變化 - 只有一個監聽器
+watch(() => route.fullPath, async () => {
+  if (isInitialized.value) {
+    await handleRouteChange()
   }
 })
 
-// 監聽路由變化
-watch(
-  () => route.fullPath,
-  async (newPath, oldPath) => {
-    console.log('👀 路由變化監聽:', { 
-      newPath, 
-      oldPath, 
-      isProgrammaticNavigation: isProgrammaticNavigation.value,
-      isNavigating: isNavigating.value 
-    })
-    
-    // 如果是程式化導航（點擊資料夾），跳過路由變化處理
-    if (isProgrammaticNavigation.value) {
-      console.log('⚠️ 程式化導航中，跳過路由變化處理')
-      return
-    }
-    
-    // 如果正在導航中，跳過路由變化處理
-    if (isNavigating.value) {
-      console.log('⚠️ 正在導航中，跳過路由變化處理')
-      return
-    }
-    
-    // 如果路徑沒有實質變化，跳過
-    if (newPath === oldPath) {
-      return
-    }
-    
+// 監聽 props 變化
+watch(() => props.folderId, async () => {
+  if (isInitialized.value) {
     await handleRouteChange()
-  },
-  { immediate: true }
-)
+  }
+})
 
 onMounted(async () => {
   updateScreenSize()
@@ -774,816 +341,353 @@ onMounted(async () => {
   // 初始化 Worker 快取系統
   await initializeWorkerCache()
   
-  // 組件掛載時，如果不是從點擊資料夾來的，清除標誌
-  if (!isProgrammaticNavigation.value) {
-    console.log('🧹 組件掛載，清理導航標誌')
-  }
+  // 標記為已初始化
+  isInitialized.value = true
+  
+  // 處理初始路由
+  await handleRouteChange()
 })
 
-// 組件卸載時清理
 onUnmounted(() => {
   window.removeEventListener('resize', updateScreenSize)
-  // 清理標誌，避免影響其他導航
-  if (isProgrammaticNavigation.value) {
-    isProgrammaticNavigation.value = false
-    console.log('🧹 組件卸載，清理導航標誌')
-  }
 })
+
+// 格式化檔案大小
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+// 格式化日期
+const formatDate = (dateString: string): string => {
+  return new Date(dateString).toLocaleDateString('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 </script>
 
-<style scoped>
-/* 觸控友善的樣式 */
-.touch-target {
-  min-height: 44px;
-  min-width: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 手機版特定樣式 */
-@media (max-width: 767px) {
-  .files-header {
-    padding: var(--space-3) !important;
-  }
-  
-  .breadcrumbs {
-    margin-bottom: var(--space-3) !important;
-  }
-  
-  .toolbar {
-    gap: var(--space-3) !important;
-  }
-  
-  .view-btn {
-    padding: var(--space-2) !important;
-  }
-  
-  .file-row {
-    border-radius: var(--radius-lg);
-  }
-  
-  .search-input {
-    font-size: 16px !important; /* 防止 iOS 縮放 */
-  }
-  
-  /* 網格置中 */
-  .files-grid {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .files-list {
-    width: 100%;
-    max-width: 100%;
-  }
-}
-
-/* 平板版特定樣式 */
-@media (min-width: 768px) and (max-width: 1023px) {
-  .files-grid {
-    gap: var(--space-3);
-  }
-}
-
-/* 觸控設備特定樣式 */
-@media (hover: none) and (pointer: coarse) {
-  .hover\:underline:hover {
-    text-decoration: none;
-  }
-  
-  /* Jobs 風格的觸控回饋 */
-  .mobile-tap-effect:active {
-    transform: scale(0.98);
-    transition: transform 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
-    background: var(--bg-tertiary) !important;
-  }
-  
-  .mobile-action-btn:active {
-    transform: scale(0.92);
-    background: var(--color-primary-light) !important;
-  }
-  
-  .action-btn:active {
-    transform: scale(0.95);
-    transition: transform 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
-  }
-  
-  .toggle-btn:active {
-    transform: scale(0.95);
-  }
-}
-
-/* 統一檔案網格樣式 - 桌面檔案管理器風格 */
-.unified-files-grid {
-  /* 確保所有檔案卡片左上角對齊 */
-  justify-items: start;
-  align-items: start;
-  align-content: start;
-}
-
-/* 檔案卡片包裝器 */
-.file-item-wrapper {
-  width: 100%;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-}
-
-/* 手機版優化 */
-@media (max-width: 767px) {
-  .unified-files-grid {
-    padding: 12px !important;
-    gap: 8px !important;
-  }
-  
-  .file-item-wrapper {
-    justify-content: center; /* 手機版檔案卡片居中 */
-  }
-}
-
-/* 平板版優化 */
-@media (min-width: 768px) and (max-width: 1023px) {
-  .unified-files-grid {
-    padding: 14px !important;
-    gap: 12px !important;
-  }
-}
-</style>
-
 <template>
-  <div class="files-view h-full flex flex-col" style="background: var(--bg-primary);">
-    <!-- 手機版頂部標題欄 -->
-    <header v-if="isMobile" class="mobile-header" style="
-      background: var(--bg-elevated);
-      border-bottom: 1px solid var(--border-light);
-      padding: max(env(safe-area-inset-top), 8px) 16px 8px 16px;
-    ">
-      <!-- 麵包屑導航 -->
-      <div class="mobile-breadcrumbs flex items-center gap-1 mb-3 overflow-x-auto">
-        <template v-for="(crumb, index) in breadcrumbs" :key="crumb.id || index">
-          <span v-if="index > 0" class="text-sm shrink-0" style="color: var(--text-tertiary);">/</span>
-          <button
-            @click="navigateToBreadcrumbPath(crumb.path)"
-            class="text-sm font-medium whitespace-nowrap touch-target shrink-0"
-            style="color: var(--text-primary); min-height: 32px; padding: 4px 8px; border-radius: 6px;"
-            :style="{ 
-              background: index === breadcrumbs.length - 1 ? 'var(--bg-tertiary)' : 'transparent',
-              fontWeight: index === breadcrumbs.length - 1 ? '600' : '500'
-            }"
-          >
-            {{ crumb.name }}
-          </button>
-        </template>
-      </div>
-
-      <!-- 搜尋欄 -->
-      <div class="mobile-search relative mb-3">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="搜尋檔案和資料夾..."
-          class="w-full px-4 py-3 pl-10"
-          style="
-            background: var(--bg-tertiary);
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            color: var(--text-primary);
-          "
+  <div class="files-view-container">
+    <!-- 麵包屑導航 -->
+    <div class="breadcrumb-section" v-if="breadcrumbs.length > 0">
+      <nav class="breadcrumb-nav">
+        <button 
+          v-for="(crumb, index) in breadcrumbs" 
+          :key="crumb.id || 'root'"
+          @click="handleBreadcrumbClick(crumb.id)"
+          class="breadcrumb-item"
+          :class="{ 'active': index === breadcrumbs.length - 1 }"
         >
-        <svg 
-          class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
-          style="color: var(--text-tertiary);"
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-        </svg>
-      </div>
+          {{ crumb.name }}
+          <span v-if="index < breadcrumbs.length - 1" class="separator">/</span>
+        </button>
+      </nav>
+    </div>
 
-      <!-- 操作按鈕組 -->
-      <div class="mobile-actions flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <button
-            @click="showUploadModal = true"
-            class="action-btn primary"
-            style="
-              background: var(--color-primary);
-              color: white;
-              border: none;
-              padding: 10px 16px;
-              border-radius: 20px;
-              font-size: 14px;
-              font-weight: 600;
-              display: flex;
-              align-items: center;
-              gap: 6px;
-            "
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            上傳
-          </button>
-          
-          <button
-            @click="showCreateFolderModal = true"
-            class="action-btn secondary"
-            style="
-              background: var(--bg-tertiary);
-              color: var(--text-primary);
-              border: none;
-              padding: 10px 16px;
-              border-radius: 20px;
-              font-size: 14px;
-              font-weight: 600;
-              display: flex;
-              align-items: center;
-              gap: 6px;
-            "
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-            </svg>
-            新增
-          </button>
-        </div>
-
-        <!-- 檢視模式切換 -->
-        <div class="view-toggle" style="
-          background: var(--bg-tertiary);
-          border-radius: 20px;
-          padding: 2px;
-          display: flex;
-        ">
-          <button
-            @click="viewMode = 'grid'"
-            class="toggle-btn"
-            :style="{
-              background: viewMode === 'grid' ? 'var(--color-primary)' : 'transparent',
-              color: viewMode === 'grid' ? 'white' : 'var(--text-secondary)',
-              border: 'none',
-              padding: '8px 12px',
-              borderRadius: '18px',
-              fontSize: '12px',
-              fontWeight: '600',
-              transition: 'all 0.2s ease'
-            }"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-            </svg>
-          </button>
-          <button
-            @click="viewMode = 'list'"
-            class="toggle-btn"
-            :style="{
-              background: viewMode === 'list' ? 'var(--color-primary)' : 'transparent',
-              color: viewMode === 'list' ? 'white' : 'var(--text-secondary)',
-              border: 'none',
-              padding: '8px 12px',
-              borderRadius: '18px',
-              fontSize: '12px',
-              fontWeight: '600',
-              transition: 'all 0.2s ease'
-            }"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-    </header>
-
-    <!-- 桌面版頂部導航 -->
-    <header v-else class="desktop-header" style="background: var(--bg-elevated); border-bottom: 1px solid var(--border-light); padding: var(--space-4);">
-      <!-- 麵包屑導航 -->
-      <div class="breadcrumbs flex items-center gap-1 sm:gap-2 mb-4 overflow-x-auto">
-        <template v-for="(crumb, index) in breadcrumbs" :key="crumb.id || index">
-          <span v-if="index > 0" class="text-xs sm:text-sm shrink-0" style="color: var(--text-tertiary);">/</span>
-          <button
-            @click="navigateToBreadcrumbPath(crumb.path)"
-            class="text-xs sm:text-sm hover:underline whitespace-nowrap touch-target shrink-0"
-            style="color: var(--text-secondary); min-height: 32px; padding: var(--space-1) var(--space-2);"
-          >
-            {{ crumb.name }}
-          </button>
-        </template>
+    <!-- 工具列 -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <button @click="showUploadModal = true" class="btn-primary">
+          上傳檔案
+        </button>
+        <button @click="showCreateFolderModal = true" class="btn-secondary">
+          新增資料夾
+        </button>
       </div>
       
-      <!-- 工具欄 -->
-      <div class="toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <!-- 左側操作 -->
-        <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
-          <MinimalButton
-            variant="primary"
-            size="small"
-            @click="showUploadModal = true"
-            class="touch-target"
-          >
-            <template #icon-left>
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-              </svg>
-            </template>
-            上傳
-          </MinimalButton>
-          
-          <MinimalButton
-            variant="secondary"
-            size="small"
-            @click="showCreateFolderModal = true"
-            class="touch-target"
-          >
-            <template #icon-left>
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-              </svg>
-            </template>
-            新資料夾
-          </MinimalButton>
-        </div>
-        
-        <!-- 右側工具 -->
-        <div class="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-          <!-- 搜尋框 -->
-          <div class="search-box relative flex-1 sm:flex-none">
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="搜尋檔案..."
-              class="search-input w-full sm:w-60 lg:w-80"
-              style="
-                padding: var(--space-2) var(--space-3);
-                padding-left: 36px;
-                background: var(--bg-tertiary);
-                border: 1px solid var(--border-light);
-                border-radius: var(--radius-full);
-                font-size: var(--text-sm);
-                color: var(--text-primary);
-                transition: all var(--duration-fast) var(--ease-smooth);
-                min-height: 44px;
-              "
-            >
-            <svg 
-              class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4"
-              style="color: var(--text-tertiary);"
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-          </div>
-          
-          <!-- 檢視模式切換 -->
-          <div class="view-toggle flex items-center shrink-0" style="background: var(--bg-tertiary); border-radius: var(--radius-full); padding: 2px;">
-            <button
-              @click="viewMode = 'grid'"
-              class="view-btn touch-target"
-              :class="{ active: viewMode === 'grid' }"
-              style="
-                padding: var(--space-2);
-                border-radius: var(--radius-full);
-                transition: all var(--duration-fast) var(--ease-smooth);
-                min-width: 44px;
-                min-height: 44px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-              "
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-              </svg>
-            </button>
-            <button
-              @click="viewMode = 'list'"
-              class="view-btn touch-target"
-              :class="{ active: viewMode === 'list' }"
-              style="
-                padding: var(--space-2);
-                border-radius: var(--radius-full);
-                transition: all var(--duration-fast) var(--ease-smooth);
-                min-width: 44px;
-                min-height: 44px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-              "
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
-              </svg>
-            </button>
-          </div>
-        </div>
+      <div class="toolbar-right">
+        <input 
+          v-model="searchQuery" 
+          placeholder="搜尋檔案..."
+          class="search-input"
+        />
+        <select v-model="viewMode" class="view-mode-select">
+          <option value="grid">網格檢視</option>
+          <option value="list">清單檢視</option>
+        </select>
       </div>
-    </header>
-    
-    <!-- 檔案內容區 -->
-    <main class="files-content flex-1 overflow-auto" 
-          :style="{
-            padding: isMobile ? '16px' : 'var(--space-6)',
-            paddingBottom: isMobile ? '100px' : 'var(--space-6)',
-            background: 'var(--bg-primary)',
-            maxWidth: isMobile ? '100%' : 'none',
-            margin: '0 auto'
-          }">
-      <!-- 載入中 -->
-      <div v-if="isLoading" class="loading-state flex items-center justify-center h-64">
-        <div class="spinner animate-spin rounded-full h-12 w-12 border-b-2" style="border-color: var(--color-primary);"></div>
-      </div>
-      
-      <!-- 空狀態 -->
-      <div v-else-if="filteredFiles.length === 0" class="empty-state flex flex-col items-center justify-center h-64">
-        <div class="empty-icon mb-4" style="color: var(--text-tertiary);">
-          <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z"/>
-          </svg>
-        </div>
-        <p class="text-lg" style="color: var(--text-secondary);">{{ searchQuery ? '找不到符合的檔案' : '此資料夾是空的' }}</p>
-        <p class="text-sm mt-1" style="color: var(--text-tertiary);">{{ searchQuery ? '試試其他關鍵字' : '開始上傳一些檔案吧' }}</p>
-      </div>
-      
-      <!-- 網格視圖 - 統一桌面檔案管理器風格 -->
-      <div v-else-if="viewMode === 'grid'" 
-           class="unified-files-grid"
-           :style="{
-             display: 'grid',
-             gridTemplateColumns: isMobile 
-               ? 'repeat(2, 1fr)'
-               : isTablet 
-                 ? 'repeat(4, 1fr)'
-                 : 'repeat(6, 1fr)',
-             gap: isMobile ? '12px' : isTablet ? '16px' : '20px',
-             padding: '20px',
-             margin: '0',
-             justifyContent: 'start',
-             alignItems: 'start',
-             justifyItems: 'start',
-             alignContent: 'start',
-             width: '100%'
-           }">
-        <div 
-          v-for="(file, index) in filteredFiles" 
+    </div>
+
+    <!-- 載入狀態 -->
+    <div v-if="isLoading" class="loading-container">
+      <div class="loading-spinner"></div>
+      <p>載入中...</p>
+    </div>
+
+    <!-- 錯誤訊息 -->
+    <div v-else-if="error" class="error-container">
+      <p class="error-message">{{ error }}</p>
+      <button @click="handleRouteChange()" class="btn-retry">
+        重試
+      </button>
+    </div>
+
+    <!-- 檔案列表 -->
+    <div v-else-if="files.length > 0" class="files-container">
+      <div :class="['files-grid', { 'list-view': viewMode === 'list' }]">
+        <FileCard
+          v-for="file in files"
           :key="file.id"
-          class="file-item-wrapper"
-          :style="{
-            animationDelay: `${index * 50}ms`,
-            transform: 'translateY(0)',
-            opacity: '1',
-            width: '100%',
-            minHeight: 'fit-content'
-          }"
-        >
-          <FileCard
-            :file="file"
-            mode="files"
-            :hovered-file="hoveredFile"
-            @click="openFile"
-            @hover="hoveredFile = $event"
-            @download="downloadFile"
-            @delete="deleteFile"
-            :style="{
-              borderRadius: isMobile ? '16px' : '12px',
-              overflow: 'hidden',
-              transition: 'all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)'
-            }"
-          />
-        </div>
+          :file="file"
+          :mode="'files'"
+          @click="handleFileClick(file)"
+          @delete="handleFileDelete(file)"
+        />
       </div>
-      
-      <!-- 列表視圖 -->
-      <div v-else class="files-list" :style="{ gap: isMobile ? '8px' : '12px' }">
-        <div
-          v-for="(file, index) in filteredFiles"
-          :key="file.id"
-          @click="openFile(file)"
-          class="file-row flex items-center cursor-pointer touch-target mobile-tap-effect"
-          :class="{ 'hover:bg-gray-50 dark:hover:bg-gray-800': !isMobile }"
-          :style="{
-            background: 'var(--bg-elevated)',
-            transition: 'all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)',
-            minHeight: isMobile ? '72px' : '60px',
-            padding: isMobile ? '16px 12px' : 'var(--space-3)',
-            borderRadius: isMobile ? '16px' : '12px',
-            marginBottom: isMobile ? '8px' : '4px',
-            boxShadow: isMobile ? '0 1px 3px rgba(0, 0, 0, 0.06)' : 'none',
-            animationDelay: `${index * 30}ms`,
-            transform: 'translateY(0)',
-            opacity: '1'
-          }"
-        >
-          <div class="file-icon mr-4">
-            <AppFileIcon 
-              :mime-type="file.mimeType"
-              :file-name="file.name"
-              :is-directory="file.isDirectory"
-              :thumbnail-url="file.thumbnailUrl"
-              size="md"
-            />
-          </div>
-          <div class="file-info flex-1">
-            <h4 class="text-sm font-medium" style="color: var(--text-primary);">{{ file.name }}</h4>
-            <p class="text-xs" style="color: var(--text-tertiary);">
-              {{ formatDate(file.updatedAt) }} · {{ file.isDirectory ? '資料夾' : formatFileSize(file.size) }}
-            </p>
-          </div>
-          <div class="file-actions flex" :style="{ gap: isMobile ? '4px' : '8px' }">
-            <button
-              v-if="!file.isDirectory"
-              @click.stop="downloadFile(file)"
-              class="mobile-action-btn"
-              :style="{
-                padding: isMobile ? '10px' : '8px',
-                borderRadius: isMobile ? '12px' : '8px',
-                background: 'var(--bg-tertiary)',
-                border: 'none',
-                color: 'var(--text-secondary)',
-                transition: 'all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1)',
-                minWidth: isMobile ? '44px' : 'auto',
-                minHeight: isMobile ? '44px' : 'auto',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }"
-              title="下載"
-            >
-              <svg :style="{ width: isMobile ? '20px' : '16px', height: isMobile ? '20px' : '16px' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-              </svg>
-            </button>
-            <button
-              @click.stop="deleteFile(file)"
-              class="mobile-action-btn"
-              :style="{
-                padding: isMobile ? '10px' : '8px',
-                borderRadius: isMobile ? '12px' : '8px',
-                background: 'var(--bg-tertiary)',
-                border: 'none',
-                color: 'var(--color-danger)',
-                transition: 'all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1)',
-                minWidth: isMobile ? '44px' : 'auto',
-                minHeight: isMobile ? '44px' : 'auto',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }"
-              title="刪除"
-            >
-              <svg :style="{ width: isMobile ? '20px' : '16px', height: isMobile ? '20px' : '16px' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-              </svg>
-            </button>
-          </div>
-        </div>
+    </div>
+
+    <!-- 空狀態 -->
+    <div v-else class="empty-container">
+      <div class="empty-icon">📁</div>
+      <h3>此資料夾是空的</h3>
+      <p>開始上傳檔案或建立新資料夾</p>
+      <button @click="showUploadModal = true" class="btn-primary">
+        上傳第一個檔案
+      </button>
+    </div>
+
+    <!-- Worker 狀態面板 (開發模式) -->
+    <div v-if="showWorkerStatus && isDevelopment" class="worker-status-panel">
+      <div class="worker-status-header">
+        <h4>🔧 Worker 快取狀態</h4>
+        <button @click="showWorkerStatus = false">✕</button>
       </div>
-    </main>
-    
-    <!-- 模態窗口 -->
-    <UploadModal
-      v-if="showUploadModal"
-      :is-visible="showUploadModal"
-      :current-folder-id="filesStore.currentFolderId"
-      @close="showUploadModal = false"
-      @uploaded="handleUploadComplete"
-      @upload-complete="handleUploadComplete"
-    />
-    
-    <CreateFolderModal
-      v-if="showCreateFolderModal"
-      :is-visible="showCreateFolderModal"
-      :current-folder-id="filesStore.currentFolderId"
-      @close="showCreateFolderModal = false"
-      @created="showCreateFolderModal = false"
-    />
-    
-    <!-- 檔案預覽 -->
-    <AppFilePreview
-      :visible="showFilePreview"
-      :file="selectedFile"
-      :file-list="previewableFiles"
-      :current-index="currentPreviewIndex"
-      @update:visible="handlePreviewClose"
-      @download="handlePreviewDownload"
-      @navigate="handlePreviewNavigate"
-    />
-    
-    <!-- 開發模式 Worker 狀態顯示 -->
-    <div v-if="showWorkerStatus" 
-         class="fixed bottom-4 right-4 z-50 max-w-sm">
-      <div class="worker-status-panel" style="
-        background: var(--bg-elevated);
-        border: 1px solid var(--border-light);
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: var(--shadow-lg);
-        font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-      ">
-        <!-- 標題列 -->
-        <div class="flex items-center justify-between mb-3">
-          <h4 class="text-sm font-semibold" style="color: var(--text-primary);">
-            🔧 Worker 快取狀態
-          </h4>
-          <button 
-            @click="showWorkerStatus = false"
-            class="text-xs px-2 py-1 rounded"
-            style="background: var(--bg-tertiary); color: var(--text-secondary);"
-          >
-            ✕
-          </button>
+      <div class="worker-status-content">
+        <div class="status-row">
+          <span>狀態:</span>
+          <span :class="['status-badge', { 'ready': isWorkerHealthy }]">
+            {{ isWorkerHealthy ? '正常' : '離線' }}
+          </span>
         </div>
-        
-        <!-- 狀態指示器 -->
-        <div class="status-grid grid grid-cols-2 gap-2 mb-3 text-xs">
-          <div class="status-item">
-            <span style="color: var(--text-tertiary);">狀態:</span>
-            <span :style="{ 
-              color: isWorkerHealthy ? 'var(--color-success)' : 'var(--color-danger)' 
-            }">
-              {{ isWorkerHealthy ? '🟢 健康' : '🔴 異常' }}
-            </span>
-          </div>
-          <div class="status-item">
-            <span style="color: var(--text-tertiary);">就緒:</span>
-            <span :style="{ 
-              color: workerStatus.ready ? 'var(--color-success)' : 'var(--color-warning)' 
-            }">
-              {{ workerStatus.ready ? '✅' : '⏳' }}
-            </span>
-          </div>
-          <div class="status-item">
-            <span style="color: var(--text-tertiary);">工作中:</span>
-            <span style="color: var(--text-secondary);">
-              {{ workerStatus.working ? '🔄' : '💤' }}
-            </span>
-          </div>
-          <div class="status-item">
-            <span style="color: var(--text-tertiary);">待處理:</span>
-            <span style="color: var(--text-secondary);">
-              {{ workerStatus.pendingOps }}
-            </span>
-          </div>
+        <div class="status-row">
+          <span>命中率:</span>
+          <span>{{ Math.round((workerMetrics.hitRate || 0) * 100) }}%</span>
         </div>
-        
-        <!-- 性能指標 -->
-        <div class="metrics-grid text-xs space-y-1">
-          <div class="metric-row flex justify-between">
-            <span style="color: var(--text-tertiary);">命中率:</span>
-            <span style="color: var(--text-primary);">
-              {{ workerMetrics.hitRate?.toFixed(1) || '0' }}%
-            </span>
-          </div>
-          <div class="metric-row flex justify-between">
-            <span style="color: var(--text-tertiary);">響應時間:</span>
-            <span style="color: var(--text-primary);">
-              {{ workerMetrics.averageResponseTime?.toFixed(1) || '0' }}ms
-            </span>
-          </div>
-          <div class="metric-row flex justify-between">
-            <span style="color: var(--text-tertiary);">操作數:</span>
-            <span style="color: var(--text-primary);">
-              {{ workerMetrics.totalOperations || 0 }}
-            </span>
-          </div>
-          <div class="metric-row flex justify-between">
-            <span style="color: var(--text-tertiary);">快取大小:</span>
-            <span style="color: var(--text-primary);">
-              {{ workerMetrics.cacheSize || 0 }}
-            </span>
-          </div>
-        </div>
-        
-        <!-- 預載佇列 -->
-        <div v-if="workerPreloadQueue.size > 0" class="mt-3 pt-3" 
-             style="border-top: 1px solid var(--border-light);">
-          <div class="text-xs" style="color: var(--text-tertiary);">
-            預載佇列: {{ workerPreloadQueue.size }} 項
-          </div>
-        </div>
-        
-        <!-- Worker Store 錯誤狀態 -->
-        <div v-if="workerCacheStore.state.lastError" class="mt-3 pt-3"
-             style="border-top: 1px solid var(--border-light);">
-          <div class="text-xs" style="color: var(--color-danger);">
-            ❌ {{ workerCacheStore.state.lastError }}
-          </div>
+        <div class="status-row">
+          <span>快取大小:</span>
+          <span>{{ workerMetrics.cacheSize || 0 }}</span>
         </div>
       </div>
     </div>
+
+    <!-- Modals -->
+    <UploadModal 
+      :is-visible="showUploadModal"
+      @close="showUploadModal = false"
+      @upload-complete="(results) => results.forEach(handleUploadComplete)"
+    />
+    
+    <CreateFolderModal
+      :is-visible="showCreateFolderModal"
+      @close="showCreateFolderModal = false"
+      @created="handleRouteChange"
+    />
   </div>
 </template>
 
 <style scoped>
-/* 搜尋框聚焦效果 */
-.search-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  background: var(--bg-primary);
+.files-view-container {
+  min-height: 100vh;
+  padding: 1rem;
 }
 
-/* 檢視模式按鈕 */
-.view-btn {
-  color: var(--text-tertiary);
+.breadcrumb-section {
+  margin-bottom: 1rem;
 }
 
-.view-btn.active {
-  background: var(--bg-primary);
-  color: var(--color-primary);
+.breadcrumb-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-/* 檔案卡片效果 */
-.file-card {
-  position: relative;
+.breadcrumb-item {
+  background: none;
+  border: none;
+  color: #4f46e5;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
 }
 
-.file-card:hover {
-  border-color: var(--color-primary);
+.breadcrumb-item:hover {
+  background-color: #f3f4f6;
 }
 
-/* 快速操作按鈕 */
-.action-btn {
-  transition: all var(--duration-fast) var(--ease-smooth);
+.breadcrumb-item.active {
+  color: #6b7280;
+  cursor: default;
 }
 
-.action-btn:hover {
-  transform: scale(1.1);
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 1rem;
 }
 
-/* 列表項目懸停 */
-.file-row:hover {
-  box-shadow: var(--shadow-sm);
+.toolbar-left {
+  display: flex;
+  gap: 0.5rem;
 }
 
-/* 載入動畫 */
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.toolbar-right {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
-.animate-spin {
+.btn-primary, .btn-secondary, .btn-retry {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background-color: #4f46e5;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #4338ca;
+}
+
+.btn-secondary {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.btn-secondary:hover {
+  background-color: #e5e7eb;
+}
+
+.search-input {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  min-width: 200px;
+}
+
+.view-mode-select {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+}
+
+.loading-container, .error-container, .empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid #f3f4f6;
+  border-top: 2px solid #4f46e5;
+  border-radius: 50%;
   animation: spin 1s linear infinite;
 }
 
-/* Jobs 風格的進場動畫 */
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+.error-message {
+  color: #dc2626;
+  margin-bottom: 1rem;
 }
 
-.file-item-wrapper {
-  animation: slideInUp 0.4s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
-  opacity: 0;
-  transform: translateY(20px);
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
 }
 
-.file-row {
-  animation: fadeInScale 0.3s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
-  opacity: 0;
-  transform: scale(0.95);
+.files-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
 }
 
-/* 手機版特殊效果 */
-@media (max-width: 767px) {
-  .files-grid .file-item-wrapper {
-    animation-duration: 0.5s;
+.files-grid.list-view {
+  grid-template-columns: 1fr;
+}
+
+.worker-status-panel {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  min-width: 250px;
+}
+
+.worker-status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.worker-status-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.status-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.ready {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
   }
   
-  .mobile-header {
-    animation: fadeInScale 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+  .toolbar-right {
+    justify-content: stretch;
   }
   
-  /* iOS 風格的彈性滾動 */
-  .files-content {
-    -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
+  .search-input {
+    min-width: unset;
+    flex: 1;
   }
   
-  /* 改善滑動手感 */
-  .files-content::-webkit-scrollbar {
-    display: none;
+  .files-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
 }
 </style>
