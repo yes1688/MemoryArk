@@ -252,7 +252,6 @@ func (h *AdminHandler) GetRegistrations(c *gin.Context) {
 			"email":             reg.Email,
 			"name":              reg.Name,
 			"phone":             reg.Phone,
-			"rejection_reason":  reg.RejectionReason,
 			"status":            reg.Status,
 			"created_at":        reg.CreatedAt,
 			"processed_at":      reg.ProcessedAt,
