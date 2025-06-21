@@ -58,7 +58,7 @@ const loadVersesData = async (): Promise<VersesData> => {
   if (versesData.value) return versesData.value
   
   try {
-    const response = await import('@/assets/verses.json')
+    const response = await import('@/data/verses.json')
     versesData.value = response.default as VersesData
     return versesData.value
   } catch (error) {
