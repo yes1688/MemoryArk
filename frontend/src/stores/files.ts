@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { fileApi as filesApi } from '@/api/files'
 import { globalCache, CacheKeyGenerator } from '@/utils/cache'
+import { navigationCache } from '@/utils/navigation-cache'
 import type { 
   FileInfo, 
   FileShare, 
@@ -38,7 +39,8 @@ export const useFilesStore = defineStore('files', () => {
   const duplicateFiles = ref<DuplicateFile[]>([])
   const isDuplicateScanning = ref(false)
   
-  // 導航狀態管理
+  // 🚀 ID 驅動導航狀態管理
+  const idChain = ref<number[]>([])  // ID 鏈：[350, 378, 391] 代表 level1/level2-1/level3-2
   const navigationState = ref<{
     currentNavigation: number | null
     isNavigating: boolean
@@ -120,6 +122,19 @@ export const useFilesStore = defineStore('files', () => {
         
         files.value = transformedFiles
         
+        // 🔥 更新導航快取：從檔案列表中收集資料夾信息
+        transformedFiles
+          .filter(file => file.isDirectory === true)
+          .forEach(folder => {
+            if (folder.id) {
+              navigationCache.addFolder({
+                id: folder.id,
+                name: folder.name,
+                parentId: folderId || null
+              })
+            }
+          })
+        
         // 快取結果（如果啟用快取）
         if (cacheEnabled.value) {
           const cacheData = {
@@ -130,7 +145,7 @@ export const useFilesStore = defineStore('files', () => {
               timestamp: Date.now()
             }
           }
-          globalCache.set(cacheKey, cacheData, 5 * 60 * 1000) // 5分鐘 TTL
+          globalCache.set(cacheKey, cacheData, 15 * 60 * 1000) // 15分鐘 TTL
           console.log(`💾 fetchFiles Cache SET: ${cacheKey}`)
         }
         
@@ -508,9 +523,16 @@ export const useFilesStore = defineStore('files', () => {
     selectedFiles.value = []
   }
 
-  // 導航到資料夾
-  const navigateToFolder = async (folderId?: number | null): Promise<void> => {
+  // 🚀 ID 驅動導航到資料夾
+  const navigateToFolder = async (folderId?: number | null, options: { updateURL?: boolean; updateIdChain?: boolean } = {}): Promise<void> => {
+    const { updateURL = true, updateIdChain: shouldUpdateIdChain = true } = options
     try {
+      console.log('🚀 ID 驅動導航:', { 
+        目標ID: folderId, 
+        當前ID: currentFolderIdValue.value,
+        當前ID鏈: idChain.value 
+      })
+      
       // 防重複導航機制
       const currentTime = Date.now()
       const sameFolder = folderId === currentFolderIdValue.value
@@ -524,18 +546,23 @@ export const useFilesStore = defineStore('files', () => {
         let hasCachedFiles = false
         
         if (cacheEnabled.value) {
-          const cacheKey = CacheKeyGenerator.files(folderId, { 
-            folderId: folderId || null, 
-            sortBy: 'name', 
-            sortOrder: 'asc' 
-          })
+          // 使用與 fetchFiles 相同的快取鍵格式
+          const params: { parent_id?: number } = {}
+          if (folderId !== undefined && folderId !== null) {
+            params.parent_id = folderId
+          }
+          const cacheKey = CacheKeyGenerator.files(folderId, params)
           hasCachedFiles = globalCache.has(cacheKey)
         }
         
-        if (hasLocalFiles || hasCachedFiles) {
+        // 🚀 檢查導航快取是否可以提供路徑信息
+        const hasNavigationCache = folderId ? navigationCache.canDirectNavigate(folderId) : false
+        
+        if (hasLocalFiles || hasCachedFiles || hasNavigationCache) {
           console.log('⚠️ Store: 已在目標資料夾且有檔案數據或快取，跳過導航', {
             hasLocalFiles,
-            hasCachedFiles
+            hasCachedFiles,
+            hasNavigationCache
           })
           return
         }
@@ -563,9 +590,11 @@ export const useFilesStore = defineStore('files', () => {
       if (folderId) {
         // 嘗試從當前檔案列表中找到資料夾信息
         folderInfo = files.value.find(f => f.id === folderId && f.isDirectory) || null
+        console.log('📁 嘗試從當前檔案列表獲取資料夾信息:', folderInfo ? `找到 ${folderInfo.name}` : '未找到')
         
-        // 如果找不到，通過 API 獲取資料夾詳細信息
-        if (!folderInfo) {
+        // 如果仍然找不到，通過 API 獲取資料夾詳細信息
+        // 對於麵包屑導航（!shouldUpdateIdChain），總是嘗試API確保獲取正確的資料夾信息
+        if (!folderInfo || !shouldUpdateIdChain) {
           try {
             const response = await filesApi.getFileDetails(folderId)
             if (response.success && response.data && (response.data as any).is_directory) {
@@ -595,23 +624,9 @@ export const useFilesStore = defineStore('files', () => {
             }
           } catch (err) {
             console.warn('無法獲取資料夾詳細信息:', err)
-            // 使用默認信息作為後備
-            folderInfo = {
-              id: folderId,
-              name: `資料夾 ${folderId}`,
-              isDirectory: true,
-              parentId: currentFolder.value?.id,
-              size: 0,
-              mimeType: 'folder',
-              originalName: '',
-              path: '',
-              uploaderId: 0,
-              downloadCount: 0,
-              isDeleted: false,
-              createdAt: '',
-              updatedAt: '',
-              url: ''
-            }
+            // 如果無法獲取資料夾詳細信息，保持 folderInfo 為 null
+            // 這樣不會產生錯誤的名稱，讓後續邏輯正確處理
+            folderInfo = null
           }
         }
       }
@@ -621,12 +636,18 @@ export const useFilesStore = defineStore('files', () => {
         // 如果快取停用，總是獲取
         if (!cacheEnabled.value) return true
         
-        // 檢查快取中是否有檔案列表
-        const cacheKey = CacheKeyGenerator.files(folderId, { 
-          folderId: folderId || null, 
-          sortBy: 'name', 
-          sortOrder: 'asc' 
-        })
+        // 對於麵包屑導航且沒有資料夾信息的情況，需要獲取以確保資料夾詳情
+        if (!shouldUpdateIdChain && !folderInfo) {
+          console.log('🍞 麵包屑導航需要獲取資料夾信息，強制 API 調用')
+          return true
+        }
+        
+        // 檢查快取中是否有檔案列表 - 使用與 fetchFiles 相同的快取鍵格式
+        const params: { parent_id?: number } = {}
+        if (folderId !== undefined && folderId !== null) {
+          params.parent_id = folderId
+        }
+        const cacheKey = CacheKeyGenerator.files(folderId, params)
         const cachedData = globalCache.get(cacheKey)
         
         // 如果有快取，使用快取
@@ -647,10 +668,41 @@ export const useFilesStore = defineStore('files', () => {
         console.log('📋 navigateToFolder 跳過 API 調用，使用快取資料')
       }
       
+      // 🚀 麵包屑導航專用：如果是麵包屑導航且沒有資料夾信息，強制獲取
+      if (!shouldUpdateIdChain && folderId && !folderInfo) {
+        console.log('🍞 麵包屑導航缺少資料夾詳情，強制獲取')
+        try {
+          const response = await filesApi.getFileDetails(folderId)
+          if (response.success && response.data) {
+            const rawData = response.data as any
+            folderInfo = {
+              id: rawData.id,
+              name: rawData.name,
+              originalName: rawData.original_name || rawData.originalName || rawData.name,
+              size: rawData.file_size || rawData.size || 0,
+              mimeType: rawData.mime_type || rawData.mimeType || 'folder',
+              isDirectory: rawData.is_directory || rawData.isDirectory || true,
+              parentId: rawData.parent_id || rawData.parentId,
+              path: rawData.file_path || rawData.path || '',
+              uploaderId: rawData.uploaded_by || rawData.uploaderId || 0,
+              downloadCount: rawData.download_count || rawData.downloadCount || 0,
+              isDeleted: false,
+              createdAt: rawData.created_at || rawData.createdAt || new Date().toISOString(),
+              updatedAt: rawData.updated_at || rawData.updatedAt || new Date().toISOString(),
+              url: rawData.url || ''
+            }
+            console.log('✅ 麵包屑導航獲取資料夾詳情成功:', folderInfo.name)
+          }
+        } catch (error) {
+          console.error('❌ 麵包屑導航獲取資料夾詳情失敗:', error)
+        }
+      }
+      
       // 更新當前資料夾ID（無論是否有資料夾資訊都要設置）
       currentFolderIdValue.value = folderId || null
       
       // 更新當前資料夾狀態
+      console.log('🔍 檢查資料夾狀態:', { folderId, folderInfo: folderInfo ? folderInfo.name : 'null', shouldUpdateIdChain })
       if (folderId && folderInfo) {
         console.log('🗂️ 設置當前資料夾:', folderInfo)
         currentFolder.value = folderInfo
@@ -785,6 +837,33 @@ export const useFilesStore = defineStore('files', () => {
       }
       
       clearSelection()
+      
+      // 🚀 更新 ID 鏈管理（可選）
+      if (shouldUpdateIdChain) {
+        updateIdChain(folderId || null)
+      } else {
+        console.log('🚫 跳過 ID 鏈更新（麵包屑導航）')
+      }
+      
+      // 🔄 被動更新 URL 顯示（可選）
+      if (updateURL) {
+        setTimeout(() => {
+          updateURLDisplay()
+        }, 100) // 稍微延遲確保 breadcrumbs 已更新
+      } else {
+        console.log('🚫 跳過 URL 更新（麵包屑導航）')
+      }
+      
+      // 🔥 成功導航後，更新導航快取
+      if (folderId && folderInfo) {
+        navigationCache.addFolder({
+          id: folderId,
+          name: folderInfo.name,
+          parentId: folderInfo.parentId || null
+        })
+        console.log('📍 導航成功，已更新導航快取')
+      }
+      
     } catch (err: any) {
       error.value = err.message || '導航失敗'
       throw err
@@ -795,6 +874,76 @@ export const useFilesStore = defineStore('files', () => {
     }
   }
   
+  // 🚀 ID 鏈管理函數
+  const updateIdChain = (targetFolderId: number | null): void => {
+    if (targetFolderId === null) {
+      // 返回根目錄，清空 ID 鏈
+      idChain.value = []
+      console.log('🏠 清空 ID 鏈，返回根目錄')
+      return
+    }
+    
+    // 檢查目標 ID 是否已在當前鏈中
+    const targetIndex = idChain.value.indexOf(targetFolderId)
+    
+    if (targetIndex !== -1) {
+      // 目標 ID 在鏈中，截斷到該位置（麵包屑導航）
+      idChain.value = idChain.value.slice(0, targetIndex + 1)
+      console.log('✂️ 截斷 ID 鏈到目標位置:', { 目標ID: targetFolderId, 新鏈: idChain.value })
+    } else {
+      // 目標 ID 不在鏈中，添加到鏈末尾（深入導航）
+      idChain.value.push(targetFolderId)
+      console.log('➕ 添加 ID 到鏈末尾:', { 目標ID: targetFolderId, 新鏈: idChain.value })
+    }
+  }
+  
+  // 獲取 ID 鏈對應的路徑字符串（用於 URL 顯示）
+  const getPathFromIdChain = async (): Promise<string> => {
+    if (idChain.value.length === 0) {
+      return '#/files'
+    }
+    
+    // 嘗試從麵包屑構建友好的路徑
+    if (breadcrumbs.value && breadcrumbs.value.length > 1) {
+      const pathSegments = breadcrumbs.value
+        .slice(1) // 跳過根目錄
+        .map(crumb => encodeURIComponent(crumb.name))
+      
+      if (pathSegments.length > 0) {
+        return `#/files/${pathSegments.join('/')}`
+      }
+    }
+    
+    // 降級：使用 ID 格式
+    return `#/files/id/${idChain.value.join('/')}`
+  }
+  
+  // 🚀 被動更新 URL（不觸發路由變化）
+  const updateURLDisplay = async (): Promise<void> => {
+    try {
+      const newPath = await getPathFromIdChain()
+      
+      // 使用 replaceState 更新 URL，不觸發路由事件
+      window.history.replaceState(
+        { 
+          idChain: [...idChain.value],
+          timestamp: Date.now() 
+        }, 
+        '', 
+        newPath
+      )
+      
+      console.log('🔄 URL 被動更新:', {
+        idChain: idChain.value,
+        newPath,
+        method: 'replaceState'
+      })
+      
+    } catch (error) {
+      console.error('❌ URL 更新失敗:', error)
+    }
+  }
+
   // 返回上一層資料夾
   const navigateUp = async (): Promise<void> => {
     const parentId = currentFolder.value?.parentId
@@ -1037,6 +1186,7 @@ export const useFilesStore = defineStore('files', () => {
     duplicateFiles,
     isDuplicateScanning,
     navigationState,
+    idChain,
     
     // 計算屬性
     canPaste,
@@ -1064,6 +1214,9 @@ export const useFilesStore = defineStore('files', () => {
     navigateUp,
     clearError,
     setBreadcrumbs,
+    updateIdChain,
+    getPathFromIdChain,
+    updateURLDisplay,
     
     // 快取管理方法
     clearCache,

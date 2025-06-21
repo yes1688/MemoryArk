@@ -68,28 +68,28 @@ export function useWebWorker(
 
       worker = workerFactory()
       
-      worker.onmessage = handleWorkerMessage
       worker.onerror = handleWorkerError
       
-      // 監聽初始化完成
+      // 監聽初始化完成，增加超時時間到 10 秒
       const initTimeout = setTimeout(() => {
         if (!isReady.value) {
           error.value = 'Worker 初始化超時'
           config.enableLogging && console.error('[useWebWorker] Initialization timeout')
         }
-      }, 5000)
+      }, 10000)
 
-      // 檢查初始化消息
-      const originalOnMessage = worker.onmessage
+      // 統一的消息處理器，先檢查初始化再處理其他消息
       worker.onmessage = (event) => {
+        // 優先處理初始化消息
         if (event.data?.type === 'WORKER_READY') {
           clearTimeout(initTimeout)
           isReady.value = true
-          config.enableLogging && console.log('[useWebWorker] Worker ready')
+          config.enableLogging && console.log('[useWebWorker] Worker ready:', event.data)
+          return
         }
-        if (originalOnMessage && worker) {
-          originalOnMessage.call(worker, event)
-        }
+        
+        // 處理其他消息（不論 Worker 是否就緒，因為可能有初始化相關的消息）
+        handleWorkerMessage(event)
       }
 
       config.enableLogging && console.log('[useWebWorker] Worker initialized')
