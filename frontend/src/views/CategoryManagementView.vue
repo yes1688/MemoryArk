@@ -24,7 +24,7 @@
               <h3>適用場景：</h3>
               <ul>
                 <li>按年份組織（2024年、2025年）</li>
-                <li>按活動分類（聖誕節、復活節）</li>
+                <li>按活動分類（母親節、復活節）</li>
                 <li>按部門管理（青年團契、婦女團契）</li>
                 <li>個人專案檔案</li>
               </ul>
@@ -34,9 +34,9 @@
               <h3>範例結構：</h3>
               <div class="folder-tree">
                 <div class="folder">📁 2024年活動</div>
-                <div class="folder level-1">📁 聖誕節</div>
-                <div class="folder level-2">📄 聖誕劇照片.jpg</div>
-                <div class="folder level-2">📄 聖誕歌影片.mp4</div>
+                <div class="folder level-1">📁 母親節</div>
+                <div class="folder level-2">📄 母親節活動照片.jpg</div>
+                <div class="folder level-2">📄 感恩見證影片.mp4</div>
                 <div class="folder level-1">📁 復活節</div>
                 <div class="folder level-2">📄 復活節見證.docx</div>
               </div>
