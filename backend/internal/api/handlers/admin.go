@@ -252,12 +252,11 @@ func (h *AdminHandler) GetRegistrations(c *gin.Context) {
 			"email":             reg.Email,
 			"name":              reg.Name,
 			"phone":             reg.Phone,
-			"reason":            reg.Reason,  // 添加申請理由字段！
+			"rejection_reason":  reg.RejectionReason,
 			"status":            reg.Status,
 			"created_at":        reg.CreatedAt,
 			"processed_at":      reg.ProcessedAt,
 			"processed_by":      reg.ProcessedBy,
-			"rejection_reason":  reg.RejectionReason,
 			"rejection_history": rejectionHistory,
 		}
 		
