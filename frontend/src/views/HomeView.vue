@@ -60,6 +60,14 @@ const navigateTo = (path: string) => {
   router.push(path)
 }
 
+const handleLogout = async () => {
+  try {
+    await authStore.logout()
+  } catch (error) {
+    console.error('登出失敗:', error)
+  }
+}
+
 const handleQuickAction = (action: string) => {
   switch (action) {
     case 'upload':
@@ -218,9 +226,22 @@ const formatRelativeTime = (dateString: string): string => {
       <!-- 內容 -->
       <div class="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 py-16">
         <div class="text-white">
-          <h1 class="text-3xl sm:text-5xl font-light mb-2 animate-fade-in">
-            {{ greeting }}，{{ authStore.user?.name }}
-          </h1>
+          <div class="flex items-center justify-between mb-2">
+            <h1 class="text-3xl sm:text-5xl font-light animate-fade-in flex-1">
+              {{ greeting }}，{{ authStore.user?.name }}
+            </h1>
+            <!-- 手機版登出按鈕 -->
+            <button
+              @click="handleLogout"
+              class="sm:hidden ml-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors duration-200 backdrop-blur-sm"
+              style="min-width: 40px; height: 40px;"
+              title="登出"
+            >
+              <svg class="w-5 h-5 text-white mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+            </button>
+          </div>
           <p class="text-base sm:text-lg opacity-90 font-light animate-fade-in-delay">
             {{ formattedDate }}
           </p>
