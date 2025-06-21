@@ -6,7 +6,6 @@ import { useAuthStore } from '@/stores/auth'
 import { useWorkerCacheStore } from '@/stores/worker-cache'
 import type { FileInfo, BreadcrumbItem } from '@/types/files'
 import { fileApi } from '@/api/files'
-import { navigationCache } from '@/utils/navigation-cache'
 import type { UnifiedUploadResult } from '@/services/unifiedUploadService'
 
 // Props
