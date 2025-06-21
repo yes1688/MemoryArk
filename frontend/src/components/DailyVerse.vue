@@ -37,8 +37,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import versesData from '@/data/verses.json'
-
 interface Verse {
   id: number
   book: string
@@ -48,17 +46,50 @@ interface Verse {
   reference: string
 }
 
+interface VersesData {
+  verses: Verse[]
+}
+
 const currentVerse = ref<Verse | null>(null)
 const isRefreshing = ref(false)
+const versesData = ref<VersesData | null>(null)
 
-const getRandomVerse = (): Verse => {
-  const verses = versesData.verses as Verse[]
+const loadVersesData = async (): Promise<VersesData> => {
+  if (versesData.value) return versesData.value
+  
+  try {
+    const response = await import('../data/verses.json')
+    versesData.value = response.default as VersesData
+    return versesData.value
+  } catch (error) {
+    console.warn('無法載入經文數據，使用備用數據')
+    // 備用經文
+    versesData.value = {
+      verses: [
+        {
+          id: 1,
+          book: '約翰福音',
+          chapter: 3,
+          verse: 16,
+          text: '神愛世人，甚至將他的獨生子賜給他們，叫一切信他的，不至滅亡，反得永生。',
+          reference: '約翰福音 3:16'
+        }
+      ]
+    }
+    return versesData.value
+  }
+}
+
+const getRandomVerse = async (): Promise<Verse> => {
+  const data = await loadVersesData()
+  const verses = data.verses
   const randomIndex = Math.floor(Math.random() * verses.length)
   return verses[randomIndex]
 }
 
-const getDailyVerse = (): Verse => {
-  const verses = versesData.verses as Verse[]
+const getDailyVerse = async (): Promise<Verse> => {
+  const data = await loadVersesData()
+  const verses = data.verses
   const today = new Date()
   // 基於日期和用戶狀態產生穩定的隨機數
   const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000)
@@ -75,13 +106,13 @@ const getNewVerse = async () => {
   // 短暫延遲以顯示動畫效果
   await new Promise(resolve => setTimeout(resolve, 500))
   
-  currentVerse.value = getRandomVerse()
+  currentVerse.value = await getRandomVerse()
   isRefreshing.value = false
 }
 
-onMounted(() => {
+onMounted(async () => {
   // 初始載入時顯示當日經文
-  currentVerse.value = getDailyVerse()
+  currentVerse.value = await getDailyVerse()
 })
 </script>
 
