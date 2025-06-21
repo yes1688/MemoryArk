@@ -268,7 +268,7 @@ const formatRelativeTime = (dateString: string): string => {
     </header>
 
     <!-- 主要內容區 -->
-    <main class="main-content relative -mt-12 sm:-mt-20 z-20">
+    <main class="main-content relative -mt-6 sm:-mt-12 z-20">
       <div class="content-container max-w-7xl mx-auto px-4 sm:px-6">
         <!-- 每日經節提醒 -->
         <div class="daily-verse-section mb-6 sm:mb-12">
@@ -483,7 +483,7 @@ const formatRelativeTime = (dateString: string): string => {
   }
   
   .main-content {
-    margin-top: -2rem !important;
+    margin-top: -0.5rem !important;
     padding-bottom: calc(env(safe-area-inset-bottom) + 2rem) !important;
   }
   
