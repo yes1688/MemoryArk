@@ -214,9 +214,9 @@ const formatRelativeTime = (dateString: string): string => {
 </script>
 
 <template>
-  <div class="home-view min-h-screen" style="background-color: var(--bg-secondary);">
+  <div class="home-view" style="background-color: var(--bg-secondary); min-height: 100vh;">
     <!-- 極簡主義頭部 -->
-    <header class="hero-section relative overflow-hidden" style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-info) 100%); min-height: 380px; display: flex; align-items: center;">
+    <header class="hero-section relative overflow-hidden" style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-info) 100%); min-height: 320px; display: flex; align-items: center;">
       <!-- 背景裝飾 -->
       <div class="absolute inset-0 opacity-10">
         <div class="absolute -top-24 -right-24 w-96 h-96 bg-white rounded-full blur-3xl"></div>
@@ -224,7 +224,7 @@ const formatRelativeTime = (dateString: string): string => {
       </div>
       
       <!-- 內容 -->
-      <div class="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 py-16">
+      <div class="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-16">
         <div class="text-white">
           <div class="flex items-center justify-between mb-2">
             <h1 class="text-3xl sm:text-5xl font-light animate-fade-in flex-1">
@@ -233,11 +233,11 @@ const formatRelativeTime = (dateString: string): string => {
             <!-- 手機版登出按鈕 -->
             <button
               @click="handleLogout"
-              class="sm:hidden ml-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors duration-200 backdrop-blur-sm"
-              style="min-width: 40px; height: 40px;"
+              class="sm:hidden ml-3 p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors duration-200 backdrop-blur-sm flex-shrink-0"
+              style="min-width: 32px; height: 32px;"
               title="登出"
             >
-              <svg class="w-5 h-5 text-white mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4 text-white mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
               </svg>
             </button>
@@ -247,7 +247,7 @@ const formatRelativeTime = (dateString: string): string => {
           </p>
           
           <!-- 極簡統計 -->
-          <div class="mt-12 flex items-center justify-start gap-6 sm:gap-12 animate-slide-up">
+          <div class="mt-6 sm:mt-12 flex items-center justify-start gap-4 sm:gap-12 animate-slide-up">
             <div class="text-center">
               <div class="text-2xl sm:text-4xl font-light">{{ fileStore.files.length }}</div>
               <div class="text-xs sm:text-sm opacity-80 mt-1">檔案總數</div>
@@ -268,24 +268,24 @@ const formatRelativeTime = (dateString: string): string => {
     </header>
 
     <!-- 主要內容區 -->
-    <main class="main-content relative -mt-20 z-20">
+    <main class="main-content relative -mt-12 sm:-mt-20 z-20">
       <div class="content-container max-w-7xl mx-auto px-4 sm:px-6">
         <!-- 每日經節提醒 -->
-        <div class="daily-verse-section mb-8 sm:mb-12">
+        <div class="daily-verse-section mb-6 sm:mb-12">
           <DailyVerse />
         </div>
         
         <!-- 快速操作卡片 - 極簡風格 -->
-        <div class="quick-actions flex flex-col sm:flex-row gap-4 sm:gap-6 mb-8 sm:mb-12 justify-center">
+        <div class="quick-actions flex flex-col sm:flex-row gap-3 sm:gap-6 mb-6 sm:mb-12 justify-center">
           <!-- 上傳檔案 -->
           <button
             @click="handleQuickAction('upload')"
             class="action-card group"
-            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth); border: none; cursor: pointer; width: 100%; max-width: 320px;"
+            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-4) var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth); border: none; cursor: pointer; width: 100%; max-width: 320px;"
           >
             <div class="flex flex-col items-center text-center">
-              <div class="icon-wrapper mb-4" style="width: 64px; height: 64px; background: var(--color-primary); background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; transition: transform var(--duration-normal) var(--ease-bounce);">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="icon-wrapper mb-3" style="width: 48px; height: 48px; background: var(--color-primary); background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; transition: transform var(--duration-normal) var(--ease-bounce);">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                 </svg>
               </div>
@@ -332,11 +332,11 @@ const formatRelativeTime = (dateString: string): string => {
           <button
             @click="handleQuickAction('files')"
             class="action-card group"
-            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth); border: none; cursor: pointer; width: 100%; max-width: 320px;"
+            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-4) var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth); border: none; cursor: pointer; width: 100%; max-width: 320px;"
           >
             <div class="flex flex-col items-center text-center">
-              <div class="icon-wrapper mb-4" style="width: 64px; height: 64px; background: var(--color-warning); background: linear-gradient(135deg, var(--color-warning) 0%, #FFAC33 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; transition: transform var(--duration-normal) var(--ease-bounce);">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="icon-wrapper mb-3" style="width: 48px; height: 48px; background: var(--color-warning); background: linear-gradient(135deg, var(--color-warning) 0%, #FFAC33 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; transition: transform var(--duration-normal) var(--ease-bounce);">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z"/>
                 </svg>
               </div>
@@ -347,7 +347,7 @@ const formatRelativeTime = (dateString: string): string => {
         </div>
 
         <!-- 最近檔案 - 極簡列表 -->
-        <div class="recent-files mb-8 sm:mb-12">
+        <div class="recent-files mb-6 sm:mb-12">
           <div class="section-header flex items-center justify-between mb-6">
             <h2 class="text-2xl font-light" style="color: var(--text-primary);">最近使用</h2>
             <router-link 
@@ -394,6 +394,9 @@ const formatRelativeTime = (dateString: string): string => {
 
       </div>
     </main>
+    
+    <!-- 底部間距確保可以滾動到底 -->
+    <div class="pb-8 sm:pb-4"></div>
   </div>
 </template>
 
@@ -456,23 +459,32 @@ const formatRelativeTime = (dateString: string): string => {
 
 /* 響應式調整 */
 @media (max-width: 768px) {
+  .home-view {
+    min-height: 100vh !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
   .hero-section {
-    min-height: 320px !important;
+    min-height: 240px !important;
     align-items: flex-start !important;
-    padding-top: calc(env(safe-area-inset-top) + 2rem) !important;
+    padding-top: calc(env(safe-area-inset-top) + 1.5rem) !important;
   }
   
   .hero-section h1 {
-    font-size: 2rem !important;
+    font-size: 1.75rem !important;
+    line-height: 1.2 !important;
   }
   
   .hero-section .flex {
     flex-wrap: wrap;
-    gap: 1.5rem !important;
+    gap: 1rem !important;
   }
   
   .main-content {
-    margin-top: -3rem !important;
+    margin-top: -2rem !important;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 2rem) !important;
   }
   
   .storage-details {
