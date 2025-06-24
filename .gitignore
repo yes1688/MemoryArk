@@ -106,3 +106,4 @@ __pycache__/
 testing/debug_*.py
 testing/*_debug.py
 testing/final_test.py
+qdrant-data/

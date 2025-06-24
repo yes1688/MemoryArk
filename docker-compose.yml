@@ -1,4 +1,4 @@
-# MemoryArk 2.0 統一部署配置
+# MemoryArk 2.0 + LINE Service 統一部署配置
 # 本地開發: podman-compose up 或 docker-compose up
 # 生產環境: docker-compose up -d
 version: '3.8'
@@ -13,6 +13,30 @@ services:
     command: sh -c "npm ci && npm run build"
     profiles:
       - build
+
+  # Redis 服務 (LINE Service 任務隊列使用)
+  redis:
+    image: docker.io/library/redis:7-alpine
+    container_name: memoryark-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./logs/redis:/var/log/redis
+    command: redis-server --appendonly yes --appendfsync everysec
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "7"
+    networks:
+      - memoryark
 
   backend:
     build:
@@ -111,6 +135,118 @@ services:
     # 網絡配置
     networks:
       - memoryark
+
+  # LINE Service (Node.js + TypeScript)
+  line-service:
+    build:
+      context: ./line-service
+      dockerfile: Dockerfile
+    image: memoryark-line-service:latest
+    container_name: memoryark-line-service
+    depends_on:
+      - redis
+      - backend
+    environment:
+      # 基本配置
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3000
+      
+      # LINE Bot 配置 (請在 .env 檔案中設定)
+      - LINE_CHANNEL_ACCESS_TOKEN=${LINE_CHANNEL_ACCESS_TOKEN:-}
+      - LINE_CHANNEL_SECRET=${LINE_CHANNEL_SECRET:-}
+      
+      # Redis 配置
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      
+      # MemoryArk Backend 整合
+      - MEMORYARK_API_URL=http://backend:8081
+      - MEMORYARK_API_KEY=${MEMORYARK_API_KEY:-}
+      
+      # 檔案上傳配置
+      - UPLOAD_PATH=/app/uploads
+      - MAX_FILE_SIZE=${LINE_MAX_FILE_SIZE:-20971520}  # 20MB (LINE 限制)
+      - TEMP_PATH=/app/temp
+      
+      # 任務隊列配置
+      - QUEUE_CONCURRENCY=${LINE_QUEUE_CONCURRENCY:-5}
+      - QUEUE_ATTEMPTS=${LINE_QUEUE_ATTEMPTS:-3}
+      - QUEUE_BACKOFF=${LINE_QUEUE_BACKOFF:-exponential}
+      
+      # 日誌配置
+      - LOG_LEVEL=${LINE_LOG_LEVEL:-info}
+      - LOG_PATH=/app/logs
+      
+      # 清理配置
+      - CLEANUP_ENABLED=${LINE_CLEANUP_ENABLED:-true}
+      - CLEANUP_INTERVAL=${LINE_CLEANUP_INTERVAL:-"0 2 * * *"}  # 每天凌晨 2 點
+      - CLEANUP_RETENTION_DAYS=${LINE_CLEANUP_RETENTION_DAYS:-7}
+    
+    volumes:
+      # 與 MemoryArk 共享的目錄
+      - ./uploads:/app/uploads
+      - ./line-service/logs:/app/logs
+      - ./line-service/temp:/app/temp
+      # 只讀的數據庫檔案 (需要時可讀取)
+      - ./data:/app/data:ro
+    
+    # 健康檢查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    
+    restart: unless-stopped
+    
+    # 日誌配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "7"
+    
+    # 網絡配置
+    networks:
+      - memoryark
+
+  # LINE 專用 Nginx
+  line-nginx:
+    image: nginx:alpine
+    container_name: memoryark-line-nginx
+    depends_on:
+      - line-service
+    ports:
+      - "7002:80"
+    volumes:
+      - ./line-nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./logs/nginx:/var/log/nginx
+    restart: unless-stopped
+    
+    # 健康檢查
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    
+    # 日誌配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "7"
+    
+    # 網絡配置
+    networks:
+      - memoryark
+
+# 定義 Volume
+volumes:
+  redis-data:
+    driver: local
 
 # 定義網絡
 networks:

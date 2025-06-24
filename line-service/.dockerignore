@@ -1,0 +1,101 @@
+# Node.js Docker Ignore File
+# 針對 LINE Service 的容器建構最佳化
+
+# Node.js 相關
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# 執行時產生的檔案
+dist/
+build/
+.nyc_output/
+coverage/
+
+# 環境變數檔案 (包含敏感資訊)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
+
+# 日誌檔案
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# 執行時產生的檔案
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# 暫存目錄
+temp/
+tmp/
+.tmp/
+
+# 編輯器和 IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS 產生的檔案
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git 相關
+.git/
+.gitignore
+
+# 測試相關
+tests/
+test/
+__tests__/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+jest.config.*
+.nyc_output/
+coverage/
+
+# 開發工具配置
+.eslintrc.*
+.prettierrc.*
+# tsconfig.json
+nodemon.json
+.babelrc
+
+# 文檔
+README.md
+CHANGELOG.md
+LICENSE
+*.md
+
+# 上傳檔案 (不應包含在映像檔中)
+uploads/
+
+# Docker 相關
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# 其他不需要的檔案
+*.bak
+*.backup
+*.old
+.cache/
