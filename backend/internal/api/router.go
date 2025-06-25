@@ -29,6 +29,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	exportHandler := handlers.NewExportHandler(db, cfg)
 	// userHandler := handlers.NewUserHandler(db, cfg)
 	adminHandler := handlers.NewAdminHandler(db, cfg)
+	lineHandler := handlers.NewLineHandler(db)
 	
 	// API 版本分組
 	v1 := router.Group("/api")
@@ -122,6 +123,25 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		
 		// 垃圾桶管理（僅限管理員）
 		admin.POST("/trash/empty", fileHandler.EmptyTrash)
+		
+		// LINE 功能管理
+		admin.GET("/line/upload-records", lineHandler.GetUploadRecords)
+		admin.GET("/line/upload-records/:id", lineHandler.GetUploadRecord)
+		admin.DELETE("/line/upload-records/:id", lineHandler.DeleteUploadRecord)
+		admin.DELETE("/line/upload-records/batch", lineHandler.BatchDeleteUploadRecords)
+		
+		admin.GET("/line/users", lineHandler.GetUsers)
+		admin.GET("/line/users/:line_user_id", lineHandler.GetUser)
+		admin.PUT("/line/users/:line_user_id/status", lineHandler.UpdateUserStatus)
+		
+		admin.GET("/line/groups", lineHandler.GetGroups)
+		
+		admin.GET("/line/webhook-logs", lineHandler.GetWebhookLogs)
+		
+		admin.GET("/line/settings", lineHandler.GetSettings)
+		admin.PUT("/line/settings/:setting_key", lineHandler.UpdateSetting)
+		
+		admin.GET("/line/statistics", lineHandler.GetStatistics)
 	}
 	
 	// 靜態文件服務
