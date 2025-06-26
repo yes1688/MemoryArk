@@ -92,7 +92,6 @@ services:
       - ./data:/app/data
       - ./uploads:/app/uploads
       - ./logs:/app/logs
-      - ./backend/migrations:/app/migrations:ro
     
     # 健康檢查
     healthcheck:

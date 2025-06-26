@@ -81,8 +81,8 @@ type LineGroup struct {
 // LineGroupMember 群組成員關聯表
 type LineGroupMember struct {
 	ID            uint       `json:"id" gorm:"primaryKey"`
-	LineGroupID   string     `json:"line_group_id" gorm:"type:varchar(100);not null;index"`
-	LineUserID    string     `json:"line_user_id" gorm:"type:varchar(100);not null;index"`
+	LineGroupID   string     `json:"line_group_id" gorm:"type:varchar(100);not null;uniqueIndex:idx_group_user"`
+	LineUserID    string     `json:"line_user_id" gorm:"type:varchar(100);not null;uniqueIndex:idx_group_user"`
 	Role          string     `json:"role" gorm:"type:varchar(20);default:'member'"`
 	JoinDate      *time.Time `json:"join_date"`
 	LeaveDate     *time.Time `json:"leave_date"`

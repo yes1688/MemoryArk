@@ -1,9 +1,11 @@
 package database
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	
 	"gorm.io/gorm"
 	"github.com/glebarez/sqlite"
@@ -40,6 +42,12 @@ func Initialize(dbPath string) (*gorm.DB, error) {
 
 // autoMigrate 自動遷移數據庫表
 func autoMigrate(db *gorm.DB) error {
+	// 首先處理向前相容性問題
+	if err := handleLegacyMigrations(db); err != nil {
+		log.Printf("Warning: Legacy migration handling failed: %v", err)
+		// 不返回錯誤，繼續執行 AutoMigrate
+	}
+	
 	// 統一使用 GORM AutoMigrate 處理所有模型
 	if err := db.AutoMigrate(
 		&models.User{},
@@ -154,6 +162,225 @@ func initializeLineSettings(db *gorm.DB) error {
 	}
 	
 	log.Println("LINE default settings initialized successfully")
+	return nil
+}
+
+// handleLegacyMigrations 處理舊版資料庫相容性問題
+func handleLegacyMigrations(db *gorm.DB) error {
+	// 檢查是否存在舊版的 migration_history 表
+	if db.Migrator().HasTable("migration_history") {
+		log.Println("Found legacy migration_history table, handling compatibility...")
+		
+		// 記錄已執行的舊版遷移
+		var migrations []struct {
+			ID       int    `gorm:"column:id"`
+			Filename string `gorm:"column:filename"`
+		}
+		
+		if err := db.Table("migration_history").Find(&migrations).Error; err != nil {
+			log.Printf("Warning: Could not read migration_history: %v", err)
+		} else {
+			log.Printf("Found %d legacy migrations in history", len(migrations))
+		}
+		
+		// 檢查並處理可能的表結構問題
+		if err := handleTableStructureIssues(db); err != nil {
+			return err
+		}
+		
+		// 可選：重命名舊表以保留歷史記錄
+		if err := db.Migrator().RenameTable("migration_history", "migration_history_legacy"); err != nil {
+			log.Printf("Warning: Could not rename migration_history table: %v", err)
+		}
+	}
+	
+	return nil
+}
+
+// handleTableStructureIssues 處理表結構相容性問題
+func handleTableStructureIssues(db *gorm.DB) error {
+	// 檢查是否有臨時表存在（可能是失敗的遷移留下的）
+	var tempTables []string
+	
+	// 查詢所有以 _temp 結尾的表
+	rows, err := db.Raw("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%_temp%'").Rows()
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	
+	for rows.Next() {
+		var tableName string
+		if err := rows.Scan(&tableName); err != nil {
+			continue
+		}
+		tempTables = append(tempTables, tableName)
+	}
+	
+	// 清理臨時表
+	for _, tempTable := range tempTables {
+		log.Printf("Cleaning up temporary table: %s", tempTable)
+		if err := db.Migrator().DropTable(tempTable); err != nil {
+			log.Printf("Warning: Could not drop temporary table %s: %v", tempTable, err)
+		}
+	}
+	
+	// 特別處理 LINE 相關表的結構問題
+	if err := handleLineTablesCompatibility(db); err != nil {
+		return err
+	}
+	
+	// 檢查並修復可能的索引問題
+	if err := handleIndexIssues(db); err != nil {
+		return err
+	}
+	
+	return nil
+}
+
+// handleLineTablesCompatibility 特別處理 LINE 表的相容性問題
+func handleLineTablesCompatibility(db *gorm.DB) error {
+	// 檢查 line_group_members 表是否存在結構問題
+	if db.Migrator().HasTable("line_group_members") {
+		// 檢查表結構
+		var columns []struct {
+			Name string `gorm:"column:name"`
+		}
+		
+		if err := db.Raw("PRAGMA table_info(line_group_members)").Scan(&columns).Error; err != nil {
+			log.Printf("Warning: Could not check line_group_members table structure: %v", err)
+			return nil
+		}
+		
+		// 檢查是否有問題的列
+		hasUniqueColumn := false
+		for _, col := range columns {
+			if col.Name == "UNIQUE" {
+				hasUniqueColumn = true
+				break
+			}
+		}
+		
+		// 如果存在 UNIQUE 列或其他結構問題，重建表
+		if hasUniqueColumn {
+			log.Println("Detected problematic line_group_members table structure, rebuilding...")
+			if err := rebuildLineGroupMembersTable(db); err != nil {
+				return err
+			}
+		}
+	}
+	
+	return nil
+}
+
+// rebuildLineGroupMembersTable 重建 line_group_members 表
+func rebuildLineGroupMembersTable(db *gorm.DB) error {
+	// 備份現有數據
+	log.Println("Backing up line_group_members data...")
+	
+	// 創建備份表
+	if err := db.Exec("CREATE TABLE line_group_members_backup AS SELECT * FROM line_group_members").Error; err != nil {
+		log.Printf("Warning: Could not backup line_group_members: %v", err)
+	}
+	
+	// 刪除原表
+	if err := db.Migrator().DropTable("line_group_members"); err != nil {
+		return err
+	}
+	
+	// 讓 GORM 重新創建表
+	if err := db.Migrator().CreateTable(&models.LineGroupMember{}); err != nil {
+		return err
+	}
+	
+	// 嘗試恢復數據
+	log.Println("Restoring line_group_members data...")
+	
+	// 查詢備份表的結構
+	var backupColumns []struct {
+		Name string `gorm:"column:name"`
+	}
+	
+	if err := db.Raw("PRAGMA table_info(line_group_members_backup)").Scan(&backupColumns).Error; err == nil {
+		// 構建恢復數據的 SQL，只選擇存在的列
+		var validColumns []string
+		expectedColumns := []string{"id", "line_group_id", "line_user_id", "role", "join_date", "leave_date", "is_active", "upload_count", "last_upload_at", "created_at", "updated_at"}
+		
+		for _, expected := range expectedColumns {
+			for _, backup := range backupColumns {
+				if backup.Name == expected {
+					validColumns = append(validColumns, expected)
+					break
+				}
+			}
+		}
+		
+		if len(validColumns) > 0 {
+			columnsStr := strings.Join(validColumns, ", ")
+			restoreSQL := fmt.Sprintf("INSERT INTO line_group_members (%s) SELECT %s FROM line_group_members_backup", columnsStr, columnsStr)
+			
+			if err := db.Exec(restoreSQL).Error; err != nil {
+				log.Printf("Warning: Could not restore line_group_members data: %v", err)
+			} else {
+				log.Println("Successfully restored line_group_members data")
+			}
+		}
+	}
+	
+	// 清理備份表
+	if err := db.Migrator().DropTable("line_group_members_backup"); err != nil {
+		log.Printf("Warning: Could not drop backup table: %v", err)
+	}
+	
+	return nil
+}
+
+// handleIndexIssues 處理索引相容性問題
+func handleIndexIssues(db *gorm.DB) error {
+	// 檢查是否有衝突的索引
+	tables := []string{
+		"line_users", "line_groups", "line_group_members", 
+		"line_upload_records", "line_webhook_logs", "line_settings", "line_upload_stats",
+	}
+	
+	for _, table := range tables {
+		if !db.Migrator().HasTable(table) {
+			continue
+		}
+		
+		// 查詢該表的所有索引
+		rows, err := db.Raw("PRAGMA index_list(?)", table).Rows()
+		if err != nil {
+			continue
+		}
+		
+		var indexNames []string
+		for rows.Next() {
+			var seq int
+			var name string
+			var unique int
+			var origin string
+			var partial int
+			
+			if err := rows.Scan(&seq, &name, &unique, &origin, &partial); err != nil {
+				continue
+			}
+			
+			// 跳過自動生成的主鍵索引
+			if origin == "pk" {
+				continue
+			}
+			
+			indexNames = append(indexNames, name)
+		}
+		rows.Close()
+		
+		// 記錄找到的索引
+		if len(indexNames) > 0 {
+			log.Printf("Found %d existing indexes on table %s", len(indexNames), table)
+		}
+	}
+	
 	return nil
 }
 
