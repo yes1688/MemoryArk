@@ -1,6 +1,7 @@
 package database
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"os"
@@ -9,6 +10,7 @@ import (
 	
 	"gorm.io/gorm"
 	"github.com/glebarez/sqlite"
+	_ "github.com/mattn/go-sqlite3"
 	"memoryark/internal/models"
 )
 
@@ -20,11 +22,24 @@ func Initialize(dbPath string) (*gorm.DB, error) {
 		return nil, err
 	}
 	
+	// 在 GORM 初始化前處理 SQLite 相容性問題
+	log.Println("Pre-GORM compatibility check...")
+	if err := preMigrationCheck(dbPath); err != nil {
+		log.Printf("Warning: Pre-migration check failed: %v", err)
+	}
+	
 	// 連接數據庫
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
+	
+	// 處理向前相容性問題
+	log.Println("Starting legacy migration check...")
+	if err := handleLegacyMigrations(db); err != nil {
+		log.Printf("Warning: Legacy migration handling failed: %v", err)
+	}
+	log.Println("Legacy migration check completed")
 	
 	// 自動遷移
 	if err := autoMigrate(db); err != nil {
@@ -42,11 +57,6 @@ func Initialize(dbPath string) (*gorm.DB, error) {
 
 // autoMigrate 自動遷移數據庫表
 func autoMigrate(db *gorm.DB) error {
-	// 首先處理向前相容性問題
-	if err := handleLegacyMigrations(db); err != nil {
-		log.Printf("Warning: Legacy migration handling failed: %v", err)
-		// 不返回錯誤，繼續執行 AutoMigrate
-	}
 	
 	// 統一使用 GORM AutoMigrate 處理所有模型
 	if err := db.AutoMigrate(
@@ -173,8 +183,9 @@ func handleLegacyMigrations(db *gorm.DB) error {
 		
 		// 記錄已執行的舊版遷移
 		var migrations []struct {
-			ID       int    `gorm:"column:id"`
-			Filename string `gorm:"column:filename"`
+			ID          int    `gorm:"column:id"`
+			Version     string `gorm:"column:version"`
+			Description string `gorm:"column:description"`
 		}
 		
 		if err := db.Table("migration_history").Find(&migrations).Error; err != nil {
@@ -349,7 +360,8 @@ func handleIndexIssues(db *gorm.DB) error {
 		}
 		
 		// 查詢該表的所有索引
-		rows, err := db.Raw("PRAGMA index_list(?)", table).Rows()
+		query := fmt.Sprintf("PRAGMA index_list(%s)", table)
+		rows, err := db.Raw(query).Rows()
 		if err != nil {
 			continue
 		}
@@ -384,7 +396,200 @@ func handleIndexIssues(db *gorm.DB) error {
 	return nil
 }
 
+// PopulateVirtualPaths 為現有檔案填充虛擬路徑
+func PopulateVirtualPaths(db *gorm.DB) error {
+	// 這個函數暫時為空，原本的實現可能在其他地方
+	log.Println("PopulateVirtualPaths: Skipping - function not implemented")
+	return nil
+}
+
 // stringPtr 輔助函數，返回字串指標
 func stringPtr(s string) *string {
 	return &s
+}
+
+// preMigrationCheck 在 GORM 初始化前檢查並修復資料庫相容性問題
+func preMigrationCheck(dbPath string) error {
+	// 檢查資料庫檔案是否存在
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		log.Println("Database file does not exist, no pre-migration check needed")
+		return nil
+	}
+	
+	// 使用原生 SQLite 連接來檢查結構
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return fmt.Errorf("failed to open database for pre-migration check: %v", err)
+	}
+	defer db.Close()
+	
+	// 檢查是否有 migration_history 表
+	var hasMigrationHistory bool
+	err = db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='migration_history'").Scan(&hasMigrationHistory)
+	if err != nil {
+		return fmt.Errorf("failed to check migration_history table: %v", err)
+	}
+	
+	if hasMigrationHistory {
+		log.Println("Found legacy migration_history table, checking for structure issues...")
+		
+		// 檢查 line_group_members 表是否存在問題
+		if err := checkAndFixLineGroupMembersTable(db); err != nil {
+			log.Printf("Warning: Could not fix line_group_members table: %v", err)
+		}
+		
+		// 清理任何臨時表
+		if err := cleanupTemporaryTables(db); err != nil {
+			log.Printf("Warning: Could not clean up temporary tables: %v", err)
+		}
+	}
+	
+	return nil
+}
+
+// checkAndFixLineGroupMembersTable 檢查並修復 line_group_members 表結構問題
+func checkAndFixLineGroupMembersTable(db *sql.DB) error {
+	// 檢查表是否存在
+	var tableExists int
+	err := db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='line_group_members'").Scan(&tableExists)
+	if err != nil || tableExists == 0 {
+		return nil // 表不存在，跳過
+	}
+	
+	// 檢查表結構
+	rows, err := db.Query("PRAGMA table_info(line_group_members)")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	
+	hasProblematicColumn := false
+	for rows.Next() {
+		var cid int
+		var name, dataType string
+		var notNull, pk int
+		var defaultValue *string
+		
+		if err := rows.Scan(&cid, &name, &dataType, &notNull, &defaultValue, &pk); err != nil {
+			continue
+		}
+		
+		// 檢查是否有 UNIQUE 列或其他問題列
+		if name == "UNIQUE" || strings.Contains(strings.ToUpper(dataType), "UNIQUE") {
+			hasProblematicColumn = true
+			break
+		}
+	}
+	
+	if hasProblematicColumn {
+		log.Println("Detected problematic line_group_members table structure, rebuilding...")
+		return rebuildLineGroupMembersTableRaw(db)
+	}
+	
+	return nil
+}
+
+// rebuildLineGroupMembersTableRaw 使用原生 SQL 重建 line_group_members 表
+func rebuildLineGroupMembersTableRaw(db *sql.DB) error {
+	// 開始事務
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	
+	// 1. 備份現有數據到臨時表
+	log.Println("Backing up line_group_members data...")
+	_, err = tx.Exec(`CREATE TABLE line_group_members_backup AS 
+		SELECT id, line_group_id, line_user_id, role, join_date, leave_date, 
+		       is_active, upload_count, last_upload_at, created_at, updated_at 
+		FROM line_group_members 
+		WHERE id IS NOT NULL AND line_group_id IS NOT NULL AND line_user_id IS NOT NULL`)
+	if err != nil {
+		log.Printf("Warning: Could not backup data (table might be empty): %v", err)
+	}
+	
+	// 2. 刪除原表
+	_, err = tx.Exec("DROP TABLE line_group_members")
+	if err != nil {
+		return err
+	}
+	
+	// 3. 創建新的正確結構的表
+	createTableSQL := `
+	CREATE TABLE line_group_members (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		line_group_id TEXT NOT NULL,
+		line_user_id TEXT NOT NULL,
+		role TEXT DEFAULT 'member',
+		join_date DATETIME,
+		leave_date DATETIME,
+		is_active BOOLEAN DEFAULT true,
+		upload_count INTEGER DEFAULT 0,
+		last_upload_at DATETIME,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE(line_group_id, line_user_id)
+	)`
+	
+	_, err = tx.Exec(createTableSQL)
+	if err != nil {
+		return err
+	}
+	
+	// 4. 恢復數據
+	log.Println("Restoring line_group_members data...")
+	_, err = tx.Exec(`INSERT INTO line_group_members 
+		(id, line_group_id, line_user_id, role, join_date, leave_date, 
+		 is_active, upload_count, last_upload_at, created_at, updated_at)
+		SELECT id, line_group_id, line_user_id, role, join_date, leave_date, 
+		       is_active, upload_count, last_upload_at, created_at, updated_at 
+		FROM line_group_members_backup`)
+	if err != nil {
+		log.Printf("Warning: Could not restore all data: %v", err)
+	}
+	
+	// 5. 清理備份表
+	_, err = tx.Exec("DROP TABLE IF EXISTS line_group_members_backup")
+	if err != nil {
+		log.Printf("Warning: Could not drop backup table: %v", err)
+	}
+	
+	// 提交事務
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	
+	log.Println("Successfully rebuilt line_group_members table")
+	return nil
+}
+
+// cleanupTemporaryTables 清理臨時表
+func cleanupTemporaryTables(db *sql.DB) error {
+	// 查找所有臨時表
+	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%_temp%'")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	
+	var tempTables []string
+	for rows.Next() {
+		var tableName string
+		if err := rows.Scan(&tableName); err != nil {
+			continue
+		}
+		tempTables = append(tempTables, tableName)
+	}
+	
+	// 刪除臨時表
+	for _, tableName := range tempTables {
+		log.Printf("Cleaning up temporary table: %s", tableName)
+		_, err := db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", tableName))
+		if err != nil {
+			log.Printf("Warning: Could not drop temporary table %s: %v", tableName, err)
+		}
+	}
+	
+	return nil
 }

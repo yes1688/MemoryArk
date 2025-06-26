@@ -19,10 +19,12 @@ func main() {
 	}
 	
 	// 初始化數據庫
+	log.Printf("Initializing database at path: %s", cfg.Database.Path)
 	db, err := database.Initialize(cfg.Database.Path)
 	if err != nil {
 		log.Fatal("Failed to initialize database:", err)
 	}
+	log.Println("Database initialization completed successfully")
 	
 	// 初始化根管理員
 	if err := database.InitializeRootAdmin(db, cfg); err != nil {
