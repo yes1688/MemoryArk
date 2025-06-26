@@ -44,9 +44,19 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		public.GET("/features/config", authHandler.GetFeatureConfig)
 	}
 	
-	// 需要認證的路由
+	// 需要認證的路由 (用戶網頁介面)
 	protected := v1.Group("/")
 	protected.Use(middleware.CloudflareAccessMiddleware(cfg, db))
+
+	// API 專用路由 (服務間通信，如 LINE Service)
+	apiRoutes := v1.Group("/api-access")
+	apiRoutes.Use(middleware.APITokenMiddleware(cfg))
+	{
+		// LINE Service 檔案上傳專用端點
+		apiRoutes.POST("/files/upload", fileHandler.UploadFile)
+		apiRoutes.GET("/files/:id", fileHandler.GetFileDetails)
+	}
+
 	{
 		// 認證相關
 		protected.GET("/auth/me", authHandler.GetCurrentUser)

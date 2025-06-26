@@ -189,7 +189,10 @@ async function startServer() {
         error: error.message,
         stack: error.stack,
       });
-      process.exit(1);
+      console.error('❌ Uncaught Exception:', error.message);
+      console.error('Stack:', error.stack);
+      // 暫時不退出，用於調試
+      // process.exit(1);
     });
 
     process.on('unhandledRejection', (reason, promise) => {
@@ -197,7 +200,9 @@ async function startServer() {
         reason: reason,
         promise: promise,
       });
-      process.exit(1);
+      console.error('❌ Unhandled Rejection:', reason);
+      // 暫時不退出，用於調試  
+      // process.exit(1);
     });
 
     // 測試服務連線
@@ -212,6 +217,7 @@ async function startServer() {
       }
     } catch (error: any) {
       systemLogger.warn('Service connection test failed', { error: error.message });
+      // Don't fail startup if connection test fails - service can still work for other functions
     }
 
     systemLogger.info('All services initialized successfully');

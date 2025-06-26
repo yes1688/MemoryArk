@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"net/http"
 	"strconv"
 	"time"
 
@@ -75,17 +74,17 @@ func (h *LineHandler) GetUploadRecords(c *gin.Context) {
 
 	if result.Error != nil {
 		logger.Error("Failed to get upload records", "error", result.Error)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse("獲取上傳記錄失敗"))
+		api.InternalServerError(c, "獲取上傳記錄失敗")
 		return
 	}
 
-	c.JSON(http.StatusOK, api.SuccessResponse(gin.H{
+	api.Success(c, gin.H{
 		"records":   records,
 		"total":     total,
 		"page":      page,
 		"page_size": pageSize,
 		"pages":     (total + int64(pageSize) - 1) / int64(pageSize),
-	}))
+	})
 }
 
 // GetUploadRecord 獲取單個上傳記錄
@@ -96,16 +95,16 @@ func (h *LineHandler) GetUploadRecord(c *gin.Context) {
 	result := h.db.Preload("File").Preload("LineUser").Where("id = ?", id).First(&record)
 
 	if result.Error == gorm.ErrRecordNotFound {
-		c.JSON(http.StatusNotFound, api.ErrorResponse("上傳記錄不存在"))
+		api.NotFound(c, "上傳記錄")
 		return
 	}
 	if result.Error != nil {
 		logger.Error("Failed to get upload record", "id", id, "error", result.Error)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse("獲取上傳記錄失敗"))
+		api.InternalServerError(c, "獲取上傳記錄失敗")
 		return
 	}
 
-	c.JSON(http.StatusOK, api.SuccessResponse(record))
+	api.Success(c, record)
 }
 
 // DeleteUploadRecord 刪除上傳記錄
@@ -115,16 +114,16 @@ func (h *LineHandler) DeleteUploadRecord(c *gin.Context) {
 	result := h.db.Where("id = ?", id).Delete(&models.LineUploadRecord{})
 	if result.Error != nil {
 		logger.Error("Failed to delete upload record", "id", id, "error", result.Error)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse("刪除上傳記錄失敗"))
+		api.InternalServerError(c, "刪除上傳記錄失敗")
 		return
 	}
 
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, api.ErrorResponse("上傳記錄不存在"))
+		api.NotFound(c, "上傳記錄")
 		return
 	}
 
-	c.JSON(http.StatusOK, api.SuccessResponse(gin.H{"message": "上傳記錄已刪除"}))
+	api.Success(c, gin.H{"message": "上傳記錄已刪除"})
 }
 
 // GetUsers 獲取 LINE 用戶列表
@@ -167,17 +166,17 @@ func (h *LineHandler) GetUsers(c *gin.Context) {
 
 	if result.Error != nil {
 		logger.Error("Failed to get line users", "error", result.Error)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse("獲取用戶列表失敗"))
+		api.InternalServerError(c, "獲取用戶列表失敗")
 		return
 	}
 
-	c.JSON(http.StatusOK, api.SuccessResponse(gin.H{
+	api.Success(c, gin.H{
 		"users":     users,
 		"total":     total,
 		"page":      page,
 		"page_size": pageSize,
 		"pages":     (total + int64(pageSize) - 1) / int64(pageSize),
-	}))
+	})
 }
 
 // GetUser 獲取單個 LINE 用戶
@@ -188,16 +187,16 @@ func (h *LineHandler) GetUser(c *gin.Context) {
 	result := h.db.Where("line_user_id = ?", lineUserID).First(&user)
 
 	if result.Error == gorm.ErrRecordNotFound {
-		c.JSON(http.StatusNotFound, api.ErrorResponse("用戶不存在"))
+		api.NotFound(c, "用戶")
 		return
 	}
 	if result.Error != nil {
 		logger.Error("Failed to get line user", "line_user_id", lineUserID, "error", result.Error)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse("獲取用戶失敗"))
+		api.InternalServerError(c, "獲取用戶失敗")
 		return
 	}
 
-	c.JSON(http.StatusOK, api.SuccessResponse(user))
+	api.Success(c, user)
 }
 
 // UpdateUserStatus 更新用戶狀態
@@ -210,7 +209,7 @@ func (h *LineHandler) UpdateUserStatus(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, api.ErrorResponse("請求參數錯誤: "+err.Error()))
+		api.BadRequest(c, "請求參數錯誤: "+err.Error())
 		return
 	}
 
@@ -223,23 +222,23 @@ func (h *LineHandler) UpdateUserStatus(c *gin.Context) {
 	}
 
 	if len(updates) == 0 {
-		c.JSON(http.StatusBadRequest, api.ErrorResponse("沒有提供要更新的字段"))
+		api.BadRequest(c, "沒有提供要更新的字段")
 		return
 	}
 
 	result := h.db.Model(&models.LineUser{}).Where("line_user_id = ?", lineUserID).Updates(updates)
 	if result.Error != nil {
 		logger.Error("Failed to update user status", "line_user_id", lineUserID, "error", result.Error)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse("更新用戶狀態失敗"))
+		api.InternalServerError(c, "更新用戶狀態失敗")
 		return
 	}
 
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, api.ErrorResponse("用戶不存在"))
+		api.NotFound(c, "用戶")
 		return
 	}
 
-	c.JSON(http.StatusOK, api.SuccessResponse(gin.H{"message": "用戶狀態已更新"}))
+	api.Success(c, gin.H{"message": "用戶狀態已更新"})
 }
 
 // GetGroups 獲取 LINE 群組列表
@@ -278,17 +277,17 @@ func (h *LineHandler) GetGroups(c *gin.Context) {
 
 	if result.Error != nil {
 		logger.Error("Failed to get line groups", "error", result.Error)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse("獲取群組列表失敗"))
+		api.InternalServerError(c, "獲取群組列表失敗")
 		return
 	}
 
-	c.JSON(http.StatusOK, api.SuccessResponse(gin.H{
+	api.Success(c, gin.H{
 		"groups":    groups,
 		"total":     total,
 		"page":      page,
 		"page_size": pageSize,
 		"pages":     (total + int64(pageSize) - 1) / int64(pageSize),
-	}))
+	})
 }
 
 // GetWebhookLogs 獲取 Webhook 日誌
@@ -331,17 +330,17 @@ func (h *LineHandler) GetWebhookLogs(c *gin.Context) {
 
 	if result.Error != nil {
 		logger.Error("Failed to get webhook logs", "error", result.Error)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse("獲取日誌失敗"))
+		api.InternalServerError(c, "獲取日誌失敗")
 		return
 	}
 
-	c.JSON(http.StatusOK, api.SuccessResponse(gin.H{
+	api.Success(c, gin.H{
 		"logs":      logs,
 		"total":     total,
 		"page":      page,
 		"page_size": pageSize,
 		"pages":     (total + int64(pageSize) - 1) / int64(pageSize),
-	}))
+	})
 }
 
 // GetSettings 獲取 LINE 設定
@@ -351,11 +350,11 @@ func (h *LineHandler) GetSettings(c *gin.Context) {
 
 	if result.Error != nil {
 		logger.Error("Failed to get line settings", "error", result.Error)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse("獲取設定失敗"))
+		api.InternalServerError(c, "獲取設定失敗")
 		return
 	}
 
-	c.JSON(http.StatusOK, api.SuccessResponse(settings))
+	api.Success(c, settings)
 }
 
 // UpdateSetting 更新設定
@@ -368,7 +367,7 @@ func (h *LineHandler) UpdateSetting(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, api.ErrorResponse("請求參數錯誤: "+err.Error()))
+		api.BadRequest(c, "請求參數錯誤: "+err.Error())
 		return
 	}
 
@@ -382,16 +381,16 @@ func (h *LineHandler) UpdateSetting(c *gin.Context) {
 	result := h.db.Model(&models.LineSetting{}).Where("setting_key = ?", settingKey).Updates(updates)
 	if result.Error != nil {
 		logger.Error("Failed to update setting", "setting_key", settingKey, "error", result.Error)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse("更新設定失敗"))
+		api.InternalServerError(c, "更新設定失敗")
 		return
 	}
 
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, api.ErrorResponse("設定不存在"))
+		api.NotFound(c, "設定")
 		return
 	}
 
-	c.JSON(http.StatusOK, api.SuccessResponse(gin.H{"message": "設定已更新"}))
+	api.Success(c, gin.H{"message": "設定已更新"})
 }
 
 // GetStatistics 獲取統計數據
@@ -458,12 +457,12 @@ func (h *LineHandler) GetStatistics(c *gin.Context) {
 	var topGroups []models.LineGroup
 	h.db.Order("total_uploads DESC").Limit(10).Find(&topGroups)
 
-	c.JSON(http.StatusOK, api.SuccessResponse(gin.H{
+	api.Success(c, gin.H{
 		"basic_stats":        stats,
 		"time_series_stats":  timeSeriesStats,
 		"top_users":          topUsers,
 		"top_groups":         topGroups,
-	}))
+	})
 }
 
 // BatchDeleteUploadRecords 批量刪除上傳記錄
@@ -473,24 +472,24 @@ func (h *LineHandler) BatchDeleteUploadRecords(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, api.ErrorResponse("請求參數錯誤: "+err.Error()))
+		api.BadRequest(c, "請求參數錯誤: "+err.Error())
 		return
 	}
 
 	if len(req.IDs) == 0 {
-		c.JSON(http.StatusBadRequest, api.ErrorResponse("沒有提供要刪除的記錄 ID"))
+		api.BadRequest(c, "沒有提供要刪除的記錄 ID")
 		return
 	}
 
 	result := h.db.Where("id IN ?", req.IDs).Delete(&models.LineUploadRecord{})
 	if result.Error != nil {
 		logger.Error("Failed to batch delete upload records", "ids", req.IDs, "error", result.Error)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse("批量刪除失敗"))
+		api.InternalServerError(c, "批量刪除失敗")
 		return
 	}
 
-	c.JSON(http.StatusOK, api.SuccessResponse(gin.H{
+	api.Success(c, gin.H{
 		"message":       "批量刪除完成",
 		"deleted_count": result.RowsAffected,
-	}))
+	})
 }

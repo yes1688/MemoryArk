@@ -205,14 +205,16 @@ export class LineWebhookController {
         };
 
       default:
+        // TypeScript exhaustive check - this should never be reached with known message types
+        const unknownMessage = message as any;
         lineLogger.warn('Unsupported message type', { 
-          messageType: (message as any).type,
-          messageId: (message as any).id 
+          messageType: unknownMessage.type,
+          messageId: unknownMessage.id 
         });
         
         return {
           success: true,
-          message: `Unsupported message type: ${(message as any).type}`,
+          message: `Unsupported message type: ${unknownMessage.type || 'unknown'}`,
         };
     }
   }

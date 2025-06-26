@@ -10,15 +10,8 @@ import (
 )
 
 // GenerateUUIDv7 生成 UUID v7
-// 如果 google/uuid 套件版本支援 v7，使用官方實作
-// 否則使用自定義實作
+// 使用自定義實作，因為 google/uuid 尚未完全支援 v7
 func GenerateUUIDv7() string {
-	// 嘗試使用官方 UUID v7（需要 v1.4.0+ 版本）
-	if id, err := uuid.NewV7(); err == nil {
-		return id.String()
-	}
-	
-	// 回退到自定義實作
 	return generateCustomUUIDv7()
 }
 

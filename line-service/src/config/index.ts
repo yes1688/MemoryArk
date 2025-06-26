@@ -13,8 +13,8 @@ export const config = {
   memoryark: {
     apiUrl: process.env.MEMORYARK_API_URL || 'http://localhost:8081',
     apiToken: process.env.MEMORYARK_API_TOKEN || '',
-    uploadEndpoint: process.env.MEMORYARK_UPLOAD_ENDPOINT || '/api/photos/upload',
-    maxFileSize: parseInt(process.env.MEMORYARK_MAX_FILE_SIZE || '52428800'), // 50MB
+    uploadEndpoint: process.env.MEMORYARK_UPLOAD_ENDPOINT || '/api/api-access/files/upload',
+    maxFileSize: parseInt(process.env.MEMORYARK_MAX_FILE_SIZE || '20971520'), // 20MB
     allowedMimeTypes: (process.env.MEMORYARK_ALLOWED_MIME_TYPES || 'image/jpeg,image/png,image/gif,image/webp,image/bmp').split(','),
   },
 
@@ -40,7 +40,6 @@ export function validateConfig() {
     'LINE_CHANNEL_SECRET',
     'LINE_CHANNEL_ID',
     'MEMORYARK_API_URL',
-    'MEMORYARK_API_TOKEN',
   ];
 
   const missing = required.filter((key) => !process.env[key]);
@@ -57,8 +56,15 @@ export function validateConfig() {
   }
 
   // 驗證 MemoryArk 配置
-  if (!config.memoryark.apiUrl || !config.memoryark.apiToken) {
-    throw new Error('MemoryArk API URL and token are required');
+  if (!config.memoryark.apiUrl) {
+    throw new Error('MemoryArk API URL is required');
+  }
+
+  // API Token 是可選的，用於外部通訊時的認證
+  if (config.memoryark.apiToken && config.memoryark.apiToken.trim()) {
+    console.log('✅ Using API Token authentication for MemoryArk');
+  } else {
+    console.log('🔗 Using internal container communication (no token)');
   }
 
   // 驗證檔案大小限制

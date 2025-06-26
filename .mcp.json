@@ -1,9 +1,11 @@
 {
   "mcpServers": {
-    "memoryark-qdrant": {
+    "qdrant-local": {
       "type": "stdio",
       "command": "uvx",
-      "args": ["mcp-server-qdrant"],
+      "args": [
+        "mcp-server-qdrant"
+      ],
       "env": {
         "QDRANT_LOCAL_PATH": "./qdrant-data",
         "COLLECTION_NAME": "memoryark-knowledge",

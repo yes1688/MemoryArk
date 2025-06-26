@@ -20,14 +20,20 @@ export class MemoryArkApiService {
    * 建立 Axios 實例
    */
   private createAxiosInstance(): AxiosInstance {
+    const baseHeaders: any = {
+      'Content-Type': 'application/json',
+      'User-Agent': 'MemoryArk-LINE-Service/1.0.0',
+    };
+
+    // 只有在設定了 API Token 時才加入 Authorization 標頭
+    if (this.config.apiToken && this.config.apiToken.trim()) {
+      baseHeaders['Authorization'] = `Bearer ${this.config.apiToken}`;
+    }
+
     const instance = axios.create({
       baseURL: this.config.apiUrl,
       timeout: 30000, // 30 秒超時
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.config.apiToken}`,
-        'User-Agent': 'MemoryArk-LINE-Service/1.0.0',
-      },
+      headers: baseHeaders,
     });
 
     // 請求攔截器
@@ -118,14 +124,20 @@ export class MemoryArkApiService {
       }
 
       // 設定上傳配置
+      const uploadHeaders = {
+        ...formData.getHeaders(),
+      };
+
+      // 只有在設定了 API Token 時才加入 Authorization 標頭
+      if (this.config.apiToken && this.config.apiToken.trim()) {
+        uploadHeaders['Authorization'] = `Bearer ${this.config.apiToken}`;
+      }
+
       const uploadConfig: AxiosRequestConfig = {
         method: 'POST',
         url: this.config.uploadEndpoint || '/api/photos/upload',
         data: formData,
-        headers: {
-          ...formData.getHeaders(),
-          'Authorization': `Bearer ${this.config.apiToken}`,
-        },
+        headers: uploadHeaders,
         maxContentLength: this.config.maxFileSize || 50 * 1024 * 1024, // 預設 50MB
         maxBodyLength: this.config.maxFileSize || 50 * 1024 * 1024,
       };
@@ -190,16 +202,34 @@ export class MemoryArkApiService {
    */
   async checkApiHealth(): Promise<boolean> {
     try {
-      const response = await this.axiosInstance.get('/health');
-      const isHealthy = response.status === 200 && response.data?.status === 'ok';
+      // Try multiple possible health check endpoints
+      const healthEndpoints = ['/health', '/api/health', '/status'];
       
-      memoryArkLogger.info('MemoryArk API health check', {
-        status: response.status,
-        healthy: isHealthy,
-        response: response.data,
-      });
+      for (const endpoint of healthEndpoints) {
+        try {
+          const response = await this.axiosInstance.get(endpoint, { timeout: 5000 });
+          const isHealthy = response.status === 200;
+          
+          memoryArkLogger.info('MemoryArk API health check', {
+            endpoint,
+            status: response.status,
+            healthy: isHealthy,
+            response: response.data,
+          });
+          
+          if (isHealthy) {
+            return true;
+          }
+        } catch (endpointError: any) {
+          memoryArkLogger.debug('Health check endpoint failed', {
+            endpoint,
+            error: endpointError.message,
+          });
+          // Continue to next endpoint
+        }
+      }
       
-      return isHealthy;
+      return false;
     } catch (error: any) {
       memoryArkLogger.error('MemoryArk API health check failed', {
         error: error.message,
@@ -287,8 +317,14 @@ export class MemoryArkApiService {
    */
   updateToken(newToken: string): void {
     this.config.apiToken = newToken;
-    this.axiosInstance.defaults.headers['Authorization'] = `Bearer ${newToken}`;
-    memoryArkLogger.info('MemoryArk API token updated');
+    
+    if (newToken && newToken.trim()) {
+      this.axiosInstance.defaults.headers['Authorization'] = `Bearer ${newToken}`;
+      memoryArkLogger.info('MemoryArk API token updated');
+    } else {
+      delete this.axiosInstance.defaults.headers['Authorization'];
+      memoryArkLogger.info('MemoryArk API token removed - using internal communication');
+    }
   }
 
   /**

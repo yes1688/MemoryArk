@@ -84,6 +84,9 @@ services:
       - GOMEMLIMIT=${GOMEMLIMIT:-512MiB}
       - GOGC=${GOGC:-100}
       - GOMAXPROCS=${GOMAXPROCS:-2}
+      
+      # LINE Service API Token (內部通訊認證)
+      - LINE_SERVICE_API_TOKEN=${LINE_SERVICE_API_TOKEN:-line-service-internal-token-2024}
     
     volumes:
       - ./data:/app/data
@@ -146,42 +149,18 @@ services:
     depends_on:
       - redis
       - backend
+    env_file:
+      - ./line-service/.env
     environment:
-      # 基本配置
-      - NODE_ENV=${NODE_ENV:-production}
-      - PORT=3000
+      # 容器專用配置 (覆蓋 env_file 中的設定)
+      - REDIS_HOST=redis           # 容器內 Redis 主機名
+      - REDIS_PORT=6379            # 容器內 Redis 端口
+      - MEMORYARK_API_URL=http://memoryark-backend:8081  # 容器內後端 URL
       
-      # LINE Bot 配置 (請在 .env 檔案中設定)
-      - LINE_CHANNEL_ACCESS_TOKEN=${LINE_CHANNEL_ACCESS_TOKEN:-}
-      - LINE_CHANNEL_SECRET=${LINE_CHANNEL_SECRET:-}
-      
-      # Redis 配置
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      
-      # MemoryArk Backend 整合
-      - MEMORYARK_API_URL=http://backend:8081
-      - MEMORYARK_API_KEY=${MEMORYARK_API_KEY:-}
-      
-      # 檔案上傳配置
+      # 容器路徑配置
       - UPLOAD_PATH=/app/uploads
-      - MAX_FILE_SIZE=${LINE_MAX_FILE_SIZE:-20971520}  # 20MB (LINE 限制)
       - TEMP_PATH=/app/temp
-      
-      # 任務隊列配置
-      - QUEUE_CONCURRENCY=${LINE_QUEUE_CONCURRENCY:-5}
-      - QUEUE_ATTEMPTS=${LINE_QUEUE_ATTEMPTS:-3}
-      - QUEUE_BACKOFF=${LINE_QUEUE_BACKOFF:-exponential}
-      
-      # 日誌配置
-      - LOG_LEVEL=${LINE_LOG_LEVEL:-info}
       - LOG_PATH=/app/logs
-      
-      # 清理配置
-      - CLEANUP_ENABLED=${LINE_CLEANUP_ENABLED:-true}
-      - CLEANUP_INTERVAL=${LINE_CLEANUP_INTERVAL:-"0 2 * * *"}  # 每天凌晨 2 點
-      - CLEANUP_RETENTION_DAYS=${LINE_CLEANUP_RETENTION_DAYS:-7}
     
     volumes:
       # 與 MemoryArk 共享的目錄

@@ -81,12 +81,12 @@ type LineGroup struct {
 // LineGroupMember 群組成員關聯表
 type LineGroupMember struct {
 	ID            uint       `json:"id" gorm:"primaryKey"`
-	LineGroupID   string     `json:"line_group_id" gorm:"type:varchar(100);not null;index;uniqueIndex:uk_group_user"`
-	LineUserID    string     `json:"line_user_id" gorm:"type:varchar(100);not null;index;uniqueIndex:uk_group_user"`
+	LineGroupID   string     `json:"line_group_id" gorm:"type:varchar(100);not null;index"`
+	LineUserID    string     `json:"line_user_id" gorm:"type:varchar(100);not null;index"`
 	Role          string     `json:"role" gorm:"type:varchar(20);default:'member'"`
 	JoinDate      *time.Time `json:"join_date"`
 	LeaveDate     *time.Time `json:"leave_date"`
-	IsActive      bool       `json:"is_active" gorm:"default:true;index:idx_active_members"`
+	IsActive      bool       `json:"is_active" gorm:"default:true;index"`
 	UploadCount   int        `json:"upload_count" gorm:"default:0;index"`
 	LastUploadAt  *time.Time `json:"last_upload_at"`
 	CreatedAt     time.Time  `json:"created_at"`
@@ -141,10 +141,10 @@ type LineSetting struct {
 // LineUploadStat 上傳統計表
 type LineUploadStat struct {
 	ID             uint      `json:"id" gorm:"primaryKey"`
-	StatDate       time.Time `json:"stat_date" gorm:"type:date;not null;index;uniqueIndex:uk_stat_date_type_user"`
-	StatType       string    `json:"stat_type" gorm:"type:varchar(20);not null;index;uniqueIndex:uk_stat_date_type_user"`
-	LineUserID     *string   `json:"line_user_id" gorm:"type:varchar(100);index;uniqueIndex:uk_stat_date_type_user"`
-	LineGroupID    *string   `json:"line_group_id" gorm:"type:varchar(100);index;uniqueIndex:uk_stat_date_type_user"`
+	StatDate       time.Time `json:"stat_date" gorm:"type:date;not null;index"`
+	StatType       string    `json:"stat_type" gorm:"type:varchar(20);not null;index"`
+	LineUserID     *string   `json:"line_user_id" gorm:"type:varchar(100);index"`
+	LineGroupID    *string   `json:"line_group_id" gorm:"type:varchar(100);index"`
 	UploadCount    int       `json:"upload_count" gorm:"default:0;index"`
 	FileSizeTotal  int64     `json:"file_size_total" gorm:"default:0"`
 	ImageCount     int       `json:"image_count" gorm:"default:0"`

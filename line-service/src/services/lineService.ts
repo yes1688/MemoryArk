@@ -189,7 +189,11 @@ export class LineService {
    */
   private async downloadImage(messageId: string): Promise<Buffer> {
     try {
-      photoLogger.info('Starting image download', { messageId });
+      photoLogger.info('Starting image download', { 
+        messageId,
+        hasToken: !!this.config.channelAccessToken,
+        tokenPrefix: this.config.channelAccessToken?.substring(0, 20)
+      });
       
       const stream = await this.lineClient.getMessageContent(messageId);
       const chunks: Buffer[] = [];

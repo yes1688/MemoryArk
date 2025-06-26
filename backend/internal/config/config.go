@@ -18,6 +18,7 @@ type Config struct {
 	Admin     AdminConfig
 	Development DevelopmentConfig
 	Features  FeatureConfig
+	API       APIConfig
 }
 
 // ServerConfig 服務器配置
@@ -79,6 +80,11 @@ type FeatureConfig struct {
 	EnableSabbathData     bool // 啟用安息日資料功能
 }
 
+// APIConfig API 認證配置
+type APIConfig struct {
+	LineServiceToken string // LINE Service API Token
+}
+
 // Load 載入配置
 func Load() (*Config, error) {
 	// 載入 .env 文件（如果存在）
@@ -125,6 +131,9 @@ func Load() (*Config, error) {
 		Features: FeatureConfig{
 			EnableSharedResources: getEnvBool("ENABLE_SHARED_RESOURCES", false),
 			EnableSabbathData:     getEnvBool("ENABLE_SABBATH_DATA", false),
+		},
+		API: APIConfig{
+			LineServiceToken: getEnv("LINE_SERVICE_API_TOKEN", ""),
 		},
 	}
 	
