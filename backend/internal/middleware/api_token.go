@@ -13,10 +13,14 @@ import (
 // 用於驗證服務間通信的 API Token (如 LINE Service 呼叫 MemoryArk API)
 func APITokenMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 開發模式：跳過 API Token 檢查
+		// 開發模式：跳過 API Token 檢查但仍設置必要的上下文
 		if cfg.Development.Enabled && cfg.Development.BypassAuth {
 			fmt.Printf("🔧 API Token DEBUG: 開發模式跳過 API Token 驗證 - %s %s\n", 
 				c.Request.Method, c.Request.URL.Path)
+			// 即使在開發模式下也要設置服務身份，確保 file upload 能正常工作
+			c.Set("api_client", "line_service")
+			c.Set("auth_type", "api_token_dev")
+			c.Set("user_id", uint(0)) // 設置系統服務用戶 ID
 			c.Next()
 			return
 		}

@@ -493,3 +493,147 @@ func (h *LineHandler) BatchDeleteUploadRecords(c *gin.Context) {
 		"deleted_count": result.RowsAffected,
 	})
 }
+
+// SaveLineUser 保存或更新 LINE 用戶資訊
+func (h *LineHandler) SaveLineUser(c *gin.Context) {
+	var req struct {
+		LineUserID    string `json:"lineUserId" binding:"required"`
+		DisplayName   string `json:"displayName" binding:"required"`
+		PictureURL    string `json:"pictureUrl"`
+		StatusMessage string `json:"statusMessage"`
+		Language      string `json:"language"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.BadRequest(c, "請求參數錯誤: "+err.Error())
+		return
+	}
+
+	var lineUser models.LineUser
+
+	// 查找現有用戶
+	result := h.db.Where("line_user_id = ?", req.LineUserID).First(&lineUser)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			// 創建新用戶
+			now := time.Now()
+			lineUser = models.LineUser{
+				LineUserID:          req.LineUserID,
+				DisplayName:         req.DisplayName,
+				PictureURL:          &req.PictureURL,
+				StatusMessage:       &req.StatusMessage,
+				Language:            &req.Language,
+				IsBlocked:           false,
+				IsActive:            true,
+				FirstInteractionAt:  &now,
+				LastInteractionAt:   &now,
+			}
+
+			if err := h.db.Create(&lineUser).Error; err != nil {
+				logger.Error("Failed to create LINE user", "lineUserId", req.LineUserID, "error", err)
+				api.InternalServerError(c, "創建用戶失敗")
+				return
+			}
+
+			api.Success(c, gin.H{
+				"message": "用戶創建成功",
+				"user":    lineUser,
+				"created": true,
+			})
+		} else {
+			logger.Error("Failed to query LINE user", "lineUserId", req.LineUserID, "error", result.Error)
+			api.InternalServerError(c, "查詢用戶失敗")
+			return
+		}
+	} else {
+		// 更新現有用戶
+		now := time.Now()
+		updates := map[string]interface{}{
+			"display_name":         req.DisplayName,
+			"picture_url":          &req.PictureURL,
+			"status_message":       &req.StatusMessage,
+			"language":             &req.Language,
+			"last_interaction_at":  &now,
+		}
+
+		if err := h.db.Model(&lineUser).Updates(updates).Error; err != nil {
+			logger.Error("Failed to update LINE user", "lineUserId", req.LineUserID, "error", err)
+			api.InternalServerError(c, "更新用戶失敗")
+			return
+		}
+
+		api.Success(c, gin.H{
+			"message": "用戶更新成功",
+			"user":    lineUser,
+			"created": false,
+		})
+	}
+}
+
+// CreateUploadRecord 創建上傳記錄
+func (h *LineHandler) CreateUploadRecord(c *gin.Context) {
+	var req struct {
+		FileID         uint                   `json:"fileId" binding:"required"`
+		LineUserID     string                 `json:"lineUserId" binding:"required"`
+		LineMessageID  string                 `json:"lineMessageId" binding:"required"`
+		LineGroupID    string                 `json:"lineGroupId"`
+		MessageType    string                 `json:"messageType"`
+		OriginalURL    string                 `json:"originalUrl"`
+		Metadata       map[string]interface{} `json:"metadata"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.BadRequest(c, "請求參數錯誤: "+err.Error())
+		return
+	}
+
+	// 檢查檔案是否存在
+	var file models.File
+	if err := h.db.First(&file, req.FileID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			api.BadRequest(c, "檔案不存在")
+		} else {
+			logger.Error("Failed to check file existence", "fileId", req.FileID, "error", err)
+			api.InternalServerError(c, "檢查檔案失敗")
+		}
+		return
+	}
+
+	// 檢查是否已有相同的上傳記錄
+	var existingRecord models.LineUploadRecord
+	result := h.db.Where("line_message_id = ?", req.LineMessageID).First(&existingRecord)
+	if result.Error == nil {
+		api.Success(c, gin.H{
+			"message": "記錄已存在",
+			"record":  existingRecord,
+		})
+		return
+	}
+
+	// 創建上傳記錄
+	uploadRecord := models.LineUploadRecord{
+		FileID:         req.FileID,
+		LineUserID:     req.LineUserID,
+		LineUserName:   "Unknown", // 暫時設定，後續可以從 metadata 取得
+		LineMessageID:  req.LineMessageID,
+		LineGroupID:    &req.LineGroupID,
+		MessageType:    req.MessageType,
+		OriginalURL:    &req.OriginalURL,
+		DownloadStatus: "completed",
+	}
+
+	if err := h.db.Create(&uploadRecord).Error; err != nil {
+		logger.Error("Failed to create upload record", "lineMessageId", req.LineMessageID, "error", err)
+		api.InternalServerError(c, "創建上傳記錄失敗")
+		return
+	}
+
+	// 更新用戶的總上傳數
+	h.db.Model(&models.LineUser{}).Where("line_user_id = ?", req.LineUserID).
+		Update("total_uploads", gorm.Expr("total_uploads + 1"))
+
+	api.Success(c, gin.H{
+		"message": "上傳記錄創建成功",
+		"record":  uploadRecord,
+	})
+}

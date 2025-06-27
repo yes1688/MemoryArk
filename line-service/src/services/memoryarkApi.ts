@@ -123,6 +123,11 @@ export class MemoryArkApiService {
         formData.append('metadata', JSON.stringify(photoData.metadata));
       }
 
+      // 新增：資料夾路徑支援 (使用後端支援的 relative_path 參數)
+      if (photoData.folderPath) {
+        formData.append('relative_path', photoData.folderPath);
+      }
+
       // 設定上傳配置
       const uploadHeaders = {
         ...formData.getHeaders(),
@@ -154,7 +159,7 @@ export class MemoryArkApiService {
 
       const result: MemoryArkUploadResponse = {
         success: true,
-        photoId: response.data.photoId || response.data.id,
+        photoId: response.data.data?.id?.toString() || response.data.photoId || response.data.id,
         message: response.data.message || 'Photo uploaded successfully',
       };
 
@@ -324,6 +329,97 @@ export class MemoryArkApiService {
     } else {
       delete this.axiosInstance.defaults.headers['Authorization'];
       memoryArkLogger.info('MemoryArk API token removed - using internal communication');
+    }
+  }
+
+  /**
+   * 保存 LINE 用戶資訊
+   */
+  async saveLineUser(userProfile: {
+    userId: string;
+    displayName: string;
+    pictureUrl?: string;
+    statusMessage?: string;
+    language?: string;
+  }): Promise<{ success: boolean; message: string; user?: any; created?: boolean }> {
+    try {
+      const response = await this.axiosInstance.post('/api/api-access/line/users', {
+        lineUserId: userProfile.userId,
+        displayName: userProfile.displayName,
+        pictureUrl: userProfile.pictureUrl,
+        statusMessage: userProfile.statusMessage,
+        language: userProfile.language,
+      });
+
+      memoryArkLogger.info('LINE user saved successfully', {
+        userId: userProfile.userId,
+        displayName: userProfile.displayName,
+        created: response.data.data?.created,
+      });
+
+      return {
+        success: true,
+        message: response.data.data?.message || 'User saved successfully',
+        user: response.data.data?.user,
+        created: response.data.data?.created,
+      };
+    } catch (error: any) {
+      memoryArkLogger.error('Failed to save LINE user', {
+        userId: userProfile.userId,
+        error: error.message,
+        status: error.response?.status,
+      });
+
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message,
+      };
+    }
+  }
+
+  /**
+   * 創建上傳記錄
+   */
+  async createUploadRecord(fileId: string, lineUserID: string, metadata: {
+    messageId: string;
+    timestamp: string;
+    userProfile?: any;
+    source?: any;
+  }): Promise<{ success: boolean; message: string; record?: any }> {
+    try {
+      const response = await this.axiosInstance.post('/api/api-access/line/upload-records', {
+        fileId: parseInt(fileId, 10),
+        lineUserId: lineUserID,
+        lineMessageId: metadata.messageId,
+        lineGroupId: metadata.source?.type === 'group' ? metadata.source.groupId : undefined,
+        messageType: 'image',
+        metadata: metadata,
+      });
+
+      memoryArkLogger.info('Upload record created successfully', {
+        fileId,
+        lineUserId: lineUserID,
+        messageId: metadata.messageId,
+      });
+
+      return {
+        success: true,
+        message: response.data.data?.message || 'Upload record created successfully',
+        record: response.data.data?.record,
+      };
+    } catch (error: any) {
+      memoryArkLogger.error('Failed to create upload record', {
+        fileId,
+        lineUserId: lineUserID,
+        messageId: metadata.messageId,
+        error: error.message,
+        status: error.response?.status,
+      });
+
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message,
+      };
     }
   }
 

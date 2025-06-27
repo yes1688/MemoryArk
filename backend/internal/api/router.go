@@ -7,6 +7,7 @@ import (
 	"memoryark/internal/config"
 	"memoryark/internal/middleware"
 	"memoryark/internal/api/handlers"
+	"memoryark/internal/websocket"
 )
 
 // SetupRouter 設置路由
@@ -24,7 +25,9 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	
 	// 初始化處理器
 	authHandler := handlers.NewAuthHandler(db, cfg)
+	wsHandler := websocket.NewWebSocketHandler()
 	fileHandler := handlers.NewFileHandler(db, cfg)
+	fileHandler.SetWebSocketHandler(wsHandler)
 	categoryHandler := handlers.NewCategoryHandler(db, cfg)
 	exportHandler := handlers.NewExportHandler(db, cfg)
 	// userHandler := handlers.NewUserHandler(db, cfg)
@@ -42,6 +45,9 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		public.GET("/auth/status", authHandler.GetAuthStatus)
 		public.POST("/auth/register", authHandler.Register)
 		public.GET("/features/config", authHandler.GetFeatureConfig)
+		
+		// WebSocket 路由 (開發階段暫時放在公開路由)
+		public.GET("/ws", wsHandler.HandleWebSocket)
 	}
 	
 	// 需要認證的路由 (用戶網頁介面)
@@ -55,6 +61,10 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		// LINE Service 檔案上傳專用端點
 		apiRoutes.POST("/files/upload", fileHandler.UploadFile)
 		apiRoutes.GET("/files/:id", fileHandler.GetFileDetails)
+		
+		// LINE 用戶和記錄管理 API (供 LINE Service 調用)
+		apiRoutes.POST("/line/users", lineHandler.SaveLineUser)
+		apiRoutes.POST("/line/upload-records", lineHandler.CreateUploadRecord)
 	}
 
 	{
@@ -97,6 +107,8 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		protected.POST("/categories", categoryHandler.CreateCategory)
 		protected.PUT("/categories/:id", categoryHandler.UpdateCategory)
 		protected.DELETE("/categories/:id", categoryHandler.DeleteCategory)
+		
+		
 		protected.GET("/categories/:id/files", categoryHandler.GetCategoryFiles)
 		
 		// 匯出功能

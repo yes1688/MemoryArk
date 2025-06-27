@@ -25,6 +25,9 @@ export class LineService {
     this.lineClient = new Client({
       channelAccessToken: config.channelAccessToken,
       channelSecret: config.channelSecret,
+      httpConfig: {
+        timeout: 60000 // 60 秒超時
+      }
     });
   }
 
@@ -39,8 +42,16 @@ export class LineService {
     try {
       LoggerHelper.logLineEvent('image', userId, { messageId });
 
-      // 1. 回覆確認訊息
-      await this.replyMessage(replyToken, '📸 收到您的照片！正在處理中，請稍候...');
+      // 1. 嘗試回覆確認訊息（失敗不會中斷流程）
+      try {
+        await this.replyMessage(replyToken, '📸 收到您的照片！正在處理中，請稍候...');
+      } catch (replyError: any) {
+        lineLogger.warn('Failed to reply confirmation message, but continuing photo processing', {
+          messageId,
+          userId,
+          error: replyError.message
+        });
+      }
 
       // 2. 下載照片
       const photoBuffer = await this.downloadImage(messageId);
@@ -58,24 +69,55 @@ export class LineService {
       const uploadResult = await memoryArkApi.uploadPhoto(uploadData);
 
       if (uploadResult.success) {
-        // 上傳成功
+        // 上傳成功，記錄用戶資訊和上傳記錄
         LoggerHelper.logPhotoProcessing(messageId, userId, 'completed');
         
-        await this.pushMessage(userId, 
-          `✅ 照片已成功保存到 MemoryArk！\n` +
-          `📷 照片 ID: ${uploadResult.photoId}\n` +
-          `💾 檔案大小: ${this.formatBytes(photoBuffer.length)}`
-        );
+        // 保存 LINE 用戶資訊到資料庫
+        if (uploadData.metadata?.userProfile) {
+          await this.recordLineUserAndUpload(
+            userId,
+            uploadData.metadata.userProfile,
+            uploadResult.photoId!,
+            messageId,
+            source as LineMessageSource
+          );
+        }
+        
+        // 嘗試推送成功訊息（失敗不會影響處理結果）
+        try {
+          await this.pushMessage(userId, 
+            `✅ 照片已成功保存到 MemoryArk！\n` +
+            `📷 照片 ID: ${uploadResult.photoId}\n` +
+            `💾 檔案大小: ${this.formatBytes(photoBuffer.length)}`
+          );
+        } catch (pushError: any) {
+          lineLogger.warn('Failed to push success message, but photo processing completed', {
+            messageId,
+            userId,
+            photoId: uploadResult.photoId,
+            error: pushError.message
+          });
+        }
 
         return { success: true, message: 'Photo processed successfully', data: { photoId: uploadResult.photoId } };
       } else {
         // 上傳失敗
         LoggerHelper.logPhotoProcessing(messageId, userId, 'failed', uploadResult.error);
         
-        await this.pushMessage(userId, 
-          `❌ 照片處理失敗：${uploadResult.message}\n` +
-          `請稍後再試或聯繫管理員。`
-        );
+        // 嘗試推送失敗訊息（失敗不會影響錯誤回報）
+        try {
+          await this.pushMessage(userId, 
+            `❌ 照片處理失敗：${uploadResult.message}\n` +
+            `請稍後再試或聯繫管理員。`
+          );
+        } catch (pushError: any) {
+          lineLogger.warn('Failed to push error message', {
+            messageId,
+            userId,
+            originalError: uploadResult.error,
+            pushError: pushError.message
+          });
+        }
 
         return { success: false, error: uploadResult.error };
       }
@@ -188,40 +230,152 @@ export class LineService {
    * 下載照片
    */
   private async downloadImage(messageId: string): Promise<Buffer> {
-    try {
-      photoLogger.info('Starting image download', { 
-        messageId,
-        hasToken: !!this.config.channelAccessToken,
-        tokenPrefix: this.config.channelAccessToken?.substring(0, 20)
-      });
-      
-      const stream = await this.lineClient.getMessageContent(messageId);
-      const chunks: Buffer[] = [];
-
-      return new Promise((resolve, reject) => {
-        stream.on('data', (chunk: Buffer) => {
-          chunks.push(chunk);
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 1000; // 1 秒
+    
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        photoLogger.info('Starting image download', { 
+          messageId,
+          attempt,
+          maxRetries: MAX_RETRIES,
+          hasToken: !!this.config.channelAccessToken,
+          tokenPrefix: this.config.channelAccessToken?.substring(0, 20)
         });
+        
+        const stream = await this.lineClient.getMessageContent(messageId);
+        const chunks: Buffer[] = [];
 
-        stream.on('end', () => {
-          const buffer = Buffer.concat(chunks);
-          photoLogger.info('Image download completed', { 
-            messageId, 
-            size: buffer.length,
-            sizeFormatted: this.formatBytes(buffer.length) 
+        return new Promise<Buffer>((resolve, reject) => {
+          stream.on('data', (chunk: Buffer) => {
+            chunks.push(chunk);
           });
-          resolve(buffer);
+
+          stream.on('end', () => {
+            const buffer = Buffer.concat(chunks);
+            photoLogger.info('Image download completed', { 
+              messageId, 
+              size: buffer.length,
+              sizeFormatted: this.formatBytes(buffer.length) 
+            });
+            resolve(buffer);
+          });
+
+          stream.on('error', (error) => {
+            photoLogger.error('Image download failed', { messageId, attempt, error: error.message });
+            reject(error);
+          });
         });
 
-        stream.on('error', (error) => {
-          photoLogger.error('Image download failed', { messageId, error: error.message });
-          reject(error);
+      } catch (error: any) {
+        const isLastAttempt = attempt === MAX_RETRIES;
+        const isDnsError = error.message && (error.message.includes('EAI_AGAIN') || error.message.includes('ENOTFOUND') || error.message.includes('getaddrinfo'));
+        
+        photoLogger.error('Failed to get image content', { 
+          messageId, 
+          attempt, 
+          maxRetries: MAX_RETRIES,
+          isLastAttempt,
+          isDnsError,
+          error: error.message 
         });
+        
+        if (isLastAttempt) {
+          throw new Error(`Failed to download image after ${MAX_RETRIES} attempts: ${error.message}`);
+        }
+        
+        if (isDnsError) {
+          photoLogger.warn('DNS error detected, retrying with delay', { messageId, attempt, delay: RETRY_DELAY });
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt)); // 漸進式延遲
+        } else {
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        }
+      }
+    }
+    
+    // 這裡永遠不應該到達，但 TypeScript 需要明確的返回
+    throw new Error(`Failed to download image after ${MAX_RETRIES} attempts`);
+  }
+
+  /**
+   * 記錄 LINE 用戶和上傳資訊
+   */
+  private async recordLineUserAndUpload(
+    userId: string,
+    userProfile: LineUserProfile,
+    fileId: string,
+    messageId: string,
+    source: LineMessageSource
+  ): Promise<void> {
+    try {
+      const memoryArkApi = getMemoryArkApi();
+
+      // 1. 保存用戶資訊
+      const userResult = await memoryArkApi.saveLineUser({
+        userId: userProfile.userId,
+        displayName: userProfile.displayName,
+        pictureUrl: userProfile.pictureUrl,
+        statusMessage: userProfile.statusMessage,
+        language: userProfile.language,
       });
 
-    } catch (error: any) {
-      photoLogger.error('Failed to get image content', { messageId, error: error.message });
-      throw new Error(`Failed to download image: ${error.message}`);
+      if (userResult.success) {
+        lineLogger.info('LINE user saved to database', {
+          userId: userProfile.userId,
+          displayName: userProfile.displayName,
+          created: userResult.created,
+        });
+      } else {
+        lineLogger.warn('Failed to save LINE user', {
+          userId: userProfile.userId,
+          error: userResult.message,
+        });
+      }
+
+      // 2. 創建上傳記錄
+      const recordResult = await memoryArkApi.createUploadRecord(fileId, userId, {
+        messageId,
+        timestamp: new Date().toISOString(),
+        userProfile,
+        source,
+      });
+
+      if (recordResult.success) {
+        lineLogger.info('Upload record created successfully', {
+          fileId,
+          userId,
+          messageId,
+        });
+      } else {
+        lineLogger.warn('Failed to create upload record', {
+          fileId,
+          userId,
+          messageId,
+          error: recordResult.message,
+        });
+      }
+    } catch (error) {
+      lineLogger.error('Failed to record LINE user and upload data', {
+        userId,
+        fileId,
+        messageId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // 不拋出錯誤，避免影響主要的照片上傳流程
+    }
+  }
+
+  /**
+   * 生成 LINE 照片的資料夾路徑
+   */
+  private generateFolderPath(userProfile: LineUserProfile | null, source: LineMessageSource): string {
+    if (source.type === 'group') {
+      // 群組照片統一放在群組照片資料夾
+      return 'LINE信徒照片上傳/群組照片';
+    } else {
+      // 個人照片按使用者名稱分類
+      const displayName = userProfile?.displayName || 'Unknown';
+      return `LINE信徒照片上傳/${displayName}`;
     }
   }
 
@@ -253,12 +407,16 @@ export class LineService {
       lineLogger.warn('Failed to get user profile', { userId, error });
     }
 
+    // 生成資料夾路徑
+    const folderPath = this.generateFolderPath(userProfile, source);
+
     return {
       file: buffer,
       fileName,
       mimeType,
       description: `來自 LINE 的照片 - 使用者：${userProfile?.displayName || userId}`,
       tags: ['line', 'auto-upload', userProfile?.displayName || userId],
+      folderPath: folderPath,  // 新增資料夾路徑
       metadata: {
         lineUserId: userId,
         lineMessageId: messageId,

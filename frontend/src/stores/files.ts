@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted, watchEffect } from 'vue'
 import { fileApi as filesApi } from '@/api/files'
 import { globalCache, CacheKeyGenerator } from '@/utils/cache'
 import { navigationCache } from '@/utils/navigation-cache'
+import { websocketService, type FileSystemEvent } from '@/services/websocket'
 import type { 
   FileInfo, 
   FileShare, 
@@ -77,11 +78,25 @@ export const useFilesStore = defineStore('files', () => {
       // 生成快取鍵
       const cacheKey = CacheKeyGenerator.files(folderId, params)
       
-      // 檢查快取（如果啟用且不強制刷新）
+      // 智能快取檢查（如果啟用且不強制刷新）
       if (cacheEnabled.value && !forceRefresh) {
         const cachedData = globalCache.get<{files: any[], metadata: any}>(cacheKey)
-        if (cachedData) {
-          console.log(`🎯 fetchFiles Cache HIT: ${cacheKey} - 無閃爍更新`)
+        if (cachedData && cachedData.metadata?.timestamp) {
+          const cacheAge = Date.now() - cachedData.metadata.timestamp
+          const isStale = cacheAge > (15 * 60 * 1000)  // 15分鐘失效
+          
+          if (!isStale) {
+            console.log(`🎯 fetchFiles Cache HIT: ${cacheKey} - 快取年齡: ${Math.round(cacheAge/1000)}秒`)
+            files.value = cachedData.files || []
+            return cachedData.metadata
+          } else {
+            // 快取過期，清除並重新獲取
+            console.log(`⏰ fetchFiles Cache EXPIRED: ${cacheKey} - 過期 ${Math.round(cacheAge/1000)}秒`)
+            globalCache.delete(cacheKey)
+          }
+        } else if (cachedData) {
+          // 舊快取格式沒有時間戳，直接使用但標記為需要更新
+          console.log(`📦 fetchFiles Cache HIT (舊格式): ${cacheKey} - 無時間戳`)
           files.value = cachedData.files || []
           return cachedData.metadata
         }
@@ -533,11 +548,13 @@ export const useFilesStore = defineStore('files', () => {
         當前ID鏈: idChain.value 
       })
       
-      // 防重複導航機制
+      // 防重複導航機制 + 智能時間閾值檢查
       const currentTime = Date.now()
       const sameFolder = folderId === currentFolderIdValue.value
       const hasFiles = files.value.length > 0
       const recentNavigation = currentTime - navigationState.value.lastNavigationTime < 500
+      const timeSinceLastRefresh = currentTime - navigationState.value.lastNavigationTime
+      const shouldForceRefresh = timeSinceLastRefresh > 30000  // 30秒閾值自動刷新
       
       // 如果已在目標資料夾且有檔案數據或快取，跳過導航
       if (sameFolder) {
@@ -631,10 +648,16 @@ export const useFilesStore = defineStore('files', () => {
         }
       }
       
-      // 檢查是否需要重新獲取檔案列表
+      // 檢查是否需要重新獲取檔案列表 (智能快取策略)
       const shouldFetchFiles = () => {
         // 如果快取停用，總是獲取
         if (!cacheEnabled.value) return true
+        
+        // 如果時間閾值觸發，強制刷新
+        if (shouldForceRefresh) {
+          console.log(`⏰ 時間閾值觸發自動刷新: ${Math.round(timeSinceLastRefresh/1000)}秒`)
+          return true
+        }
         
         // 對於麵包屑導航且沒有資料夾信息的情況，需要獲取以確保資料夾詳情
         if (!shouldUpdateIdChain && !folderInfo) {
@@ -650,9 +673,18 @@ export const useFilesStore = defineStore('files', () => {
         const cacheKey = CacheKeyGenerator.files(folderId, params)
         const cachedData = globalCache.get(cacheKey)
         
-        // 如果有快取，使用快取
-        if (cachedData) {
-          console.log(`🎯 navigateToFolder 使用快取檔案列表: ${cacheKey}`)
+        // 如果有快取，檢查快取時效
+        if (cachedData && (cachedData as any).metadata?.timestamp) {
+          const cacheAge = currentTime - (cachedData as any).metadata.timestamp
+          const isCacheStale = cacheAge > (5 * 60 * 1000)  // 5分鐘快取失效
+          
+          if (isCacheStale) {
+            console.log(`💨 快取過期，自動刷新: ${Math.round(cacheAge/1000)}秒`)
+            globalCache.delete(cacheKey)
+            return true
+          }
+          
+          console.log(`🎯 navigateToFolder 使用快取檔案列表: ${cacheKey} (${Math.round(cacheAge/1000)}秒前)`)
           files.value = (cachedData as any).files || []
           return false // 不需要重新獲取
         }
@@ -988,10 +1020,30 @@ export const useFilesStore = defineStore('files', () => {
     }
   }
   
-  // 清除相關快取（包括麵包屑）
+  // 清除相關快取（包括麵包屑和關聯資料夾）
   const clearRelatedCache = (folderId?: number | null): void => {
+    // 清除當前資料夾快取
     clearFolderCache(folderId)
     clearBreadcrumbsCache(folderId)
+    
+    // 清除父資料夾快取（檔案操作可能影響父資料夾的檔案計數）
+    if (currentFolder.value?.parentId) {
+      console.log(`🧹 清除父資料夾快取: ${currentFolder.value.parentId}`)
+      clearFolderCache(currentFolder.value.parentId)
+    }
+    
+    // 清除子資料夾快取（如果當前操作是在資料夾上）
+    const affectedSubfolders = files.value
+      .filter(file => file.isDirectory && file.parentId === folderId)
+    
+    if (affectedSubfolders.length > 0) {
+      console.log(`🧹 清除 ${affectedSubfolders.length} 個子資料夾快取`)
+      affectedSubfolders.forEach(folder => {
+        if (folder.id) clearFolderCache(folder.id)
+      })
+    }
+    
+    console.log(`🔄 已清除資料夾 ${folderId || 'root'} 及其關聯快取`)
   }
   
   const toggleCache = (): void => {
@@ -1168,6 +1220,93 @@ export const useFilesStore = defineStore('files', () => {
     }
   }
 
+  // ==================== WebSocket 整合 ====================
+  
+  // WebSocket 事件處理器
+  const handleWebSocketEvent = (event: FileSystemEvent) => {
+    console.log('📨 收到檔案系統事件:', event)
+    
+    // 檢查是否影響當前資料夾
+    const isCurrentFolderAffected = event.folderId === currentFolderId.value || 
+                                   event.folderId === null // 根資料夾事件
+    
+    if (!isCurrentFolderAffected) {
+      console.log('📨 事件不影響當前資料夾，跳過處理')
+      return
+    }
+    
+    // 根據事件類型處理
+    switch (event.type) {
+      case 'upload':
+        console.log('📁 檔案上傳事件，刷新當前資料夾')
+        refreshCurrentFolder()
+        break
+        
+      case 'delete':
+        console.log('🗑️ 檔案刪除事件，刷新當前資料夾')
+        refreshCurrentFolder()
+        break
+        
+      case 'create':
+        console.log('📁 資料夾創建事件，刷新當前資料夾')
+        refreshCurrentFolder()
+        break
+        
+      case 'move':
+      case 'rename':
+        console.log(`✏️ 檔案${event.type}事件，刷新當前資料夾`)
+        refreshCurrentFolder()
+        break
+        
+      default:
+        console.log('📨 未知事件類型:', event.type)
+    }
+  }
+  
+  // 刷新當前資料夾的便利方法
+  const refreshCurrentFolder = async () => {
+    try {
+      // 清除相關快取
+      clearRelatedCache(currentFolderId.value)
+      
+      // 重新獲取檔案列表
+      await fetchFiles(currentFolderId.value, true)
+      
+      console.log('✅ WebSocket 觸發的資料夾刷新完成')
+    } catch (error) {
+      console.error('❌ WebSocket 觸發的資料夾刷新失敗:', error)
+    }
+  }
+  
+  // WebSocket 連接管理
+  const initWebSocket = () => {
+    console.log('🔌 初始化 WebSocket 連接')
+    
+    // 註冊事件監聽器
+    websocketService.addEventListener('*', handleWebSocketEvent)
+    
+    // 連接 WebSocket
+    websocketService.connect()
+    
+    // 監聽資料夾變化，更新 WebSocket 當前資料夾
+    const stopWatching = watchEffect(() => {
+      websocketService.setCurrentFolder(currentFolderId.value ?? null)
+    })
+    
+    // 清理函數
+    onUnmounted(() => {
+      console.log('🔌 清理 WebSocket 連接')
+      websocketService.removeEventListener('*', handleWebSocketEvent)
+      websocketService.disconnect()
+      stopWatching()
+    })
+  }
+  
+  // 自動初始化 WebSocket（延遲初始化避免過早連接）
+  setTimeout(() => {
+    initWebSocket()
+  }, 1000)
+
   return {
     // 狀態
     files,
@@ -1218,6 +1357,14 @@ export const useFilesStore = defineStore('files', () => {
     getPathFromIdChain,
     updateURLDisplay,
     
+    // 手動刷新方法
+    manualRefresh: async (): Promise<void> => {
+      console.log('🔄 手動刷新當前資料夾')
+      clearRelatedCache(currentFolderId.value)
+      await fetchFiles(currentFolderId.value, true)
+      console.log('✅ 手動刷新完成')
+    },
+    
     // 快取管理方法
     clearCache,
     clearFolderCache,
@@ -1237,6 +1384,14 @@ export const useFilesStore = defineStore('files', () => {
     
     // 檔案去重方法
     scanDuplicates,
-    removeDuplicate
+    removeDuplicate,
+    
+    // WebSocket 相關方法
+    initWebSocket,
+    refreshCurrentFolder,
+    
+    // WebSocket 狀態
+    websocketStatus: computed(() => websocketService.status),
+    websocketConnected: computed(() => websocketService.isConnected)
   }
 })

@@ -188,6 +188,17 @@ const downloadFile = (file: FileInfo) => {
   window.open(url, '_blank')
 }
 
+// 手動刷新方法
+const handleManualRefresh = async () => {
+  try {
+    console.log('🔄 使用者觸發手動刷新')
+    await filesStore.manualRefresh()
+    console.log('✅ 手動刷新完成')
+  } catch (error) {
+    console.error('❌ 手動刷新失敗:', error)
+  }
+}
+
 const deleteFile = async (file: FileInfo) => {
   let confirmMessage = `確定要刪除 "${file.name}" 嗎？`
   
@@ -1134,6 +1145,28 @@ onUnmounted(() => {
         
         <!-- 右側工具 -->
         <div class="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+          <!-- 刷新按鈕 -->
+          <MinimalButton
+            variant="ghost"
+            size="small"
+            @click="handleManualRefresh"
+            :disabled="filesStore.isLoading"
+            class="refresh-btn touch-target"
+            :title="filesStore.isLoading ? '刷新中...' : '刷新資料夾'"
+          >
+            <template #icon-left>
+              <svg 
+                class="w-4 h-4 transition-transform duration-300"
+                :class="{ 'animate-spin': filesStore.isLoading }"
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </template>
+          </MinimalButton>
+          
           <!-- 搜尋框 -->
           <div class="search-box relative flex-1 sm:flex-none">
             <input

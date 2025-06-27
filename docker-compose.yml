@@ -161,6 +161,12 @@ services:
       - TEMP_PATH=/app/temp
       - LOG_PATH=/app/logs
     
+    # DNS 配置 (解決 DNS 解析問題)
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    
     volumes:
       # 與 MemoryArk 共享的目錄
       - ./uploads:/app/uploads

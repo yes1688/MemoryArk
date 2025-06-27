@@ -27,6 +27,7 @@ import (
 type FileHandler struct {
 	db  *gorm.DB
 	cfg *config.Config
+	wsHandler interface{} // WebSocket 處理器接口
 }
 
 // 允許的檔案擴展名白名單 (教會數位資產管理系統適用)
@@ -151,8 +152,26 @@ func isValidFileExtension(filename string) bool {
 // NewFileHandler 創建檔案處理器
 func NewFileHandler(db *gorm.DB, cfg *config.Config) *FileHandler {
 	return &FileHandler{
-		db:  db,
-		cfg: cfg,
+		db:        db,
+		cfg:       cfg,
+		wsHandler: nil, // 將在路由器中設置
+	}
+}
+
+// SetWebSocketHandler 設置 WebSocket 處理器
+func (h *FileHandler) SetWebSocketHandler(wsHandler interface{}) {
+	h.wsHandler = wsHandler
+}
+
+// broadcastFileEvent 廣播檔案系統事件
+func (h *FileHandler) broadcastFileEvent(eventType string, folderId *int, message string, data interface{}) {
+	if h.wsHandler != nil {
+		// 使用類型斷言來調用 BroadcastFileEvent 方法
+		if handler, ok := h.wsHandler.(interface {
+			BroadcastFileEvent(eventType string, folderId *int, message string, data interface{})
+		}); ok {
+			handler.BroadcastFileEvent(eventType, folderId, message, data)
+		}
 	}
 }
 
@@ -462,6 +481,19 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 			return
 		}
 
+		// 廣播檔案去重上傳事件
+		var broadcastParentID *int
+		if parentIDPtr != nil {
+			id := int(*parentIDPtr)
+			broadcastParentID = &id
+		}
+		h.broadcastFileEvent("upload", broadcastParentID, fmt.Sprintf("檔案 '%s' 去重上傳成功", file.Filename), gin.H{
+			"fileId": fileRecord.ID,
+			"fileName": fileRecord.Name,
+			"uploadedBy": fileRecord.UploadedBy,
+			"deduplicated": true,
+		})
+
 		c.JSON(http.StatusCreated, gin.H{
 			"success": true,
 			"deduplicated": true,
@@ -614,6 +646,19 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 		return
 	}
 	
+	// 廣播檔案上傳事件
+	var broadcastParentID *int
+	if parentIDPtr != nil {
+		id := int(*parentIDPtr)
+		broadcastParentID = &id
+	}
+	h.broadcastFileEvent("upload", broadcastParentID, fmt.Sprintf("檔案 '%s' 上傳成功", file.Filename), gin.H{
+		"fileId": fileRecord.ID,
+		"fileName": fileRecord.Name,
+		"fileSize": fileRecord.FileSize,
+		"uploadedBy": fileRecord.UploadedBy,
+	})
+
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"message": "檔案上傳成功",
@@ -656,14 +701,7 @@ func (h *FileHandler) ensureFolderStructure(userID uint, baseParentID *uint, rel
 	
 	// 分割路徑為資料夾名稱
 	pathParts := strings.Split(relativePath, "/")
-	fmt.Printf("[DEBUG] pathParts before removing file: %v\n", pathParts)
-	
-	// 移除檔案名稱，只保留資料夾路徑
-	if len(pathParts) > 0 {
-		pathParts = pathParts[:len(pathParts)-1]
-	}
-	
-	fmt.Printf("[DEBUG] pathParts after removing file: %v\n", pathParts)
+	fmt.Printf("[DEBUG] pathParts (folder structure): %v\n", pathParts)
 	
 	// 如果沒有資料夾需要建立，返回原始父ID
 	if len(pathParts) == 0 {
@@ -798,6 +836,18 @@ func (h *FileHandler) CreateFolder(c *gin.Context) {
 		return
 	}
 	
+	// 廣播資料夾創建事件
+	var broadcastParentID *int
+	if req.ParentID != nil {
+		id := int(*req.ParentID)
+		broadcastParentID = &id
+	}
+	h.broadcastFileEvent("create", broadcastParentID, fmt.Sprintf("資料夾 '%s' 創建成功", req.Name), gin.H{
+		"folderId": folder.ID,
+		"folderName": folder.Name,
+		"createdBy": folder.UploadedBy,
+	})
+
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"message": "虛擬資料夾創建成功",
@@ -1003,6 +1053,19 @@ func (h *FileHandler) DeleteFile(c *gin.Context) {
 	if file.IsDirectory && deletedCount > 1 {
 		message = fmt.Sprintf("資料夾及其 %d 個子項目已移至垃圾桶", deletedCount-1)
 	}
+	
+	// 廣播檔案刪除事件
+	var broadcastParentID *int
+	if file.ParentID != nil {
+		id := int(*file.ParentID)
+		broadcastParentID = &id
+	}
+	h.broadcastFileEvent("delete", broadcastParentID, fmt.Sprintf("檔案 '%s' 已移至垃圾桶", file.Name), gin.H{
+		"fileId": file.ID,
+		"fileName": file.Name,
+		"deletedCount": deletedCount,
+		"isDirectory": file.IsDirectory,
+	})
 	
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
