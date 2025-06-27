@@ -59,6 +59,7 @@ export interface PhotoUploadData {
   mimeType: string;
   description?: string;
   tags?: string[];
+  folderPath?: string;  // 新增：指定上傳的資料夾路徑
   location?: {
     latitude: number;
     longitude: number;

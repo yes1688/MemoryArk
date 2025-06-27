@@ -34,51 +34,47 @@
       </div>
 
       <!-- 用戶管理 -->
-      <div v-if="activeTab === 'users'" class="tab-panel">
+      <!-- <div v-if="activeTab === 'users'" class="tab-panel">
         <LineUsersPanel
           :users="users"
           :loading="usersLoading"
           @refresh="loadUsers"
           @update-status="updateUserStatus"
         />
-      </div>
+      </div> -->
 
-      <!-- 群組管理 -->
-      <div v-if="activeTab === 'groups'" class="tab-panel">
+      <!-- <div v-if="activeTab === 'groups'" class="tab-panel">
         <LineGroupsPanel
           :groups="groups"
           :loading="groupsLoading"
           @refresh="loadGroups"
         />
-      </div>
+      </div> -->
 
-      <!-- 統計儀表板 -->
-      <div v-if="activeTab === 'statistics'" class="tab-panel">
+      <!-- <div v-if="activeTab === 'statistics'" class="tab-panel">
         <LineStatisticsPanel
           :statistics="statistics"
           :loading="statisticsLoading"
           @refresh="loadStatistics"
         />
-      </div>
+      </div> -->
 
-      <!-- 系統設定 -->
-      <div v-if="activeTab === 'settings'" class="tab-panel">
+      <!-- <div v-if="activeTab === 'settings'" class="tab-panel">
         <LineSettingsPanel
           :settings="settings"
           :loading="settingsLoading"
           @refresh="loadSettings"
           @update="updateSetting"
         />
-      </div>
+      </div> -->
 
-      <!-- Webhook 日誌 -->
-      <div v-if="activeTab === 'logs'" class="tab-panel">
+      <!-- <div v-if="activeTab === 'logs'" class="tab-panel">
         <LineLogsPanel
           :logs="webhookLogs"
           :loading="logsLoading"
           @refresh="loadWebhookLogs"
         />
-      </div>
+      </div> -->
     </div>
   </div>
 </template>
@@ -87,11 +83,11 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import LineUploadsPanel from './LineUploadsPanel.vue'
-import LineUsersPanel from './LineUsersPanel.vue'
-import LineGroupsPanel from './LineGroupsPanel.vue'
-import LineStatisticsPanel from './LineStatisticsPanel.vue'
-import LineSettingsPanel from './LineSettingsPanel.vue'
-import LineLogsPanel from './LineLogsPanel.vue'
+// import LineUsersPanel from './LineUsersPanel.vue'
+// import LineGroupsPanel from './LineGroupsPanel.vue'
+// import LineStatisticsPanel from './LineStatisticsPanel.vue'
+// import LineSettingsPanel from './LineSettingsPanel.vue'
+// import LineLogsPanel from './LineLogsPanel.vue'
 import { lineApi } from '@/api'
 import type { 
   LineUploadRecord, 

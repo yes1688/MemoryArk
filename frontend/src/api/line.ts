@@ -1,6 +1,6 @@
 // LINE 功能 API 客戶端
 
-import apiClient from './index'
+import { apiClient } from './index'
 import type {
   LineUploadRecord,
   LineUploadRecordsResponse,
