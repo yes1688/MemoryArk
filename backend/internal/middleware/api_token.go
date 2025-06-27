@@ -67,6 +67,8 @@ func APITokenMiddleware(cfg *config.Config) gin.HandlerFunc {
 		// 驗證成功，設置服務身份
 		c.Set("api_client", "line_service")
 		c.Set("auth_type", "api_token")
+		// 為 API 服務設置一個特殊的 service user ID (使用 0 表示系統服務)
+		c.Set("user_id", uint(0))
 		
 		fmt.Printf("✅ API Token 驗證成功: %s from %s\n", apiToken[:8]+"...", c.ClientIP())
 		c.Next()

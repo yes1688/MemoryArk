@@ -125,21 +125,6 @@ podman exec memoryark-line-service curl http://memoryark-backend:8081/api/health
 
 ### 🚨 LINE Service 專用 SOP
 
-#### 🔴 環境變數修改後必須執行
-```bash
-# ⚠️ 重要：修改 .env 檔案後，單純 restart 不會生效！
-# 必須完全重建容器才能載入新的環境變數
-
-# 1. 停止並移除容器
-podman-compose down line-service line-nginx
-
-# 2. 重新啟動（會讀取新的 .env）
-podman-compose up -d line-service line-nginx
-
-# 3. 驗證環境變數生效
-podman exec memoryark-line-service cat /proc/1/environ | tr '\0' '\n' | grep MEMORYARK_UPLOAD_ENDPOINT
-```
-
 #### 程式碼修改後必須執行
 ```bash
 # 1. 編譯檢查（在 line-service 目錄）

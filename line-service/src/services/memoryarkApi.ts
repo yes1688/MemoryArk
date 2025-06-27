@@ -135,7 +135,7 @@ export class MemoryArkApiService {
 
       const uploadConfig: AxiosRequestConfig = {
         method: 'POST',
-        url: this.config.uploadEndpoint || '/api/photos/upload',
+        url: this.config.uploadEndpoint || '/api/believers/photos/upload',
         data: formData,
         headers: uploadHeaders,
         maxContentLength: this.config.maxFileSize || 50 * 1024 * 1024, // 預設 50MB
