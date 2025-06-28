@@ -58,7 +58,10 @@ case $ACTION in
         echo -e "${GREEN}啟動服務...${NC}"
         
         # 創建必要目錄
-        mkdir -p data logs/nginx uploads
+        mkdir -p data logs/nginx uploads line-service/logs line-service/temp
+        
+        # 設置 LINE Service 目錄權限（容器內 UID 1001 需要寫入權限）
+        chmod 777 line-service/logs line-service/temp
         
         # 載入 .env 檔案 (如果存在)
         if [ -f ".env" ]; then

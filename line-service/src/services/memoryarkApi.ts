@@ -207,8 +207,8 @@ export class MemoryArkApiService {
    */
   async checkApiHealth(): Promise<boolean> {
     try {
-      // Try multiple possible health check endpoints
-      const healthEndpoints = ['/health', '/api/health', '/status'];
+      // Try multiple possible health check endpoints (後端只有 /api/health 可用)
+      const healthEndpoints = ['/api/health', '/health', '/status'];
       
       for (const endpoint of healthEndpoints) {
         try {
