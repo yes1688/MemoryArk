@@ -9,6 +9,7 @@ import type {
   FileShare, 
   BreadcrumbItem, 
   FileUploadRequest,
+  FileListParams,
   Category,
   StreamExportRequest,
   ExportJob,
@@ -52,6 +53,9 @@ export const useFilesStore = defineStore('files', () => {
     lastNavigationTime: 0
   })
   
+  // 分頁相關狀態
+  const totalFiles = ref(0)
+  
   // 快取相關狀態
   const cacheEnabled = ref(true)
   const cacheStatistics = computed(() => globalCache.getStatistics())
@@ -66,11 +70,13 @@ export const useFilesStore = defineStore('files', () => {
   })
 
   // 獲取檔案列表
-  const fetchFiles = async (folderId?: number | null, forceRefresh = false) => {
+  const fetchFiles = async (folderId?: number | null, forceRefresh = false, listParams?: FileListParams) => {
     try {
       error.value = null
       
-      const params: { parent_id?: number } = {}
+      const params: FileListParams = {
+        ...listParams
+      }
       if (folderId !== undefined && folderId !== null) {
         params.parent_id = folderId
       }
@@ -136,6 +142,14 @@ export const useFilesStore = defineStore('files', () => {
         })
         
         files.value = transformedFiles
+        
+        // 設置總檔案數 (用於分頁) - 從 meta.pagination 取得
+        if (response.meta?.pagination?.total !== undefined) {
+          totalFiles.value = response.meta.pagination.total
+        } else if (response.data.total !== undefined) {
+          // 向後兼容
+          totalFiles.value = response.data.total
+        }
         
         // 🔥 更新導航快取：從檔案列表中收集資料夾信息
         transformedFiles
@@ -539,7 +553,7 @@ export const useFilesStore = defineStore('files', () => {
   }
 
   // 🚀 ID 驅動導航到資料夾
-  const navigateToFolder = async (folderId?: number | null, options: { updateURL?: boolean; updateIdChain?: boolean } = {}): Promise<void> => {
+  const navigateToFolder = async (folderId?: number | null, params?: FileListParams, options: { updateURL?: boolean; updateIdChain?: boolean } = {}): Promise<void> => {
     const { updateURL = true, updateIdChain: shouldUpdateIdChain = true } = options
     try {
       console.log('🚀 ID 驅動導航:', { 
@@ -695,7 +709,10 @@ export const useFilesStore = defineStore('files', () => {
       
       // 只有在需要時才獲取檔案列表
       if (shouldFetchFiles()) {
-        await fetchFiles(folderId)
+        const response = await fetchFiles(folderId, false, params)
+        if (response && response.total !== undefined) {
+          totalFiles.value = response.total
+        }
       } else {
         console.log('📋 navigateToFolder 跳過 API 調用，使用快取資料')
       }
@@ -1326,6 +1343,7 @@ export const useFilesStore = defineStore('files', () => {
     isDuplicateScanning,
     navigationState,
     idChain,
+    totalFiles,
     
     // 計算屬性
     canPaste,

@@ -61,6 +61,34 @@ const selectedFile = ref<FileInfo | null>(null)
 const hoveredFile = ref<FileInfo | null>(null)
 const currentPreviewIndex = ref(-1)
 
+// 分頁控制
+const currentPage = ref(1)
+const pageSize = ref(50)
+const totalPages = computed(() => Math.ceil(filesStore.totalFiles / pageSize.value))
+
+// 排序控制
+const sortBy = ref<'name' | 'created_at' | 'file_size'>('created_at')
+const sortOrder = ref<'asc' | 'desc'>('desc')
+
+// 排序選項配置
+const sortOptions = [
+  { value: 'created_at', label: '時間', icon: 'clock', desc: '最新優先' },
+  { value: 'name', label: '名稱', icon: 'text', desc: '字母順序' },
+  { value: 'file_size', label: '大小', icon: 'archive', desc: '檔案大小' }
+]
+
+// 搜尋相關狀態
+const isSearchMode = ref(false)
+const searchResults = ref<FileInfo[]>([])
+const showRefreshHint = ref(false)
+const searchDebounceTimer = ref<NodeJS.Timeout>()
+const isSearching = ref(false)
+
+// 批次更新控制
+const updateQueue = ref<Set<number | null>>(new Set())
+const updateDebounceTimer = ref<NodeJS.Timeout>()
+const isUpdating = ref(false)
+
 // 防重複請求
 const lastProcessedPath = ref('')
 
@@ -82,10 +110,17 @@ const workerStatus = computed(() => workerCacheStore.operationStatus)
 const workerMetrics = computed(() => workerCacheStore.performanceMetrics)
 const isWorkerHealthy = computed(() => workerCacheStore.isHealthy)
 
-// 篩選檔案
+// 篩選檔案 - 改為智能搜尋
 const filteredFiles = computed(() => {
-  if (!searchQuery.value) return files.value
+  if (isSearchMode.value) {
+    return searchResults.value
+  }
   
+  if (!searchQuery.value) {
+    return files.value
+  }
+  
+  // 本地快速過濾（輸入時即時回饋）
   const query = searchQuery.value.toLowerCase()
   return files.value.filter(file => 
     file.name.toLowerCase().includes(query)
@@ -188,10 +223,87 @@ const downloadFile = (file: FileInfo) => {
   window.open(url, '_blank')
 }
 
+// 排序方法
+const changeSortBy = async (newSortBy: typeof sortBy.value) => {
+  if (sortBy.value === newSortBy) {
+    // 相同欄位則切換方向
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    // 不同欄位則採用預設方向
+    sortBy.value = newSortBy
+    sortOrder.value = newSortBy === 'created_at' ? 'desc' : 'asc'
+  }
+  currentPage.value = 1
+  await refreshFileList()
+}
+
+// 智能全域搜尋方法 - 帶防抖
+const performSearch = async (query: string) => {
+  // 清除之前的定時器
+  if (searchDebounceTimer.value) {
+    clearTimeout(searchDebounceTimer.value)
+  }
+  
+  if (!query.trim()) {
+    isSearchMode.value = false
+    searchResults.value = []
+    isSearching.value = false
+    return
+  }
+  
+  // 設置 300ms 防抖
+  searchDebounceTimer.value = setTimeout(async () => {
+    try {
+      isSearching.value = true
+      console.log('🔍 執行全域搜尋:', query)
+      
+      // 全域搜尋 - 不受分頁限制
+      const response = await filesStore.fetchFiles(filesStore.currentFolderId, true, {
+        limit: 1000, // 大量載入，不受分頁限制
+        page: 1,
+        sort_by: sortBy.value,
+        sort_order: sortOrder.value
+      })
+      
+      // 從所有檔案中過濾搜尋結果
+      const allFiles = filesStore.files
+      const filtered = allFiles.filter(file => 
+        file.name.toLowerCase().includes(query.toLowerCase())
+      )
+      
+      searchResults.value = filtered
+      isSearchMode.value = true
+      isSearching.value = false
+      
+      console.log(`✅ 全域搜尋完成，從 ${allFiles.length} 個檔案中找到 ${filtered.length} 個結果`)
+    } catch (error) {
+      console.error('❌ 搜尋失敗:', error)
+      isSearching.value = false
+    }
+  }, 300)
+}
+
+// 監聽搜尋輸入
+watch(searchQuery, (newQuery) => {
+  performSearch(newQuery)
+})
+
+// 清除搜尋並恢復分頁模式
+const clearSearch = () => {
+  searchQuery.value = ''
+  isSearchMode.value = false
+  searchResults.value = []
+  isSearching.value = false
+  
+  // 恢復正常的分頁模式
+  refreshFileList()
+}
+
 // 手動刷新方法
 const handleManualRefresh = async () => {
   try {
     console.log('🔄 使用者觸發手動刷新')
+    showRefreshHint.value = false
     await filesStore.manualRefresh()
     console.log('✅ 手動刷新完成')
   } catch (error) {
@@ -331,7 +443,7 @@ const navigateToBreadcrumb = async (crumb: BreadcrumbItem) => {
     console.log('✂️ 截斷麵包屑到:', truncatedBreadcrumbs.map(b => b.name).join(' > '))
     
     // 先執行導航
-    await filesStore.navigateToFolder(crumb.id, { updateURL: false, updateIdChain: true })
+    await filesStore.navigateToFolder(crumb.id, undefined, { updateURL: false, updateIdChain: true })
     await nextTick()
     
     // 覆蓋 store 重建的麵包屑
@@ -417,6 +529,128 @@ const handlePreviewNavigate = (direction: 'next' | 'prev') => {
   })
 }
 
+// 分頁控制方法
+const changePage = async (page: number) => {
+  if (page < 1 || page > totalPages.value || page === currentPage.value) {
+    console.log('⚠️ 分頁跳轉被阻止:', { page, totalPages: totalPages.value, currentPage: currentPage.value })
+    return
+  }
+  
+  console.log('📝 分頁切換:', { from: currentPage.value, to: page })
+  currentPage.value = page
+  await refreshFileList()
+}
+
+const refreshFileList = async () => {
+  try {
+    console.log('🔄 刷新檔案列表 - 分頁:', {
+      page: currentPage.value,
+      limit: pageSize.value,
+      sort_by: sortBy.value,
+      sort_order: sortOrder.value
+    })
+    
+    // 強制重新載入檔案，忽略快取
+    await filesStore.fetchFiles(filesStore.currentFolderId, true, {
+      page: currentPage.value,
+      limit: pageSize.value,
+      sort_by: sortBy.value,
+      sort_order: sortOrder.value
+    })
+  } catch (error) {
+    console.error('❌ 刷新檔案列表失敗:', error)
+  }
+}
+
+// 計算可見的頁碼
+const getVisiblePages = () => {
+  const delta = 2 // 當前頁前後顯示的頁數
+  const pages: (number | string)[] = []
+  const total = totalPages.value
+  const current = currentPage.value
+  
+  if (total <= 7) {
+    // 如果總頁數不多，全部顯示
+    for (let i = 1; i <= total; i++) {
+      pages.push(i)
+    }
+  } else {
+    // 複雜的分頁邏輯
+    if (current <= delta + 2) {
+      // 靠近開頭
+      for (let i = 1; i <= delta + 3; i++) {
+        pages.push(i)
+      }
+      pages.push('...')
+      pages.push(total)
+    } else if (current >= total - delta - 1) {
+      // 靠近結尾
+      pages.push(1)
+      pages.push('...')
+      for (let i = total - delta - 2; i <= total; i++) {
+        pages.push(i)
+      }
+    } else {
+      // 在中間
+      pages.push(1)
+      pages.push('...')
+      for (let i = current - delta; i <= current + delta; i++) {
+        pages.push(i)
+      }
+      pages.push('...')
+      pages.push(total)
+    }
+  }
+  
+  return pages
+}
+
+// 批次更新機制
+const queueUpdate = (folderId: number | null = null) => {
+  // 使用當前資料夾 ID 如果沒有提供
+  const targetFolderId = folderId ?? filesStore.currentFolderId
+  
+  console.log('🔄 排隊更新:', targetFolderId)
+  updateQueue.value.add(targetFolderId ?? null)
+  
+  // 清除之前的計時器
+  if (updateDebounceTimer.value) {
+    clearTimeout(updateDebounceTimer.value)
+  }
+  
+  // 設置新的計時器，2秒內的更新會被合併
+  updateDebounceTimer.value = setTimeout(() => {
+    processBatchUpdate()
+  }, 2000)
+}
+
+const processBatchUpdate = async () => {
+  if (isUpdating.value || updateQueue.value.size === 0) {
+    return
+  }
+  
+  const folderIds = Array.from(updateQueue.value)
+  updateQueue.value.clear()
+  isUpdating.value = true
+  
+  console.log('📦 處理批次更新:', folderIds)
+  
+  try {
+    // 只更新當前所在的資料夾
+    const currentFolderId = filesStore.currentFolderId ?? null
+    if (folderIds.includes(currentFolderId)) {
+      console.log('🔄 批次更新當前資料夾:', currentFolderId)
+      await refreshFileList()
+    } else {
+      console.log('⚠️ 當前資料夾不在更新隊列中，跳過更新')
+    }
+  } catch (error) {
+    console.error('❌ 批次更新失敗:', error)
+  } finally {
+    isUpdating.value = false
+  }
+}
+
 // 處理上傳完成
 const handleUploadComplete = async (results?: UnifiedUploadResult[]) => {
   console.log('🎉 上傳完成回調觸發')
@@ -437,17 +671,26 @@ const handleUploadComplete = async (results?: UnifiedUploadResult[]) => {
     }
   }
   
-  // 重新載入檔案列表
+  // 使用批次更新機制
   try {
-    await filesStore.fetchFiles(filesStore.currentFolderId)
-    console.log('✅ 檔案列表已更新')
+    // 如果有新檔案上傳，回到第一頁並按時間排序
+    if (results && results.length > 0) {
+      currentPage.value = 1
+      sortBy.value = 'created_at'
+      sortOrder.value = 'desc'
+      showRefreshHint.value = true // 提示用戶刷新
+    }
+    
+    // 排隊更新而不是立即刷新
+    queueUpdate(filesStore.currentFolderId)
+    console.log('✅ 已排隊檔案列表更新')
     
     // 失效 Worker 快取
     if (isWorkerInitialized.value) {
       await invalidateFolderCache(filesStore.currentFolderId ?? null)
     }
   } catch (error) {
-    console.error('❌ 重新載入檔案列表失敗:', error)
+    console.error('❌ 排隊檔案列表更新失敗:', error)
   }
 }
 
@@ -705,7 +948,12 @@ const handleNavigation = async (propsFolderId?: number | null, routeFolderId?: n
     
     // 使用 store 的標準導航方法載入資料夾
     console.log('📂 載入資料夾內容')
-    await filesStore.navigateToFolder(targetFolderId)
+    await filesStore.navigateToFolder(targetFolderId, {
+      page: currentPage.value,
+      limit: pageSize.value,
+      sort_by: sortBy.value,
+      sort_order: sortOrder.value
+    })
     
     // 如果是路徑模式，覆蓋麵包屑
     if (folderPath && folderPath.length > 0 && targetFolderId) {
@@ -973,13 +1221,13 @@ onUnmounted(() => {
         </template>
       </div>
 
-      <!-- 搜尋欄 -->
+      <!-- 升級版搜尋欄 -->
       <div class="mobile-search relative mb-3">
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="搜尋檔案和資料夾..."
-          class="w-full px-4 py-3 pl-10"
+          :placeholder="isSearchMode ? `已找到 ${searchResults.length} 個結果` : '搜尋所有檔案和資料夾...'"
+          class="w-full px-4 py-3 pl-10 pr-10"
           style="
             background: var(--bg-tertiary);
             border: none;
@@ -987,16 +1235,47 @@ onUnmounted(() => {
             font-size: 16px;
             color: var(--text-primary);
           "
+          :style="{ 
+            borderLeft: isSearchMode ? '3px solid var(--color-primary)' : 'none'
+          }"
         >
-        <svg 
-          class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
-          style="color: var(--text-tertiary);"
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
+        
+        <!-- 搜尋圖示或載入動畫 -->
+        <div class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5">
+          <svg 
+            v-if="!isSearching"
+            style="color: var(--text-tertiary);"
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          
+          <!-- 載入動畫 -->
+          <svg 
+            v-else
+            class="animate-spin"
+            style="color: var(--color-primary);"
+            fill="none" 
+            viewBox="0 0 24 24"
+          >
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/>
+            <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+          </svg>
+        </div>
+        
+        <!-- 清除按鈕 -->
+        <button
+          v-if="searchQuery"
+          @click="clearSearch"
+          class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 hover:bg-gray-200 rounded-full flex items-center justify-center"
+          style="transition: all 0.2s ease;"
         >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-        </svg>
+          <svg class="w-4 h-4" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
       </div>
 
       <!-- 操作按鈕組 -->
@@ -1145,27 +1424,101 @@ onUnmounted(() => {
         
         <!-- 右側工具 -->
         <div class="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-          <!-- 刷新按鈕 -->
-          <MinimalButton
-            variant="ghost"
-            size="small"
+          <!-- 現代化排序控制 -->
+          <div class="sort-controls-modern flex items-center gap-1 p-1 rounded-lg" style="background: var(--bg-tertiary);">
+            <button
+              v-for="option in sortOptions"
+              :key="option.value"
+              @click="changeSortBy(option.value as 'name' | 'created_at' | 'file_size')"
+              :class="['sort-option-btn', { 'active': sortBy === option.value }]"
+              :title="`${option.desc} - ${sortBy === option.value ? (sortOrder === 'asc' ? '升序' : '降序') : ''}`"
+              style="
+                padding: 6px 12px;
+                border-radius: 6px;
+                border: none;
+                font-size: 13px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+              "
+              :style="{
+                background: sortBy === option.value ? 'var(--color-primary)' : 'transparent',
+                color: sortBy === option.value ? 'white' : 'var(--text-secondary)'
+              }"
+            >
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path v-if="option.icon === 'clock'" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V5z"/>
+                <path v-else-if="option.icon === 'text'" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
+                <path v-else d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+              </svg>
+              {{ option.label }}
+              <!-- 排序方向指示器 -->
+              <svg 
+                v-if="sortBy === option.value" 
+                class="w-3 h-3 ml-1" 
+                fill="currentColor" 
+                viewBox="0 0 20 20"
+              >
+                <path v-if="sortOrder === 'asc'" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                <path v-else d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"/>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- 重新設計的刷新按鈕 -->
+          <button
             @click="handleManualRefresh"
             :disabled="filesStore.isLoading"
-            class="refresh-btn touch-target"
-            :title="filesStore.isLoading ? '刷新中...' : '刷新資料夾'"
+            :class="['refresh-btn-primary', { 'refresh-needed': showRefreshHint }]"
+            style="
+              padding: 8px 16px;
+              border-radius: 8px;
+              border: none;
+              font-size: 14px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              position: relative;
+            "
+            :style="{
+              background: showRefreshHint ? 'var(--color-warning)' : 'var(--color-primary)',
+              color: 'white',
+              opacity: filesStore.isLoading ? 0.7 : 1,
+              cursor: filesStore.isLoading ? 'not-allowed' : 'pointer'
+            }"
           >
-            <template #icon-left>
-              <svg 
-                class="w-4 h-4 transition-transform duration-300"
-                :class="{ 'animate-spin': filesStore.isLoading }"
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </template>
-          </MinimalButton>
+            <svg 
+              class="w-4 h-4 transition-transform duration-300"
+              :class="{ 'animate-spin': filesStore.isLoading }"
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {{ filesStore.isLoading ? '更新中' : '更新' }}
+            <!-- 提示小紅點 -->
+            <span 
+              v-if="showRefreshHint && !filesStore.isLoading"
+              class="refresh-indicator"
+              style="
+                position: absolute;
+                top: -2px;
+                right: -2px;
+                width: 8px;
+                height: 8px;
+                background: #ef4444;
+                border-radius: 50%;
+                border: 2px solid white;
+              "
+            ></span>
+          </button>
           
           <!-- 搜尋框 -->
           <div class="search-box relative flex-1 sm:flex-none">
@@ -1387,6 +1740,84 @@ onUnmounted(() => {
               </svg>
             </button>
           </div>
+        </div>
+      </div>
+      
+      <!-- 分頁控制 -->
+      <div v-if="!isLoading && filteredFiles.length > 0 && totalPages > 1" 
+           class="pagination-container flex items-center justify-between mt-6 px-4"
+           :style="{
+             padding: isMobile ? '16px' : '24px',
+             background: 'var(--bg-elevated)',
+             borderRadius: '16px',
+             border: '1px solid var(--border-light)'
+           }">
+        <!-- 分頁資訊 -->
+        <div class="pagination-info text-sm" style="color: var(--text-secondary);">
+          顯示第 {{ ((currentPage - 1) * pageSize) + 1 }} - {{ Math.min(currentPage * pageSize, filesStore.totalFiles) }} 項，
+          共 {{ filesStore.totalFiles }} 項
+        </div>
+        
+        <!-- 分頁按鈕 -->
+        <div class="pagination-buttons flex items-center gap-2">
+          <!-- 上一頁 -->
+          <button
+            @click="changePage(currentPage - 1)"
+            :disabled="currentPage <= 1"
+            class="pagination-btn"
+            :style="{
+              padding: '8px 12px',
+              borderRadius: '8px',
+              background: currentPage <= 1 ? 'var(--bg-tertiary)' : 'var(--color-primary)',
+              color: currentPage <= 1 ? 'var(--text-tertiary)' : 'white',
+              border: 'none',
+              cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s ease'
+            }"
+          >
+            上一頁
+          </button>
+          
+          <!-- 頁碼 -->
+          <template v-for="page in getVisiblePages()" :key="page">
+            <button
+              v-if="page !== '...'"
+              @click="changePage(Number(page))"
+              :class="{ 'active': page === currentPage }"
+              class="page-number-btn"
+              :style="{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                background: page === currentPage ? 'var(--color-primary)' : 'var(--bg-tertiary)',
+                color: page === currentPage ? 'white' : 'var(--text-primary)',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                minWidth: '40px'
+              }"
+            >
+              {{ page }}
+            </button>
+            <span v-else class="pagination-ellipsis" style="color: var(--text-tertiary); padding: 0 8px;">...</span>
+          </template>
+          
+          <!-- 下一頁 -->
+          <button
+            @click="changePage(currentPage + 1)"
+            :disabled="currentPage >= totalPages"
+            class="pagination-btn"
+            :style="{
+              padding: '8px 12px',
+              borderRadius: '8px',
+              background: currentPage >= totalPages ? 'var(--bg-tertiary)' : 'var(--color-primary)',
+              color: currentPage >= totalPages ? 'var(--text-tertiary)' : 'white',
+              border: 'none',
+              cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s ease'
+            }"
+          >
+            下一頁
+          </button>
         </div>
       </div>
     </main>

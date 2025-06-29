@@ -188,6 +188,10 @@ func (h *FileHandler) GetFiles(c *gin.Context) {
 	categoryID := c.DefaultQuery("category_id", "")
 	virtualPath := c.DefaultQuery("virtual_path", "")
 	showDeleted := c.DefaultQuery("show_deleted", "false")
+	fromLine := c.DefaultQuery("from_line", "")       // 只顯示 LINE 上傳的檔案
+	lineGroupID := c.DefaultQuery("line_group_id", "") // 按 LINE 群組篩選
+	sortBy := c.DefaultQuery("sort_by", "name")        // 排序欄位：name, created_at, file_size
+	sortOrder := c.DefaultQuery("sort_order", "asc")   // 排序方向：asc, desc
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	
@@ -226,6 +230,18 @@ func (h *FileHandler) GetFiles(c *gin.Context) {
 		query = query.Where("is_deleted = ?", false)
 	}
 	
+	// LINE 篩選
+	if fromLine == "true" {
+		// 只顯示有 LINE 上傳記錄的檔案
+		query = query.Joins("INNER JOIN line_upload_records ON files.id = line_upload_records.file_id")
+	}
+	
+	if lineGroupID != "" {
+		// 按 LINE 群組篩選
+		query = query.Joins("INNER JOIN line_upload_records ON files.id = line_upload_records.file_id").
+			Where("line_upload_records.line_group_id = ?", lineGroupID)
+	}
+	
 	var files []models.File
 	var total int64
 	
@@ -235,9 +251,29 @@ func (h *FileHandler) GetFiles(c *gin.Context) {
 		return
 	}
 	
-	// 獲取檔案列表
+	// 構建排序條件 - 修復欄位名稱對應
+	var orderClause string
+	fmt.Printf("📝 排序參數: sortBy=%s, sortOrder=%s\n", sortBy, sortOrder)
+	
+	switch sortBy {
+	case "created_at":
+		// 使用資料庫欄位名稱
+		orderClause = fmt.Sprintf("is_directory DESC, created_at %s", strings.ToUpper(sortOrder))
+	case "file_size":
+		// 使用資料庫欄位名稱
+		orderClause = fmt.Sprintf("is_directory DESC, file_size %s", strings.ToUpper(sortOrder))
+	case "name":
+		fallthrough
+	default:
+		orderClause = fmt.Sprintf("is_directory DESC, name %s", strings.ToUpper(sortOrder))
+	}
+	
+	fmt.Printf("📝 排序 SQL: %s\n", orderClause)
+	
+	// 獲取檔案列表 (包含 LINE 上傳記錄)
 	if err := query.Preload("Uploader").Preload("DeletedByUser").Preload("Category").
-		Order("is_directory DESC, name ASC").
+		Preload("LineUploadRecord").Preload("LineUploadRecord.LineUser").
+		Order(orderClause).
 		Offset(offset).Limit(limit).
 		Find(&files).Error; err != nil {
 		api.Error(c, http.StatusInternalServerError, api.ErrDatabaseError, "查詢檔案失敗")

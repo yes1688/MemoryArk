@@ -33,6 +33,23 @@ export interface FileInfo {
   bibleReference?: string
   likeCount?: number
   isLiked?: boolean
+  
+  // LINE 整合欄位
+  lineUploadRecord?: {
+    id: string
+    lineUserId: string
+    lineUserName: string
+    lineGroupId?: string
+    lineGroupName?: string
+    lineMessageId: string
+    messageType: string
+    createdAt: string
+    lineUser?: {
+      lineUserId: string
+      displayName: string
+      pictureUrl?: string
+    }
+  }
 }
 
 export interface UploadResult {
@@ -122,6 +139,10 @@ export interface FileListParams {
   search?: string
   page?: number
   limit?: number
+  from_line?: boolean        // 只顯示 LINE 上傳的檔案
+  line_group_id?: string     // 按 LINE 群組篩選
+  sort_by?: 'name' | 'created_at' | 'file_size'  // 排序欄位
+  sort_order?: 'asc' | 'desc'  // 排序方向
 }
 
 export interface FileListResponse {

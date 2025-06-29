@@ -44,6 +44,11 @@
       </template>
     </p>
     
+    <!-- LINE 徽章 -->
+    <div v-if="file.lineUploadRecord" class="mt-2">
+      <LineBadge :line-upload-record="file.lineUploadRecord" />
+    </div>
+    
     <!-- 操作按鈕 - 檔案管理模式 -->
     <div 
       v-if="mode === 'files'"
@@ -117,6 +122,7 @@ import { computed } from 'vue'
 import type { FileInfo } from '@/types/files'
 import { AppFileIcon } from '@/components/ui'
 import AppButton from '@/components/ui/button/AppButton.vue'
+import LineBadge from '@/components/ui/line-badge/LineBadge.vue'
 
 // Props
 interface Props {

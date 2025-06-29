@@ -40,6 +40,12 @@ async function startServer() {
     const lineService = initializeLineService(config.line);
     systemLogger.info('LINE service initialized');
 
+    // 初始化任務隊列和工作器
+    systemLogger.info('Initializing queue service and workers...');
+    const { queueService } = await import('./services/queueService');
+    const { photoProcessor } = await import('./workers/photoProcessor');
+    systemLogger.info('Queue service and workers initialized');
+
     // 3. 建立 Express 應用程式
     const app = express();
 
@@ -157,16 +163,22 @@ async function startServer() {
     });
 
     // 8. 優雅關閉處理
-    const gracefulShutdown = (signal: string) => {
+    const gracefulShutdown = async (signal: string) => {
       systemLogger.info(`${signal} received, shutting down gracefully...`);
       
-      server.close(() => {
+      server.close(async () => {
         systemLogger.info('HTTP server closed');
         
         // 清理資源
         systemLogger.info('Cleaning up resources...');
         
-        // 這裡可以添加其他清理邏輯，如關閉資料庫連線等
+        // 關閉任務隊列
+        try {
+          await queueService.close();
+          systemLogger.info('Queue service closed');
+        } catch (error: any) {
+          systemLogger.error('Error closing queue service', { error: error.message });
+        }
         
         systemLogger.info('Graceful shutdown completed');
         process.exit(0);

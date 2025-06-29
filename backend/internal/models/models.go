@@ -75,10 +75,11 @@ type File struct {
 	UpdatedAt     time.Time      `json:"updatedAt"`
 	
 	// 關聯
-	Parent        *File          `json:"parent,omitempty" gorm:"foreignKey:ParentID"`
-	Category      *Category      `json:"category,omitempty" gorm:"foreignKey:CategoryID"`
-	Uploader      User           `json:"uploader" gorm:"foreignKey:UploadedBy"`
-	DeletedByUser *User          `json:"deletedByUser,omitempty" gorm:"foreignKey:DeletedBy"`
+	Parent           *File              `json:"parent,omitempty" gorm:"foreignKey:ParentID"`
+	Category         *Category          `json:"category,omitempty" gorm:"foreignKey:CategoryID"`
+	Uploader         User               `json:"uploader" gorm:"foreignKey:UploadedBy"`
+	DeletedByUser    *User              `json:"deletedByUser,omitempty" gorm:"foreignKey:DeletedBy"`
+	LineUploadRecord *LineUploadRecord  `json:"lineUploadRecord,omitempty" gorm:"foreignKey:FileID"`
 }
 
 // Category 分類模型 - 支援檔案分類管理
