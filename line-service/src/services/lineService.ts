@@ -367,14 +367,14 @@ export class LineService {
   /**
    * 生成 LINE 照片的資料夾路徑
    */
-  private generateFolderPath(userProfile: LineUserProfile | null, source: LineMessageSource): string {
+  private async generateFolderPath(userProfile: LineUserProfile | null, source: LineMessageSource): Promise<string> {
     if (source.type === 'group') {
       // 群組照片統一放在群組照片資料夾
-      return 'LINE信徒照片上傳/群組照片';
+      return 'LINE信徒照片上傳/群組上傳/群組照片';
     } else {
-      // 個人照片按使用者名稱分類
-      const displayName = userProfile?.displayName || 'Unknown';
-      return `LINE信徒照片上傳/${displayName}`;
+      // 個人照片按使用者名稱分類，使用優化的用戶名稱獲取
+      const displayName = await this.getOrCreateUserDisplayName(userProfile?.userId || '');
+      return `LINE信徒照片上傳/個人上傳/${displayName}`;
     }
   }
 
@@ -407,7 +407,7 @@ export class LineService {
     }
 
     // 生成資料夾路徑
-    const folderPath = this.generateFolderPath(userProfile, source);
+    const folderPath = await this.generateFolderPath(userProfile, source);
 
     return {
       file: buffer,
@@ -461,6 +461,48 @@ export class LineService {
       'image/bmp': '.bmp',
     };
     return extensions[mimeType] || '.jpg';
+  }
+
+  /**
+   * 獲取或創建用戶顯示名稱（優化版本）
+   */
+  private async getOrCreateUserDisplayName(userId: string): Promise<string> {
+    if (!userId) {
+      return '未知用戶';
+    }
+
+    try {
+      // 嘗試從 LINE API 獲取用戶資料
+      const profile = await this.getProfile(userId);
+      if (profile?.displayName) {
+        lineLogger.info('User profile retrieved successfully', {
+          userId,
+          displayName: profile.displayName
+        });
+        return profile.displayName;
+      }
+    } catch (error: any) {
+      lineLogger.warn('Failed to get user profile from LINE API', {
+        userId,
+        error: error.message,
+        statusCode: error.response?.status
+      });
+    }
+
+    // 嘗試從資料庫獲取已知的顯示名稱
+    try {
+      // 這裡可以添加資料庫查詢邏輯
+      // const knownUser = await this.getUserFromDatabase(userId);
+      // if (knownUser?.displayName && knownUser.displayName !== 'Unknown') {
+      //   return knownUser.displayName;
+      // }
+    } catch (error: any) {
+      lineLogger.warn('Failed to get user from database', { userId, error: error.message });
+    }
+
+    // 最後的 fallback - 使用更友好的名稱
+    const shortId = userId.substring(0, 8);
+    return `用戶_${shortId}`;
   }
 
   /**
@@ -668,12 +710,11 @@ export class LineService {
     const timestamp = Date.now();
     const fileName = `line_${messageId}_${timestamp}.${extension}`;
     
-    // 準備相對路徑（資料夾結構）
-    const datePath = new Date().toISOString().slice(0, 7); // YYYY-MM 格式
-    const userName = userProfile?.displayName || `User_${userProfile?.userId?.substring(0, 8)}`;
-    const groupFolder = groupInfo ? `${groupInfo.groupName}` : '個人上傳';
+    // 準備相對路徑（資料夾結構）- 移除日期資料夾
+    const userName = await this.getOrCreateUserDisplayName(userProfile?.userId || '');
+    const groupFolder = groupInfo ? `群組上傳/${groupInfo.groupName}` : '個人上傳';
     
-    const relativePath = `LINE信徒照片上傳/${groupFolder}/${userName}/${datePath}`;
+    const relativePath = `LINE信徒照片上傳/${groupFolder}/${userName}`;
     
     // 準備元數據
     const metadata = {
