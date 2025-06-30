@@ -266,6 +266,16 @@ case $ACTION in
         
         # 重啟服務
         $COMPOSE_CMD restart
+        
+        # 解決 nginx DNS 快取問題
+        echo -e "${YELLOW}重啟 nginx 解決 DNS 快取問題...${NC}"
+        sleep 5
+        if command -v podman &> /dev/null; then
+            podman restart memoryark-nginx memoryark-line-nginx 2>/dev/null || true
+        else
+            docker restart memoryark-nginx memoryark-line-nginx 2>/dev/null || true
+        fi
+        
         echo -e "${GREEN}✅ 服務已重啟並使用最新代碼${NC}"
         ;;
         
