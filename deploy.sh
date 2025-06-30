@@ -264,8 +264,10 @@ case $ACTION in
         echo -e "${GREEN}🔨 重建後端...${NC}"
         $COMPOSE_CMD build --no-cache
         
-        # 重啟服務
-        $COMPOSE_CMD restart
+        # 重新創建容器（不只是重啟）
+        echo -e "${YELLOW}重新創建容器以使用新映像...${NC}"
+        $COMPOSE_CMD down
+        $COMPOSE_CMD up -d
         
         # 解決 nginx DNS 快取問題
         echo -e "${YELLOW}重啟 nginx 解決 DNS 快取問題...${NC}"
