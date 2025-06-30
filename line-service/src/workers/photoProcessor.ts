@@ -70,9 +70,21 @@ class PhotoProcessor {
 
       // 5. 發送成功通知
       if (uploadResult.success) {
+        // 格式化檔案大小
+        const formatFileSize = (bytes: number): string => {
+          if (bytes === 0) return '0 B';
+          const k = 1024;
+          const sizes = ['B', 'KB', 'MB', 'GB'];
+          const i = Math.floor(Math.log(bytes) / Math.log(k));
+          return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+
+        const fileSizeText = uploadResult.fileSize ? formatFileSize(uploadResult.fileSize) : '未知大小';
+        const fileName = uploadResult.fileName || '未知檔案';
+
         await queueService.addNotification({
           userId,
-          message: `照片已成功上傳！檔案名稱：${uploadResult.fileName}`,
+          message: `📸 照片已成功上傳！\n檔案名稱：${fileName}\n檔案大小：${fileSizeText}`,
           type: 'success',
           data: {
             messageId,

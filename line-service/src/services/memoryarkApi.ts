@@ -161,6 +161,9 @@ export class MemoryArkApiService {
         success: true,
         photoId: response.data.data?.id?.toString() || response.data.photoId || response.data.id,
         message: response.data.message || 'Photo uploaded successfully',
+        fileName: photoData.fileName,
+        fileSize: photoData.file.length,
+        uploadPath: photoData.folderPath,
       };
 
       memoryArkLogger.info('Photo upload successful', {

@@ -78,6 +78,10 @@ podman-compose up -d line-service
 sleep 10
 
 podman-compose up -d nginx line-nginx
+sleep 5
+
+# ⚠️ 重要：重啟 nginx 解決 DNS 快取問題（避免 502/Cloudflare 認證錯誤）
+podman restart memoryark-nginx memoryark-line-nginx
 ```
 
 #### 5️⃣ 驗證部署
@@ -156,8 +160,12 @@ podman rm memoryark-line-service memoryark-line-nginx
 # 4. 重新部署
 cd /home/davidliou/MyProject/MemoryArk2
 podman-compose up -d line-service line-nginx
+sleep 5
 
-# 5. 驗證新版本生效
+# 5. 重啟 nginx 解決 DNS 快取問題
+podman restart memoryark-nginx memoryark-line-nginx
+
+# 6. 驗證新版本生效
 sleep 10
 podman exec memoryark-line-service grep -A 3 "Invalid LINE signature" /app/dist/middleware/lineWebhook.js
 ```

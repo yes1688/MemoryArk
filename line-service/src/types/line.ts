@@ -79,6 +79,9 @@ export interface MemoryArkUploadResponse {
   photoId?: string;
   message: string;
   error?: string;
+  fileName?: string;
+  fileSize?: number;
+  uploadPath?: string;
 }
 
 // 事件處理結果
