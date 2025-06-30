@@ -161,6 +161,46 @@ case $ACTION in
             echo -e "${YELLOW}生成隨機 JWT 密鑰...${NC}"
             export JWT_SECRET=$(openssl rand -hex 32)
             echo -e "${GREEN}已生成安全的 JWT 密鑰${NC}"
+            # 更新 .env 檔案
+            sed -i "s/^JWT_SECRET=.*/JWT_SECRET=$JWT_SECRET/" .env
+        fi
+        
+        # 檢查 LINE Service API Token
+        if [ -z "$LINE_SERVICE_API_TOKEN" ]; then
+            echo -e "${YELLOW}檢測到未設定 LINE Service API Token${NC}"
+            echo -e "${YELLOW}這是 LINE 服務與 MemoryArk 後端通訊的認證金鑰${NC}"
+            
+            # 提供預設值或讓用戶輸入
+            default_token="memoryark-line-service-token-2025"
+            read -p "請輸入 LINE Service API Token (預設: $default_token): " user_token
+            LINE_SERVICE_API_TOKEN=${user_token:-$default_token}
+            
+            # 更新主要 .env 檔案
+            echo "" >> .env
+            echo "# LINE Service API Token" >> .env
+            echo "LINE_SERVICE_API_TOKEN=$LINE_SERVICE_API_TOKEN" >> .env
+            echo -e "${GREEN}✅ 已設定 LINE_SERVICE_API_TOKEN${NC}"
+        fi
+        
+        # 檢查 line-service/.env 的 MEMORYARK_API_TOKEN
+        if [ -f "line-service/.env" ]; then
+            # 讀取 line-service/.env 中的 MEMORYARK_API_TOKEN
+            line_api_token=$(grep "^MEMORYARK_API_TOKEN=" line-service/.env | cut -d'=' -f2)
+            
+            if [ -z "$line_api_token" ] || [ "$line_api_token" != "$LINE_SERVICE_API_TOKEN" ]; then
+                echo -e "${YELLOW}同步 LINE Service 的 API Token...${NC}"
+                # 更新 line-service/.env
+                sed -i "s/^MEMORYARK_API_TOKEN=.*/MEMORYARK_API_TOKEN=$LINE_SERVICE_API_TOKEN/" line-service/.env
+                echo -e "${GREEN}✅ 已同步 line-service/.env 的 MEMORYARK_API_TOKEN${NC}"
+            fi
+        else
+            echo -e "${YELLOW}line-service/.env 不存在，從範例建立...${NC}"
+            if [ -f "line-service/.env.example" ]; then
+                cp line-service/.env.example line-service/.env
+                # 更新 token
+                sed -i "s/^MEMORYARK_API_TOKEN=.*/MEMORYARK_API_TOKEN=$LINE_SERVICE_API_TOKEN/" line-service/.env
+                echo -e "${GREEN}✅ 已建立 line-service/.env 並設定 API Token${NC}"
+            fi
         fi
         
         # 設置環境變量
@@ -284,6 +324,71 @@ case $ACTION in
         $COMPOSE_CMD exec nginx wget -qO- http://memoryark-backend:8081/api/health || echo -e "${RED}無法連接到後端${NC}"
         ;;
         
+    "sync-tokens")
+        echo -e "${GREEN}同步 API Tokens...${NC}"
+        echo ""
+        
+        # 載入主要 .env
+        if [ -f ".env" ]; then
+            set -a
+            source .env
+            set +a
+        fi
+        
+        # 檢查 JWT_SECRET
+        if [ -z "$JWT_SECRET" ] || [ "$JWT_SECRET" = "your-super-secret-jwt-key-change-in-production" ]; then
+            echo -e "${YELLOW}生成新的 JWT_SECRET...${NC}"
+            JWT_SECRET=$(openssl rand -hex 32)
+            sed -i "s/^JWT_SECRET=.*/JWT_SECRET=$JWT_SECRET/" .env
+            echo -e "${GREEN}✅ JWT_SECRET 已更新${NC}"
+        else
+            echo -e "${GREEN}✅ JWT_SECRET 已設定${NC}"
+        fi
+        
+        # 檢查 LINE_SERVICE_API_TOKEN
+        if [ -z "$LINE_SERVICE_API_TOKEN" ]; then
+            echo -e "${YELLOW}設定 LINE_SERVICE_API_TOKEN...${NC}"
+            default_token="memoryark-line-service-token-2025"
+            read -p "請輸入 LINE Service API Token (預設: $default_token): " user_token
+            LINE_SERVICE_API_TOKEN=${user_token:-$default_token}
+            
+            # 檢查檔案是否已有此設定
+            if ! grep -q "^LINE_SERVICE_API_TOKEN=" .env; then
+                echo "" >> .env
+                echo "# LINE Service API Token" >> .env
+                echo "LINE_SERVICE_API_TOKEN=$LINE_SERVICE_API_TOKEN" >> .env
+            else
+                sed -i "s/^LINE_SERVICE_API_TOKEN=.*/LINE_SERVICE_API_TOKEN=$LINE_SERVICE_API_TOKEN/" .env
+            fi
+            echo -e "${GREEN}✅ LINE_SERVICE_API_TOKEN 已設定${NC}"
+        else
+            echo -e "${GREEN}✅ LINE_SERVICE_API_TOKEN 已存在${NC}"
+        fi
+        
+        # 同步到 line-service/.env
+        if [ -f "line-service/.env" ]; then
+            echo -e "${YELLOW}同步到 line-service/.env...${NC}"
+            sed -i "s/^MEMORYARK_API_TOKEN=.*/MEMORYARK_API_TOKEN=$LINE_SERVICE_API_TOKEN/" line-service/.env
+            echo -e "${GREEN}✅ 已同步 MEMORYARK_API_TOKEN${NC}"
+        else
+            echo -e "${RED}⚠️  line-service/.env 不存在${NC}"
+        fi
+        
+        # 顯示當前設定
+        echo ""
+        echo -e "${GREEN}當前 Token 設定：${NC}"
+        echo "JWT_SECRET: ${JWT_SECRET:0:20}... (已隱藏)"
+        echo "LINE_SERVICE_API_TOKEN: $LINE_SERVICE_API_TOKEN"
+        
+        # 詢問是否重啟服務
+        echo ""
+        read -p "是否要重啟服務以套用新設定？(y/n): " restart_choice
+        if [ "$restart_choice" = "y" ] || [ "$restart_choice" = "Y" ]; then
+            $COMPOSE_CMD restart backend line-service
+            echo -e "${GREEN}✅ 服務已重啟${NC}"
+        fi
+        ;;
+        
     *)
         echo -e "${GREEN}MemoryArk 部署工具${NC}"
         echo ""
@@ -296,6 +401,7 @@ case $ACTION in
         echo "進階選項："
         echo "  ./deploy.sh status          - 檢查狀態"
         echo "  ./deploy.sh diagnose        - 診斷問題"
+        echo "  ./deploy.sh sync-tokens     - 同步 API Tokens"
         echo "  ./deploy.sh update-frontend - 更新前端"
         echo "  ./deploy.sh generate-jwt    - 生成密鑰"
         echo ""
