@@ -4,6 +4,7 @@
 .env
 .env.local
 .env.*.local
+.mcp.json
 
 # 依賴目錄
 node_modules/
