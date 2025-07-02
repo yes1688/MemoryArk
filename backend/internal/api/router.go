@@ -73,6 +73,8 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		
 		// 檔案管理 - 根據規格書 API 設計
 		protected.GET("/files", fileHandler.GetFiles)
+		// 檔案搜尋
+		protected.GET("/files/search", fileHandler.SearchFiles)
 		protected.GET("/files/:id", fileHandler.GetFileDetails)
 		protected.POST("/files/upload", fileHandler.UploadFile)
 		protected.POST("/files/batch-upload", fileHandler.BatchUploadFile)
@@ -100,6 +102,10 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		protected.POST("/folders", fileHandler.CreateFolder)
 		protected.PUT("/folders/:id/move", fileHandler.MoveFile)
 		protected.PUT("/folders/:id/rename", fileHandler.RenameFile)
+		
+		// 檔案複製和移動
+		protected.POST("/files/copy", fileHandler.CopyFiles)
+		protected.POST("/files/move", fileHandler.MoveFiles)
 		
 		// 分類管理
 		protected.GET("/categories", categoryHandler.GetCategories)

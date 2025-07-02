@@ -318,6 +318,185 @@ func (h *FileHandler) GetFileDetails(c *gin.Context) {
 	api.Success(c, file)
 }
 
+
+// SearchFiles 全域搜尋檔案
+func (h *FileHandler) SearchFiles(c *gin.Context) {
+	// 驗證用戶已登入
+	_, exists := c.Get("user_id")
+	if !exists {
+		api.Unauthorized(c, "未授權訪問")
+		return
+	}
+	
+	// 取得搜尋參數
+	query := strings.TrimSpace(c.Query("q"))
+	if query == "" {
+		api.Error(c, http.StatusBadRequest, "MISSING_QUERY", "搜尋關鍵字不能為空")
+		return
+	}
+	
+	// 搜尋範圍參數
+	folderID := c.Query("folder_id")
+	recursive := c.DefaultQuery("recursive", "true") == "true"
+	
+	// 篩選參數
+	fileTypes := c.Query("file_types")     // image,video,document,audio,other
+	minSizeStr := c.Query("min_size")     // 最小檔案大小（bytes）
+	maxSizeStr := c.Query("max_size")     // 最大檔案大小（bytes）
+	fromLine := c.Query("from_line")      // 只搜尋 LINE 上傳的檔案
+	lineGroupID := c.Query("line_group_id") // 指定 LINE 群組
+	
+	// 分頁和排序參數
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	sortBy := c.DefaultQuery("sort_by", "name")
+	sortOrder := c.DefaultQuery("sort_order", "asc")
+	
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 50
+	}
+	
+	offset := (page - 1) * limit
+	
+	// 構建基礎查詢
+	baseQuery := h.db.Model(&models.File{}).Where("is_deleted = ?", false)
+	
+	// 全文搜尋檔案名稱
+	baseQuery = baseQuery.Where("name LIKE ? OR original_name LIKE ?", 
+		"%"+query+"%", "%"+query+"%")
+	
+	// 搜尋範圍限制
+	if folderID != "" {
+		if recursive {
+			// 遞迴搜尋：使用虛擬路徑前綴匹配
+			var folder models.File
+			if err := h.db.First(&folder, folderID).Error; err == nil && folder.IsDirectory {
+				// 搜尋該資料夾及其所有子資料夾
+				virtualPathPrefix := folder.VirtualPath
+				if virtualPathPrefix != "" && !strings.HasSuffix(virtualPathPrefix, "/") {
+					virtualPathPrefix += "/"
+				}
+				baseQuery = baseQuery.Where("virtual_path LIKE ?", virtualPathPrefix+"%")
+			}
+		} else {
+			// 只搜尋直接子檔案
+			baseQuery = baseQuery.Where("parent_id = ?", folderID)
+		}
+	}
+	
+	// 檔案類型篩選
+	if fileTypes != "" {
+		types := strings.Split(fileTypes, ",")
+		conditions := []string{}
+		args := []interface{}{}
+		
+		for _, fileType := range types {
+			switch strings.TrimSpace(fileType) {
+			case "image":
+				conditions = append(conditions, "mime_type LIKE ?")
+				args = append(args, "image/%")
+			case "video":
+				conditions = append(conditions, "mime_type LIKE ?")
+				args = append(args, "video/%")
+			case "audio":
+				conditions = append(conditions, "mime_type LIKE ?")
+				args = append(args, "audio/%")
+			case "document":
+				conditions = append(conditions, "(mime_type LIKE ? OR mime_type LIKE ? OR mime_type LIKE ? OR mime_type LIKE ?)")
+				args = append(args, "application/pdf", "application/msword", "application/vnd.ms-%", "text/%")
+			case "other":
+				conditions = append(conditions, "(mime_type NOT LIKE ? AND mime_type NOT LIKE ? AND mime_type NOT LIKE ? AND mime_type NOT LIKE ? AND mime_type NOT LIKE ? AND mime_type NOT LIKE ?)")
+				args = append(args, "image/%", "video/%", "audio/%", "application/pdf", "application/msword", "application/vnd.ms-%")
+			}
+		}
+		
+		if len(conditions) > 0 {
+			baseQuery = baseQuery.Where("("+strings.Join(conditions, " OR ")+")", args...)
+		}
+	}
+	
+	// 檔案大小篩選
+	if minSizeStr != "" {
+		if minSize, err := strconv.ParseInt(minSizeStr, 10, 64); err == nil {
+			baseQuery = baseQuery.Where("file_size >= ?", minSize)
+		}
+	}
+	if maxSizeStr != "" {
+		if maxSize, err := strconv.ParseInt(maxSizeStr, 10, 64); err == nil {
+			baseQuery = baseQuery.Where("file_size <= ?", maxSize)
+		}
+	}
+	
+	// LINE 篩選
+	if fromLine == "true" {
+		baseQuery = baseQuery.Joins("INNER JOIN line_upload_records ON files.id = line_upload_records.file_id")
+	}
+	if lineGroupID != "" {
+		baseQuery = baseQuery.Joins("INNER JOIN line_upload_records ON files.id = line_upload_records.file_id").
+			Where("line_upload_records.line_group_id = ?", lineGroupID)
+	}
+	
+	// 計算總數
+	var total int64
+	if err := baseQuery.Count(&total).Error; err != nil {
+		api.Error(c, http.StatusInternalServerError, api.ErrDatabaseError, "搜尋失敗")
+		return
+	}
+	
+	// 構建排序條件
+	var orderClause string
+	switch sortBy {
+	case "created_at":
+		orderClause = fmt.Sprintf("is_directory DESC, created_at %s", strings.ToUpper(sortOrder))
+	case "file_size":
+		orderClause = fmt.Sprintf("is_directory DESC, file_size %s", strings.ToUpper(sortOrder))
+	case "name":
+		fallthrough
+	default:
+		orderClause = fmt.Sprintf("is_directory DESC, name %s", strings.ToUpper(sortOrder))
+	}
+	
+	// 查詢結果
+	var files []models.File
+	if err := baseQuery.Preload("Uploader").Preload("DeletedByUser").Preload("Category").
+		Preload("LineUploadRecord").Preload("LineUploadRecord.LineUser").
+		Order(orderClause).
+		Offset(offset).Limit(limit).
+		Find(&files).Error; err != nil {
+		api.Error(c, http.StatusInternalServerError, api.ErrDatabaseError, "搜尋失敗")
+		return
+	}
+	
+	// 為圖片檔案生成縮圖URL
+	for i := range files {
+		if files[i].MimeType != "" && strings.HasPrefix(files[i].MimeType, "image/") && !files[i].IsDirectory {
+			files[i].ThumbnailURL = fmt.Sprintf("/api/files/%d/preview", files[i].ID)
+		}
+	}
+	
+	// 構建搜尋範圍描述
+	searchScope := "全部檔案"
+	if folderID != "" {
+		var folder models.File
+		if err := h.db.First(&folder, folderID).Error; err == nil {
+			if recursive {
+				searchScope = fmt.Sprintf("資料夾 '%s' 及其子資料夾", folder.Name)
+			} else {
+				searchScope = fmt.Sprintf("資料夾 '%s'", folder.Name)
+			}
+		}
+	}
+	
+	// 返回搜尋結果
+	api.SuccessWithPagination(c, gin.H{
+		"files": files,
+		"search_query": query,
+		"search_scope": searchScope,
+	}, page, limit, total)
+}
 // UploadFile 上傳檔案 - 重寫支援 SHA256 去重和純虛擬路徑
 func (h *FileHandler) UploadFile(c *gin.Context) {
 	// 調試：早期打印所有接收到的參數
@@ -2560,4 +2739,475 @@ func (h *FileHandler) GetChunkUploadStatus(c *gin.Context) {
 		"createdAt": session.CreatedAt,
 		"expiresAt": session.ExpiresAt,
 	})
+}
+
+// FileOperationRequest 檔案操作請求結構
+type FileOperationRequest struct {
+	FileIDs        []uint `json:"file_ids" binding:"required"`        // 要操作的檔案ID陣列
+	TargetFolderID *uint  `json:"target_folder_id"`                   // 目標資料夾ID（null表示根目錄）
+	OperationType  string `json:"operation_type" binding:"required"`  // "copy" 或 "move"
+}
+
+// FileOperationResponse 檔案操作回應結構
+type FileOperationResponse struct {
+	SuccessCount  int                  `json:"success_count"`  // 成功操作的檔案數量
+	FailedCount   int                  `json:"failed_count"`   // 失敗操作的檔案數量
+	SuccessFiles  []FileOperationResult `json:"success_files"`  // 成功操作的檔案列表
+	FailedFiles   []FileOperationResult `json:"failed_files"`   // 失敗操作的檔案列表
+	TotalCount    int                  `json:"total_count"`    // 總檔案數量
+}
+
+// FileOperationResult 單個檔案操作結果
+type FileOperationResult struct {
+	OriginalID   uint   `json:"original_id"`   // 原始檔案ID
+	NewID        *uint  `json:"new_id"`        // 新檔案ID（僅複製時有值）
+	FileName     string `json:"file_name"`     // 檔案名稱
+	Error        string `json:"error"`         // 錯誤訊息（如果有）
+	VirtualPath  string `json:"virtual_path"`  // 新的虛擬路徑
+}
+
+// CopyFiles 複製檔案
+func (h *FileHandler) CopyFiles(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		api.ErrorResponse(c, http.StatusUnauthorized, "未認證")
+		return
+	}
+
+	var req FileOperationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.ErrorResponse(c, http.StatusBadRequest, "請求參數錯誤: "+err.Error())
+		return
+	}
+
+	// 驗證操作類型
+	if req.OperationType != "copy" {
+		api.ErrorResponse(c, http.StatusBadRequest, "操作類型必須為 'copy'")
+		return
+	}
+
+	// 驗證目標資料夾（如果指定）
+	if req.TargetFolderID != nil {
+		var targetFolder models.File
+		if err := h.db.Where("id = ? AND is_directory = ? AND is_deleted = ?", 
+			*req.TargetFolderID, true, false).First(&targetFolder).Error; err != nil {
+			api.ErrorResponse(c, http.StatusBadRequest, "目標資料夾不存在或無效")
+			return
+		}
+	}
+
+	// 開始事務
+	tx := h.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	response := FileOperationResponse{
+		SuccessFiles: []FileOperationResult{},
+		FailedFiles:  []FileOperationResult{},
+	}
+
+	// 逐一處理每個檔案
+	for _, fileID := range req.FileIDs {
+		result := h.copyFileRecursive(fileID, req.TargetFolderID, userID.(uint), tx)
+		
+		if result.Error != "" {
+			response.FailedFiles = append(response.FailedFiles, result)
+			response.FailedCount++
+		} else {
+			response.SuccessFiles = append(response.SuccessFiles, result)
+			response.SuccessCount++
+		}
+	}
+
+	response.TotalCount = len(req.FileIDs)
+
+	// 如果有任何成功操作，提交事務
+	if response.SuccessCount > 0 {
+		if err := tx.Commit().Error; err != nil {
+			api.ErrorResponse(c, http.StatusInternalServerError, "提交事務失敗: "+err.Error())
+			return
+		}
+
+		// 廣播檔案系統事件
+		// 廣播檔案系統事件
+		var targetFolderID *int
+		if req.TargetFolderID != nil {
+			val := int(*req.TargetFolderID)
+			targetFolderID = &val
+		}
+		h.broadcastFileEvent("files_copied", targetFolderID,
+			fmt.Sprintf("成功複製 %d 個檔案", response.SuccessCount), response)
+	} else {
+		tx.Rollback()
+	}
+
+	api.SuccessResponse(c, response)
+}
+
+// MoveFiles 移動檔案
+func (h *FileHandler) MoveFiles(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		api.ErrorResponse(c, http.StatusUnauthorized, "未認證")
+		return
+	}
+
+	var req FileOperationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.ErrorResponse(c, http.StatusBadRequest, "請求參數錯誤: "+err.Error())
+		return
+	}
+
+	// 驗證操作類型
+	if req.OperationType != "move" {
+		api.ErrorResponse(c, http.StatusBadRequest, "操作類型必須為 'move'")
+		return
+	}
+
+	// 驗證目標資料夾（如果指定）
+	if req.TargetFolderID != nil {
+		var targetFolder models.File
+		if err := h.db.Where("id = ? AND is_directory = ? AND is_deleted = ?", 
+			*req.TargetFolderID, true, false).First(&targetFolder).Error; err != nil {
+			api.ErrorResponse(c, http.StatusBadRequest, "目標資料夾不存在或無效")
+			return
+		}
+	}
+
+	// 檢查循環依賴（防止將資料夾移動到自己的子目錄）
+	if err := h.checkCircularDependency(req.FileIDs, req.TargetFolderID); err != nil {
+		api.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// 開始事務
+	tx := h.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	response := FileOperationResponse{
+		SuccessFiles: []FileOperationResult{},
+		FailedFiles:  []FileOperationResult{},
+	}
+
+	// 逐一處理每個檔案
+	for _, fileID := range req.FileIDs {
+		result := h.moveFileRecursive(fileID, req.TargetFolderID, userID.(uint), tx)
+		
+		if result.Error != "" {
+			response.FailedFiles = append(response.FailedFiles, result)
+			response.FailedCount++
+		} else {
+			response.SuccessFiles = append(response.SuccessFiles, result)
+			response.SuccessCount++
+		}
+	}
+
+	response.TotalCount = len(req.FileIDs)
+
+	// 如果有任何成功操作，提交事務
+	if response.SuccessCount > 0 {
+		if err := tx.Commit().Error; err != nil {
+			api.ErrorResponse(c, http.StatusInternalServerError, "提交事務失敗: "+err.Error())
+			return
+		}
+
+		// 廣播檔案系統事件
+		var targetFolderID *int
+		if req.TargetFolderID != nil {
+			val := int(*req.TargetFolderID)
+			targetFolderID = &val
+		}
+		h.broadcastFileEvent("files_moved", targetFolderID,
+			fmt.Sprintf("成功移動 %d 個檔案", response.SuccessCount), response)
+	} else {
+		tx.Rollback()
+	}
+
+	api.SuccessResponse(c, response)
+}
+
+// copyFileRecursive 遞迴複製檔案或資料夾
+func (h *FileHandler) copyFileRecursive(fileID uint, targetFolderID *uint, userID uint, tx *gorm.DB) FileOperationResult {
+	var file models.File
+	if err := tx.Where("id = ? AND is_deleted = ?", fileID, false).First(&file).Error; err != nil {
+		return FileOperationResult{
+			OriginalID:  fileID,
+			Error:       "檔案不存在或已刪除",
+		}
+	}
+
+	// 檢查權限（只允許複製自己上傳的檔案，或管理員可複製所有檔案）
+	// 這裡簡化為允許所有用戶複製，實際可根據需求調整
+	
+	// 處理名稱衝突
+	newName := h.resolveNameConflict(file.Name, targetFolderID, tx)
+	newVirtualPath := h.buildVirtualPath(targetFolderID, newName)
+
+	var newFile models.File
+	if file.IsDirectory {
+		// 複製資料夾
+		newFile = models.File{
+			Name:         newName,
+			OriginalName: file.OriginalName,
+			FilePath:     "", // 資料夾沒有實體路徑
+			VirtualPath:  newVirtualPath,
+			SHA256Hash:   "",
+			FileSize:     0,
+			MimeType:     "application/x-directory",
+			ParentID:     targetFolderID,
+			CategoryID:   file.CategoryID,
+			UploadedBy:   userID,
+			IsDirectory:  true,
+			Description:  file.Description,
+			Tags:         file.Tags,
+			ContentType:  file.ContentType,
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
+		}
+
+		if err := tx.Create(&newFile).Error; err != nil {
+			return FileOperationResult{
+				OriginalID: fileID,
+				FileName:   file.Name,
+				Error:      "建立資料夾複本失敗: " + err.Error(),
+			}
+		}
+
+		// 遞迴複製子項目
+		var children []models.File
+		if err := tx.Where("parent_id = ? AND is_deleted = ?", fileID, false).Find(&children).Error; err != nil {
+			return FileOperationResult{
+				OriginalID: fileID,
+				FileName:   file.Name,
+				Error:      "查詢子項目失敗: " + err.Error(),
+			}
+		}
+
+		for _, child := range children {
+			h.copyFileRecursive(child.ID, &newFile.ID, userID, tx)
+		}
+
+	} else {
+		// 複製檔案（利用去重機制，不需複製實體檔案）
+		newFile = models.File{
+			Name:          newName,
+			OriginalName:  file.OriginalName,
+			FilePath:      file.FilePath, // 相同檔案路徑（去重）
+			VirtualPath:   newVirtualPath,
+			SHA256Hash:    file.SHA256Hash,
+			FileSize:      file.FileSize,
+			MimeType:      file.MimeType,
+			ThumbnailURL:  file.ThumbnailURL,
+			ParentID:      targetFolderID,
+			CategoryID:    file.CategoryID,
+			UploadedBy:    userID,
+			IsDirectory:   false,
+			Description:   file.Description,
+			Tags:          file.Tags,
+			ContentType:   file.ContentType,
+			Speaker:       file.Speaker,
+			SermonTitle:   file.SermonTitle,
+			BibleReference: file.BibleReference,
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+		}
+
+		if err := tx.Create(&newFile).Error; err != nil {
+			return FileOperationResult{
+				OriginalID: fileID,
+				FileName:   file.Name,
+				Error:      "建立檔案複本失敗: " + err.Error(),
+			}
+		}
+	}
+
+	return FileOperationResult{
+		OriginalID:  fileID,
+		NewID:       &newFile.ID,
+		FileName:    file.Name,
+		VirtualPath: newVirtualPath,
+	}
+}
+
+// moveFileRecursive 遞迴移動檔案或資料夾
+func (h *FileHandler) moveFileRecursive(fileID uint, targetFolderID *uint, userID uint, tx *gorm.DB) FileOperationResult {
+	var file models.File
+	if err := tx.Where("id = ? AND is_deleted = ?", fileID, false).First(&file).Error; err != nil {
+		return FileOperationResult{
+			OriginalID: fileID,
+			Error:      "檔案不存在或已刪除",
+		}
+	}
+
+	// 檢查權限（只允許移動自己上傳的檔案，或管理員可移動所有檔案）
+	if file.UploadedBy != userID {
+		// 這裡可以添加管理員權限檢查
+		return FileOperationResult{
+			OriginalID: fileID,
+			FileName:   file.Name,
+			Error:      "沒有權限移動此檔案",
+		}
+	}
+
+	// 如果移動到相同位置，跳過
+	if (file.ParentID == nil && targetFolderID == nil) ||
+		(file.ParentID != nil && targetFolderID != nil && *file.ParentID == *targetFolderID) {
+		return FileOperationResult{
+			OriginalID:  fileID,
+			FileName:    file.Name,
+			VirtualPath: file.VirtualPath,
+		}
+	}
+
+	// 處理名稱衝突
+	newName := h.resolveNameConflict(file.Name, targetFolderID, tx)
+	newVirtualPath := h.buildVirtualPath(targetFolderID, newName)
+
+	// 更新檔案資訊
+	updates := map[string]interface{}{
+		"name":         newName,
+		"parent_id":    targetFolderID,
+		"virtual_path": newVirtualPath,
+		"updated_at":   time.Now(),
+	}
+
+	if err := tx.Model(&file).Updates(updates).Error; err != nil {
+		return FileOperationResult{
+			OriginalID: fileID,
+			FileName:   file.Name,
+			Error:      "更新檔案資訊失敗: " + err.Error(),
+		}
+	}
+
+	// 如果是資料夾，需要遞迴更新所有子項目的虛擬路徑
+	if file.IsDirectory {
+		if err := h.updateChildrenVirtualPaths(fileID, newVirtualPath, tx); err != nil {
+			return FileOperationResult{
+				OriginalID: fileID,
+				FileName:   file.Name,
+				Error:      "更新子項目路徑失敗: " + err.Error(),
+			}
+		}
+	}
+
+	return FileOperationResult{
+		OriginalID:  fileID,
+		FileName:    file.Name,
+		VirtualPath: newVirtualPath,
+	}
+}
+
+// resolveNameConflict 解決名稱衝突
+func (h *FileHandler) resolveNameConflict(originalName string, parentID *uint, tx *gorm.DB) string {
+	// 檢查是否有重複名稱
+	var count int64
+	query := tx.Model(&models.File{}).Where("name = ? AND parent_id = ? AND is_deleted = ?", 
+		originalName, parentID, false)
+	
+	if err := query.Count(&count); err != nil {
+		// 如果查詢失敗，返回原名稱
+		return originalName
+	}
+
+	if count == 0 {
+		return originalName
+	}
+
+	// 生成新名稱
+	ext := filepath.Ext(originalName)
+	baseName := strings.TrimSuffix(originalName, ext)
+	
+	for i := 1; i <= 1000; i++ { // 最多嘗試1000次
+		newName := fmt.Sprintf("%s (%d)%s", baseName, i, ext)
+		
+		var newCount int64
+		if err := tx.Model(&models.File{}).Where("name = ? AND parent_id = ? AND is_deleted = ?", 
+			newName, parentID, false).Count(&newCount); err != nil {
+			continue
+		}
+		
+		if newCount == 0 {
+			return newName
+		}
+	}
+
+	// 如果仍然衝突，使用時間戳
+	timestamp := time.Now().Format("20060102_150405")
+	return fmt.Sprintf("%s_%s%s", baseName, timestamp, ext)
+}
+
+// updateChildrenVirtualPaths 遞迴更新子項目的虛擬路徑
+func (h *FileHandler) updateChildrenVirtualPaths(folderID uint, newParentPath string, tx *gorm.DB) error {
+	var children []models.File
+	if err := tx.Where("parent_id = ? AND is_deleted = ?", folderID, false).Find(&children).Error; err != nil {
+		return err
+	}
+
+	for _, child := range children {
+		newChildPath := newParentPath + "/" + child.Name
+		
+		updates := map[string]interface{}{
+			"virtual_path": newChildPath,
+			"updated_at":   time.Now(),
+		}
+		
+		if err := tx.Model(&child).Updates(updates).Error; err != nil {
+			return err
+		}
+
+		// 如果是資料夾，遞迴更新
+		if child.IsDirectory {
+			if err := h.updateChildrenVirtualPaths(child.ID, newChildPath, tx); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// checkCircularDependency 檢查循環依賴
+func (h *FileHandler) checkCircularDependency(fileIDs []uint, targetFolderID *uint) error {
+	if targetFolderID == nil {
+		return nil // 移動到根目錄，沒有循環依賴問題
+	}
+
+	// 檢查是否嘗試將資料夾移動到自己或子目錄中
+	for _, fileID := range fileIDs {
+		var file models.File
+		if err := h.db.Where("id = ? AND is_directory = ? AND is_deleted = ?", 
+			fileID, true, false).First(&file).Error; err == nil {
+			// 這是一個資料夾，檢查目標是否在其子目錄中
+			if h.isDescendant(*targetFolderID, fileID) {
+				return fmt.Errorf("不能將資料夾移動到自己的子目錄中")
+			}
+		}
+	}
+
+	return nil
+}
+
+// isDescendant 檢查 targetID 是否是 ancestorID 的後代
+func (h *FileHandler) isDescendant(targetID, ancestorID uint) bool {
+	if targetID == ancestorID {
+		return true
+	}
+
+	var target models.File
+	if err := h.db.Where("id = ?", targetID).First(&target).Error; err != nil {
+		return false
+	}
+
+	if target.ParentID == nil {
+		return false
+	}
+
+	return h.isDescendant(*target.ParentID, ancestorID)
 }
