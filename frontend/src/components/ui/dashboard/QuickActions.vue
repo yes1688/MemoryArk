@@ -3,7 +3,7 @@
     <!-- 上傳檔案 -->
     <button 
       @click="openUploadModal($event)"
-      class="action-card upload bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 hover:from-blue-100 hover:to-blue-200 dark:hover:from-blue-800 dark:hover:to-blue-700 border-2 border-blue-200 dark:border-blue-700 hover:border-blue-400 dark:hover:border-blue-600"
+      class="action-card upload glass-card backdrop-blur-glass-md border border-glass-primary hover:glass-medium transition-all duration-300"
     >
       <div class="icon-wrapper bg-blue-500 text-white">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -19,7 +19,7 @@
     <!-- 新建資料夾 -->
     <button 
       @click="createFolder($event)"
-      class="action-card folder bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900 dark:to-amber-800 hover:from-amber-100 hover:to-amber-200 dark:hover:from-amber-800 dark:hover:to-amber-700 border-2 border-amber-200 dark:border-amber-700 hover:border-amber-400 dark:hover:border-amber-600"
+      class="action-card folder glass-card backdrop-blur-glass-md border border-glass-primary hover:glass-medium transition-all duration-300"
     >
       <div class="icon-wrapper bg-amber-500 text-white">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,7 +35,7 @@
     <!-- 共享資料夾 -->
     <button 
       @click="openSharedFolder($event)"
-      class="action-card shared bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900 dark:to-purple-800 hover:from-purple-100 hover:to-purple-200 dark:hover:from-purple-800 dark:hover:to-purple-700 border-2 border-purple-200 dark:border-purple-700 hover:border-purple-400 dark:hover:border-purple-600"
+      class="action-card shared glass-card backdrop-blur-glass-md border border-glass-primary hover:glass-medium transition-all duration-300"
     >
       <div class="icon-wrapper bg-purple-500 text-white">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,7 +51,7 @@
     <!-- 安息日資料 -->
     <button 
       @click="openSabbathData($event)"
-      class="action-card sabbath bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900 dark:to-green-800 hover:from-green-100 hover:to-green-200 dark:hover:from-green-800 dark:hover:to-green-700 border-2 border-green-200 dark:border-green-700 hover:border-green-400 dark:hover:border-green-600"
+      class="action-card sabbath glass-card backdrop-blur-glass-md border border-glass-primary hover:glass-medium transition-all duration-300"
     >
       <div class="icon-wrapper bg-green-500 text-white">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

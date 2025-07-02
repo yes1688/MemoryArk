@@ -209,3 +209,26 @@ export interface DuplicateFile {
   totalSize: number
   duplicateCount: number
 }
+
+// 檔案操作相關型別
+export interface FileOperationRequest {
+  file_ids: number[]
+  target_folder_id?: number
+  operation_type: 'copy' | 'move'
+}
+
+export interface FileOperationResult {
+  original_id: number
+  new_id?: number
+  file_name: string
+  error?: string
+  virtual_path: string
+}
+
+export interface FileOperationResponse {
+  success_count: number
+  failed_count: number
+  success_files: FileOperationResult[]
+  failed_files: FileOperationResult[]
+  total_count: number
+}

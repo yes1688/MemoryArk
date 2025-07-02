@@ -23,6 +23,7 @@ import { MinimalButton, AppFileIcon, AppFilePreview } from '@/components/ui'
 import FileCard from '@/components/ui/file-card/FileCard.vue'
 import UploadModal from '@/components/UploadModal.vue'
 import CreateFolderModal from '@/components/CreateFolderModal.vue'
+import FileOperationModal from '@/components/FileOperationModal.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -56,6 +57,8 @@ const searchQuery = ref('')
 const viewMode = ref<'grid' | 'list'>('grid')
 const showUploadModal = ref(false)
 const showCreateFolderModal = ref(false)
+const showFileOperationModal = ref(false)
+const operationType = ref<'copy' | 'move'>('copy')
 const showFilePreview = ref(false)
 const selectedFile = ref<FileInfo | null>(null)
 const hoveredFile = ref<FileInfo | null>(null)
@@ -83,6 +86,10 @@ const searchResults = ref<FileInfo[]>([])
 const showRefreshHint = ref(false)
 const searchDebounceTimer = ref<NodeJS.Timeout>()
 const isSearching = ref(false)
+const isGlobalSearch = ref(true)  // 預設使用全域搜尋
+const searchTotalResults = ref(0)
+const searchCurrentPage = ref(1)
+const searchTotalPages = ref(0)
 
 // 批次更新控制
 const updateQueue = ref<Set<number | null>>(new Set())
@@ -94,7 +101,7 @@ const lastProcessedPath = ref('')
 
 // Worker 快取狀態
 const isDevelopment = process.env.NODE_ENV === 'development'
-const showWorkerStatus = ref(isDevelopment) // 只在開發模式顯示
+const showWorkerStatus = ref(false) // 暫時停用以隱藏 Invalid 錯誤文字
 const isWorkerInitialized = ref(false)
 const workerPreloadQueue = ref<Set<number>>(new Set())
 
@@ -105,26 +112,26 @@ const breadcrumbs = computed(() => filesStore.breadcrumbs)
 const selectedFiles = computed(() => filesStore.selectedFiles)
 const isLoading = computed(() => filesStore.isLoading)
 
+// 多選相關計算屬性
+const isSelectionMode = computed(() => filesStore.isSelectionMode)
+const hasSelection = computed(() => filesStore.hasSelection)
+const isAllSelected = computed(() => filesStore.isAllSelected)
+const isSomeSelected = computed(() => filesStore.isSomeSelected)
+
 // Worker 相關計算屬性
 const workerStatus = computed(() => workerCacheStore.operationStatus)
 const workerMetrics = computed(() => workerCacheStore.performanceMetrics)
 const isWorkerHealthy = computed(() => workerCacheStore.isHealthy)
 
-// 篩選檔案 - 改為智能搜尋
+// 篩選檔案
 const filteredFiles = computed(() => {
+  // 搜尋模式：使用搜尋結果
   if (isSearchMode.value) {
     return searchResults.value
   }
   
-  if (!searchQuery.value) {
-    return files.value
-  }
-  
-  // 本地快速過濾（輸入時即時回饋）
-  const query = searchQuery.value.toLowerCase()
-  return files.value.filter(file => 
-    file.name.toLowerCase().includes(query)
-  )
+  // 一般模式：顯示所有檔案
+  return files.value
 })
 
 // 只包含非目錄檔案的列表（用於預覽導航）
@@ -223,6 +230,145 @@ const downloadFile = (file: FileInfo) => {
   window.open(url, '_blank')
 }
 
+// 多選相關方法
+const handleFileSelect = (file: FileInfo) => {
+  filesStore.toggleSelectFile(file)
+}
+
+const toggleSelectionMode = () => {
+  filesStore.toggleSelectionMode()
+}
+
+const toggleSelectAll = () => {
+  filesStore.toggleSelectAll()
+}
+
+const handleBatchDelete = async () => {
+  if (!hasSelection.value) return
+  
+  let confirmMessage = `確定要刪除選中的 ${selectedFiles.value.length} 個項目嗎？`
+  
+  const folderCount = selectedFiles.value.filter(f => f.isDirectory).length
+  const fileCount = selectedFiles.value.length - folderCount
+  
+  if (folderCount > 0 && fileCount > 0) {
+    confirmMessage += `\n\n包含 ${folderCount} 個資料夾和 ${fileCount} 個檔案`
+  } else if (folderCount > 0) {
+    confirmMessage += `\n\n包含 ${folderCount} 個資料夾`
+  } else {
+    confirmMessage += `\n\n包含 ${fileCount} 個檔案`
+  }
+  
+  confirmMessage += '\n\n⚠️ 警告：此操作會將所有項目移至垃圾桶。'
+  
+  if (confirm(confirmMessage)) {
+    try {
+      await filesStore.deleteSelectedFiles()
+      console.log('批次刪除完成')
+    } catch (error) {
+      console.error('批次刪除失敗:', error)
+      alert('批次刪除失敗，請稍後再試')
+    }
+  }
+}
+
+// 舊的剪貼簿複製方法（保留供其他地方使用）
+const handleBatchCopyToClipboard = () => {
+  if (!hasSelection.value) return
+  
+  try {
+    filesStore.copySelectedFiles()
+    console.log(`已複製 ${selectedFiles.value.length} 個項目到剪貼簿`)
+  } catch (error) {
+    console.error('複製失敗:', error)
+  }
+}
+
+// 新的複製方法，顯示對話框
+const handleBatchCopy = () => {
+  showCopyDialog()
+}
+
+const handleBatchCut = () => {
+  if (!hasSelection.value) return
+  
+  try {
+    filesStore.cutSelectedFiles()
+    console.log(`已剪下 ${selectedFiles.value.length} 個項目到剪貼簿`)
+  } catch (error) {
+    console.error('剪下失敗:', error)
+  }
+}
+
+// 顯示複製對話框
+const showCopyDialog = () => {
+  if (!hasSelection.value) return
+  
+  operationType.value = 'copy'
+  showFileOperationModal.value = true
+}
+
+// 顯示移動對話框
+const showMoveDialog = () => {
+  if (!hasSelection.value) return
+  
+  operationType.value = 'move'
+  showFileOperationModal.value = true
+}
+
+// 關閉檔案操作對話框
+const closeFileOperationModal = () => {
+  showFileOperationModal.value = false
+}
+
+// 檔案操作成功處理
+const handleFileOperationSuccess = async (result: any) => {
+  console.log('檔案操作成功:', result)
+  
+  // 關閉對話框
+  showFileOperationModal.value = false
+  
+  // 清除選擇（移動操作時）
+  if (operationType.value === 'move') {
+    filesStore.clearSelection()
+    filesStore.exitSelectionMode()
+  }
+  
+  // 刷新當前資料夾
+  await filesStore.manualRefresh()
+  
+  // 顯示成功消息
+  const operationText = operationType.value === 'copy' ? '複製' : '移動'
+  const message = `${operationText}操作完成！成功處理 ${result.success_count} 個檔案`
+  
+  if (result.failed_count > 0) {
+    alert(`${message}，${result.failed_count} 個檔案處理失敗`)
+  } else {
+    console.log(message)
+  }
+}
+
+// 上傳成功處理
+const handleUploadSuccess = async () => {
+  showUploadModal.value = false
+  await filesStore.manualRefresh()
+}
+
+// 新增資料夾成功處理
+const handleCreateFolderSuccess = async () => {
+  showCreateFolderModal.value = false
+  await filesStore.manualRefresh()
+}
+
+// 檔案預覽導航處理
+const handlePreviewNavigate = (newIndex: number) => {
+  currentPreviewIndex.value = newIndex
+  const newFile = filteredFiles.value[newIndex]
+  if (newFile) {
+    selectedFile.value = newFile
+  }
+}
+
 // 排序方法
 const changeSortBy = async (newSortBy: typeof sortBy.value) => {
   if (sortBy.value === newSortBy) {
@@ -238,55 +384,38 @@ const changeSortBy = async (newSortBy: typeof sortBy.value) => {
 }
 
 // 智能全域搜尋方法 - 帶防抖
+// 執行搜尋（不含防抖）
 const performSearch = async (query: string) => {
-  // 清除之前的定時器
-  if (searchDebounceTimer.value) {
-    clearTimeout(searchDebounceTimer.value)
-  }
-  
   if (!query.trim()) {
-    isSearchMode.value = false
-    searchResults.value = []
-    isSearching.value = false
+    clearSearch()
     return
   }
   
-  // 設置 300ms 防抖
-  searchDebounceTimer.value = setTimeout(async () => {
-    try {
-      isSearching.value = true
-      console.log('🔍 執行全域搜尋:', query)
-      
-      // 全域搜尋 - 不受分頁限制
-      const response = await filesStore.fetchFiles(filesStore.currentFolderId, true, {
-        limit: 1000, // 大量載入，不受分頁限制
-        page: 1,
-        sort_by: sortBy.value,
-        sort_order: sortOrder.value
-      })
-      
-      // 從所有檔案中過濾搜尋結果
-      const allFiles = filesStore.files
-      const filtered = allFiles.filter(file => 
+  try {
+    isSearching.value = true
+    
+    // 短查詢使用本地搜尋
+    if (query.length < 2) {
+      isSearchMode.value = true
+      isGlobalSearch.value = false
+      const filtered = files.value.filter(file => 
         file.name.toLowerCase().includes(query.toLowerCase())
       )
-      
       searchResults.value = filtered
-      isSearchMode.value = true
-      isSearching.value = false
-      
-      console.log(`✅ 全域搜尋完成，從 ${allFiles.length} 個檔案中找到 ${filtered.length} 個結果`)
-    } catch (error) {
-      console.error('❌ 搜尋失敗:', error)
-      isSearching.value = false
+      searchTotalResults.value = filtered.length
+      console.log(`📍 本地搜尋完成: ${filtered.length} 個結果`)
+    } else {
+      // 長查詢使用全域搜尋
+      await performGlobalSearch(query)
     }
-  }, 300)
+  } catch (error) {
+    console.error('❌ 搜尋失敗:', error)
+  } finally {
+    isSearching.value = false
+  }
 }
 
 // 監聽搜尋輸入
-watch(searchQuery, (newQuery) => {
-  performSearch(newQuery)
-})
 
 // 清除搜尋並恢復分頁模式
 const clearSearch = () => {
@@ -347,6 +476,101 @@ const deleteFile = async (file: FileInfo) => {
       console.error('刪除失敗:', error)
       alert('刪除失敗，請稍後再試')
     }
+  }
+}
+
+// 搜尋相關方法
+const performGlobalSearch = async (query: string, page = 1) => {
+  if (!query.trim()) {
+    clearSearch()
+    return
+  }
+  
+  try {
+    isSearching.value = true
+    isSearchMode.value = true
+    
+    console.log('🔍 執行全域搜尋:', { query, page, currentFolder: filesStore.currentFolderId })
+    
+    const searchParams = {
+      q: query.trim(),
+      folder_id: filesStore.currentFolderId || undefined, // 在當前資料夾範圍內搜尋
+      recursive: true,  // 遞迴搜尋子目錄
+      page,
+      limit: pageSize.value,
+      sort_by: sortBy.value,
+      sort_order: sortOrder.value
+    }
+    
+    const response = await fileApi.searchFiles(searchParams)
+    
+    if (response.success && response.data) {
+      searchResults.value = response.data.files || []
+      searchTotalResults.value = response.data.total || 0
+      searchTotalPages.value = response.data.totalPages || 0
+      searchCurrentPage.value = page
+      
+      console.log('✅ 全域搜尋完成:', {
+        query,
+        results: searchResults.value.length,
+        total: searchTotalResults.value,
+        totalPages: searchTotalPages.value
+      })
+    } else {
+      console.error('❌ 搜尋API回應失敗:', response)
+      searchResults.value = []
+      searchTotalResults.value = 0
+    }
+  } catch (error) {
+    console.error('❌ 全域搜尋失敗:', error)
+    searchResults.value = []
+    searchTotalResults.value = 0
+  } finally {
+    isSearching.value = false
+  }
+}
+
+
+// 搜尋分頁方法
+const changeSearchPage = async (page: number) => {
+  if (!searchQuery.value || !isSearchMode.value) return
+  
+  if (page < 1 || page > searchTotalPages.value || page === searchCurrentPage.value) {
+    return
+  }
+  
+  await performGlobalSearch(searchQuery.value, page)
+}
+
+// 切換搜尋模式
+const toggleSearchMode = () => {
+  isGlobalSearch.value = !isGlobalSearch.value
+  console.log('🔄 搜尋模式切換:', isGlobalSearch.value ? '全域搜尋' : '本地搜尋')
+  
+  // 如果有搜尋查詢，立即重新搜尋
+  if (searchQuery.value) {
+    if (isGlobalSearch.value) {
+      performGlobalSearch(searchQuery.value)
+    } else {
+      // 切換到本地搜尋模式，清除全域搜尋結果
+      isSearchMode.value = false
+      searchResults.value = []
+    }
+  }
+}
+
+// 獲取搜尋框佔位符
+const getSearchPlaceholder = () => {
+  if (isSearchMode.value && isGlobalSearch.value) {
+    const folderName = currentFolder.value?.name || '所有資料夾'
+    return `在${folderName}中找到 ${searchTotalResults.value} 個結果`
+  }
+  
+  if (isGlobalSearch.value) {
+    const folderName = currentFolder.value?.name || '根目錄'
+    return `搜尋${folderName}及子目錄中的檔案...`
+  } else {
+    return '搜尋當前頁面檔案...'
   }
 }
 
@@ -505,29 +729,6 @@ const handlePreviewDownload = (file: FileInfo) => {
   downloadFile(file)
 }
 
-// 處理預覽導航
-const handlePreviewNavigate = (direction: 'next' | 'prev') => {
-  if (previewableFiles.value.length === 0) return
-  
-  let newIndex: number
-  if (direction === 'next') {
-    newIndex = (currentPreviewIndex.value + 1) % previewableFiles.value.length
-  } else {
-    newIndex = currentPreviewIndex.value <= 0 
-      ? previewableFiles.value.length - 1 
-      : currentPreviewIndex.value - 1
-  }
-  
-  currentPreviewIndex.value = newIndex
-  selectedFile.value = previewableFiles.value[newIndex]
-  
-  console.log('🔄 Preview navigation:', {
-    direction,
-    newIndex,
-    fileName: selectedFile.value?.name,
-    total: previewableFiles.value.length
-  })
-}
 
 // 分頁控制方法
 const changePage = async (page: number) => {
@@ -568,6 +769,49 @@ const getVisiblePages = () => {
   const pages: (number | string)[] = []
   const total = totalPages.value
   const current = currentPage.value
+  
+  if (total <= 7) {
+    // 如果總頁數不多，全部顯示
+    for (let i = 1; i <= total; i++) {
+      pages.push(i)
+    }
+  } else {
+    // 複雜的分頁邏輯
+    if (current <= delta + 2) {
+      // 靠近開頭
+      for (let i = 1; i <= delta + 3; i++) {
+        pages.push(i)
+      }
+      pages.push('...')
+      pages.push(total)
+    } else if (current >= total - delta - 1) {
+      // 靠近結尾
+      pages.push(1)
+      pages.push('...')
+      for (let i = total - delta - 2; i <= total; i++) {
+        pages.push(i)
+      }
+    } else {
+      // 在中間
+      pages.push(1)
+      pages.push('...')
+      for (let i = current - delta; i <= current + delta; i++) {
+        pages.push(i)
+      }
+      pages.push('...')
+      pages.push(total)
+    }
+  }
+  
+  return pages
+}
+
+// 計算搜尋分頁的可見頁碼
+const getVisibleSearchPages = () => {
+  const delta = 2 // 當前頁前後顯示的頁數
+  const pages: (number | string)[] = []
+  const total = searchTotalPages.value
+  const current = searchCurrentPage.value
   
   if (total <= 7) {
     // 如果總頁數不多，全部顯示
@@ -1042,6 +1286,25 @@ watch(
   { immediate: true }
 )
 
+// 統一搜尋監聽器
+watch(searchQuery, (newQuery) => {
+  // 清除之前的計時器
+  if (searchDebounceTimer.value) {
+    clearTimeout(searchDebounceTimer.value)
+  }
+  
+  // 如果查詢為空，立即清除
+  if (!newQuery.trim()) {
+    clearSearch()
+    return
+  }
+  
+  // 300ms 防抖搜尋
+  searchDebounceTimer.value = setTimeout(() => {
+    performSearch(newQuery)
+  }, 300)
+})
+
 onMounted(async () => {
   updateScreenSize()
   window.addEventListener('resize', updateScreenSize)
@@ -1053,6 +1316,14 @@ onMounted(async () => {
 // 組件卸載時清理
 onUnmounted(() => {
   window.removeEventListener('resize', updateScreenSize)
+  
+  // 清理搜尋相關計時器
+  if (searchDebounceTimer.value) {
+    clearTimeout(searchDebounceTimer.value)
+  }
+  if (updateDebounceTimer.value) {
+    clearTimeout(updateDebounceTimer.value)
+  }
 })
 </script>
 
@@ -1196,11 +1467,9 @@ onUnmounted(() => {
 </style>
 
 <template>
-  <div class="files-view h-full flex flex-col relative" style="background: var(--bg-primary);">
+  <div class="files-view h-full flex flex-col relative min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
     <!-- 手機版頂部標題欄 -->
-    <header v-if="isMobile" class="mobile-header" style="
-      background: var(--bg-elevated);
-      border-bottom: 1px solid var(--border-light);
+    <header v-if="isMobile" class="mobile-header glass-medium backdrop-blur-glass-md border-b border-glass-primary transition-all duration-300" style="
       padding: max(env(safe-area-inset-top), 8px) 16px 8px 16px;
     ">
       <!-- 麵包屑導航 -->
@@ -1209,10 +1478,10 @@ onUnmounted(() => {
           <span v-if="index > 0" class="text-sm shrink-0" style="color: var(--text-tertiary);">/</span>
           <button
             @click="navigateToBreadcrumb(crumb)"
-            class="text-sm font-medium whitespace-nowrap touch-target shrink-0"
+            class="text-sm font-medium whitespace-nowrap touch-target shrink-0 hover:glass-light transition-all duration-200"
             style="color: var(--text-primary); min-height: 32px; padding: 4px 8px; border-radius: 6px;"
+            :class="{ 'glass-light': index === breadcrumbs.length - 1 }"
             :style="{ 
-              background: index === breadcrumbs.length - 1 ? 'var(--bg-tertiary)' : 'transparent',
               fontWeight: index === breadcrumbs.length - 1 ? '600' : '500'
             }"
           >
@@ -1226,14 +1495,13 @@ onUnmounted(() => {
         <input
           v-model="searchQuery"
           type="text"
-          :placeholder="isSearchMode ? `已找到 ${searchResults.length} 個結果` : '搜尋所有檔案和資料夾...'"
-          class="w-full px-4 py-3 pl-10 pr-10"
+          :placeholder="getSearchPlaceholder()"
+          class="w-full px-4 py-3 pl-10 pr-12 glass-input backdrop-blur-glass-sm border border-glass-primary focus:border-glass-strong transition-all duration-200"
           style="
-            background: var(--bg-tertiary);
-            border: none;
             border-radius: 12px;
             font-size: 16px;
             color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.1);
           "
           :style="{ 
             borderLeft: isSearchMode ? '3px solid var(--color-primary)' : 'none'
@@ -1265,6 +1533,23 @@ onUnmounted(() => {
           </svg>
         </div>
         
+        <!-- 搜尋模式切換按鈕 -->
+        <button
+          v-if="!searchQuery"
+          @click="toggleSearchMode"
+          class="absolute right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full glass-medium hover:glass-heavy transition-all duration-200"
+          :class="{ 'bg-glass-primary': isGlobalSearch }"
+          :style="{
+            color: isGlobalSearch ? 'white' : 'var(--text-tertiary)'
+          }"
+          :title="isGlobalSearch ? '全域搜尋模式 (點擊切換為本地搜尋)' : '本地搜尋模式 (點擊切換為全域搜尋)'"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path v-if="isGlobalSearch" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+        </button>
+        
         <!-- 清除按鈕 -->
         <button
           v-if="searchQuery"
@@ -1278,16 +1563,14 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <!-- 操作按鈕組 -->
-      <div class="mobile-actions flex items-center justify-between">
+      <!-- 操作按鈕組 - 正常模式 -->
+      <div v-if="!isSelectionMode" class="mobile-actions flex items-center justify-between">
         <div class="flex items-center gap-2">
           <button
             @click="showUploadModal = true"
-            class="action-btn primary"
+            class="action-btn primary glass-button glass-heavy hover:glass-extra-heavy backdrop-blur-glass-md text-white border-0 transition-all duration-200"
             style="
-              background: var(--color-primary);
-              color: white;
-              border: none;
+              background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(99, 102, 241, 0.8));
               padding: 10px 16px;
               border-radius: 20px;
               font-size: 14px;
@@ -1295,6 +1578,7 @@ onUnmounted(() => {
               display: flex;
               align-items: center;
               gap: 6px;
+              box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
             "
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1305,11 +1589,10 @@ onUnmounted(() => {
           
           <button
             @click="showCreateFolderModal = true"
-            class="action-btn secondary"
+            class="action-btn secondary glass-medium hover:glass-heavy backdrop-blur-glass-sm transition-all duration-200"
             style="
-              background: var(--bg-tertiary);
               color: var(--text-primary);
-              border: none;
+              border: 1px solid var(--glass-border-primary);
               padding: 10px 16px;
               border-radius: 20px;
               font-size: 14px;
@@ -1324,8 +1607,31 @@ onUnmounted(() => {
             </svg>
             新增
           </button>
+          
+          <!-- 多選模式按鈕 -->
+          <button
+            @click="toggleSelectionMode"
+            class="action-btn selection-mode"
+            style="
+              background: var(--bg-tertiary);
+              color: var(--text-primary);
+              border: none;
+              padding: 10px 16px;
+              border-radius: 20px;
+              font-size: 14px;
+              font-weight: 600;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            "
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            選擇
+          </button>
         </div>
-
+        
         <!-- 檢視模式切換 -->
         <div class="view-toggle" style="
           background: var(--bg-tertiary);
@@ -1371,22 +1677,190 @@ onUnmounted(() => {
           </button>
         </div>
       </div>
+
+      <!-- 多選模式工具列 -->
+      <div v-if="isSelectionMode" class="selection-toolbar" style="
+        background: var(--color-primary);
+        border-radius: 16px;
+        padding: 12px 16px;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      ">
+        <!-- 左側：選擇信息和全選 -->
+        <div class="selection-info flex items-center gap-3">
+          <button
+            @click="toggleSelectAll"
+            class="select-all-btn"
+            style="
+              background: rgba(255, 255, 255, 0.2);
+              border: none;
+              border-radius: 12px;
+              padding: 8px;
+              color: white;
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              font-size: 12px;
+              font-weight: 600;
+            "
+          >
+            <div
+              class="checkbox-icon w-4 h-4 rounded border-2 flex items-center justify-center"
+              :style="{
+                borderColor: 'white',
+                background: isAllSelected ? 'white' : 'transparent'
+              }"
+            >
+              <svg 
+                v-if="isAllSelected"
+                class="w-3 h-3" 
+                style="color: var(--color-primary);"
+                fill="currentColor" 
+                viewBox="0 0 20 20"
+              >
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+              </svg>
+              <div 
+                v-else-if="isSomeSelected"
+                class="w-2 h-0.5 bg-white rounded"
+              ></div>
+            </div>
+            {{ isAllSelected ? '全選' : isSomeSelected ? '部分' : '全選' }}
+          </button>
+          
+          <span class="selection-count text-sm font-medium">
+            已選擇 {{ selectedFiles.length }} 項
+          </span>
+        </div>
+        
+        <!-- 右側：操作按鈕 -->
+        <div class="selection-actions flex items-center gap-2">
+          <button
+            v-if="hasSelection"
+            @click="handleBatchCopy"
+            class="batch-action-btn"
+            style="
+              background: rgba(255, 255, 255, 0.2);
+              border: none;
+              border-radius: 10px;
+              padding: 8px;
+              color: white;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
+            title="複製"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+          </button>
+          
+          <button
+            v-if="hasSelection"
+            @click="showMoveDialog"
+            class="batch-action-btn"
+            style="
+              background: rgba(255, 255, 255, 0.2);
+              border: none;
+              border-radius: 10px;
+              padding: 8px;
+              color: white;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
+            title="移動"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"/>
+            </svg>
+          </button>
+          
+          <button
+            v-if="hasSelection"
+            @click="handleBatchDelete"
+            class="batch-action-btn"
+            style="
+              background: var(--color-danger);
+              border: none;
+              border-radius: 10px;
+              padding: 8px;
+              color: white;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
+            title="刪除"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
+          
+          <button
+            @click="toggleSelectionMode"
+            class="batch-action-btn"
+            style="
+              background: rgba(255, 255, 255, 0.2);
+              border: none;
+              border-radius: 10px;
+              padding: 8px;
+              color: white;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
+            title="退出選擇模式"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
     </header>
 
     <!-- 桌面版頂部導航 -->
-    <header v-else class="desktop-header" style="background: var(--bg-elevated); border-bottom: 1px solid var(--border-light); padding: var(--space-4);">
+    <header v-else class="desktop-header glass-light backdrop-blur-glass-md border-b border-glass-primary transition-all duration-300" style="padding: var(--space-4); margin: 16px; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.05);">
       <!-- 麵包屑導航 -->
       <div class="breadcrumbs flex items-center gap-1 sm:gap-2 mb-4 overflow-x-auto">
         <template v-for="(crumb, index) in breadcrumbs" :key="crumb.id || index">
           <span v-if="index > 0" class="text-xs sm:text-sm shrink-0" style="color: var(--text-tertiary);">/</span>
           <button
             @click="navigateToBreadcrumb(crumb)"
-            class="text-xs sm:text-sm hover:underline whitespace-nowrap touch-target shrink-0"
+            class="text-xs sm:text-sm hover:glass-light transition-all duration-200 whitespace-nowrap touch-target shrink-0 rounded-lg"
             style="color: var(--text-secondary); min-height: 32px; padding: var(--space-1) var(--space-2);"
           >
             {{ crumb.name }}
           </button>
         </template>
+      </div>
+      
+      <!-- 搜尋結果提示 -->
+      <div v-if="isSearchMode && isGlobalSearch" class="search-results-info mb-4 p-3 rounded-lg glass-medium backdrop-blur-glass-sm border border-glass-primary">
+        <div class="flex items-center gap-2 text-sm">
+          <svg class="w-4 h-4" style="color: var(--color-primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <span style="color: var(--text-primary);">
+            搜尋 "<strong>{{ searchQuery }}</strong>" 
+            在 <strong>{{ currentFolder?.name || '根目錄' }}</strong> 及子目錄中
+          </span>
+          <span style="color: var(--text-secondary);">
+            - 找到 {{ searchTotalResults }} 個結果
+          </span>
+          <button 
+            @click="clearSearch"
+            class="ml-auto text-xs px-2 py-1 rounded glass-light hover:glass-medium transition-all duration-200"
+            style="color: var(--text-tertiary);"
+          >
+            清除搜尋
+          </button>
+        </div>
       </div>
       
       <!-- 工具欄 -->
@@ -1420,10 +1894,101 @@ onUnmounted(() => {
             </template>
             新資料夾
           </MinimalButton>
+          
+          <!-- 選擇模式切換按鈕 -->
+          <MinimalButton
+            variant="outline"
+            size="small"
+            @click="toggleSelectionMode"
+            class="touch-target"
+            :class="{ 'selection-active': isSelectionMode }"
+          >
+            <template #icon-left>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </template>
+            {{ isSelectionMode ? '退出選擇' : '選擇' }}
+          </MinimalButton>
         </div>
         
         <!-- 右側工具 -->
         <div class="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+          <!-- 桌面版搜尋欄 -->
+          <div class="desktop-search relative flex-1 max-w-md">
+            <input
+              v-model="searchQuery"
+              type="text"
+              :placeholder="getSearchPlaceholder()"
+              class="w-full px-4 py-2 pl-10 pr-10 glass-input backdrop-blur-glass-sm border border-glass-primary focus:border-glass-strong transition-all duration-200"
+              style="
+                border-radius: 10px;
+                font-size: 14px;
+                color: var(--text-primary);
+                background: rgba(255, 255, 255, 0.1);
+              "
+              :style="{ 
+                borderColor: isSearchMode ? 'var(--color-primary)' : 'var(--glass-border-primary)',
+                boxShadow: isSearchMode ? '0 0 0 2px rgba(59, 130, 246, 0.1)' : '0 2px 8px rgba(0,0,0,0.1)'
+              }"
+            >
+            
+            <!-- 搜尋圖示或載入動畫 -->
+            <div class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4">
+              <svg 
+                v-if="!isSearching"
+                style="color: var(--text-tertiary);"
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+              
+              <!-- 載入動畫 -->
+              <svg 
+                v-else
+                class="animate-spin"
+                style="color: var(--color-primary);"
+                fill="none" 
+                viewBox="0 0 24 24"
+              >
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/>
+                <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+              </svg>
+            </div>
+            
+            <!-- 搜尋模式切換按鈕 -->
+            <button
+              v-if="!searchQuery"
+              @click="toggleSearchMode"
+              class="absolute right-8 top-1/2 transform -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded"
+              :style="{
+                background: isGlobalSearch ? 'var(--color-primary)' : 'var(--bg-secondary)',
+                color: isGlobalSearch ? 'white' : 'var(--text-tertiary)',
+                transition: 'all 0.2s ease'
+              }"
+              :title="isGlobalSearch ? '全域搜尋模式 (點擊切換為本地搜尋)' : '本地搜尋模式 (點擊切換為全域搜尋)'"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path v-if="isGlobalSearch" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+            
+            <!-- 清除按鈕 -->
+            <button
+              v-if="searchQuery"
+              @click="clearSearch"
+              class="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 hover:bg-gray-200 rounded flex items-center justify-center"
+              style="transition: all 0.2s ease;"
+            >
+              <svg class="w-3 h-3" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          
           <!-- 現代化排序控制 -->
           <div class="sort-controls-modern flex items-center gap-1 p-1 rounded-lg" style="background: var(--bg-tertiary);">
             <button
@@ -1520,35 +2085,6 @@ onUnmounted(() => {
             ></span>
           </button>
           
-          <!-- 搜尋框 -->
-          <div class="search-box relative flex-1 sm:flex-none">
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="搜尋檔案..."
-              class="search-input w-full sm:w-60 lg:w-80"
-              style="
-                padding: var(--space-2) var(--space-3);
-                padding-left: 36px;
-                background: var(--bg-tertiary);
-                border: 1px solid var(--border-light);
-                border-radius: var(--radius-full);
-                font-size: var(--text-sm);
-                color: var(--text-primary);
-                transition: all var(--duration-fast) var(--ease-smooth);
-                min-height: 44px;
-              "
-            >
-            <svg 
-              class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4"
-              style="color: var(--text-tertiary);"
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-          </div>
           
           <!-- 檢視模式切換 -->
           <div class="view-toggle flex items-center shrink-0" style="background: var(--bg-tertiary); border-radius: var(--radius-full); padding: 2px;">
@@ -1593,26 +2129,276 @@ onUnmounted(() => {
           </div>
         </div>
       </div>
+      
+      <!-- 桌面版選擇模式工具列 -->
+      <div v-if="isSelectionMode" class="desktop-selection-toolbar" style="
+        background: var(--color-primary);
+        border-top: 1px solid var(--border-light);
+        padding: 12px var(--space-4);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      ">
+        <!-- 左側：選擇信息和全選 -->
+        <div class="selection-info flex items-center gap-4">
+          <button
+            @click="toggleSelectAll"
+            class="select-all-btn"
+            style="
+              background: rgba(255, 255, 255, 0.15);
+              border: none;
+              border-radius: 8px;
+              padding: 8px 12px;
+              color: white;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              font-size: 14px;
+              font-weight: 500;
+              transition: all 0.2s ease;
+              cursor: pointer;
+            "
+          >
+            <div
+              class="checkbox-icon w-4 h-4 rounded border-2 flex items-center justify-center"
+              :style="{
+                borderColor: 'white',
+                background: isAllSelected ? 'white' : 'transparent'
+              }"
+            >
+              <svg 
+                v-if="isAllSelected"
+                class="w-3 h-3" 
+                style="color: var(--color-primary);"
+                fill="currentColor" 
+                viewBox="0 0 20 20"
+              >
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+              </svg>
+              <div 
+                v-else-if="isSomeSelected"
+                class="w-2 h-0.5 bg-white rounded"
+              ></div>
+            </div>
+            {{ isAllSelected ? '取消全選' : isSomeSelected ? '全選' : '全選' }}
+          </button>
+          
+          <span class="selection-count text-sm font-medium">
+            已選擇 {{ selectedFiles.length }} 個項目
+          </span>
+        </div>
+        
+        <!-- 右側：操作按鈕 -->
+        <div class="selection-actions flex items-center gap-3">
+          <button
+            v-if="hasSelection"
+            @click="handleBatchCopy"
+            class="batch-action-btn"
+            style="
+              background: rgba(255, 255, 255, 0.15);
+              border: none;
+              border-radius: 8px;
+              padding: 8px 16px;
+              color: white;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              font-size: 14px;
+              font-weight: 500;
+              transition: all 0.2s ease;
+              cursor: pointer;
+            "
+            title="複製選中項目"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+            複製
+          </button>
+          
+          <button
+            v-if="hasSelection"
+            @click="showMoveDialog"
+            class="batch-action-btn"
+            style="
+              background: rgba(255, 255, 255, 0.15);
+              border: none;
+              border-radius: 8px;
+              padding: 8px 16px;
+              color: white;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              font-size: 14px;
+              font-weight: 500;
+              transition: all 0.2s ease;
+              cursor: pointer;
+            "
+            title="移動選中項目"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"/>
+            </svg>
+            移動
+          </button>
+          
+          <button
+            v-if="hasSelection"
+            @click="handleBatchCut"
+            class="batch-action-btn"
+            style="
+              background: rgba(255, 255, 255, 0.15);
+              border: none;
+              border-radius: 8px;
+              padding: 8px 16px;
+              color: white;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              font-size: 14px;
+              font-weight: 500;
+              transition: all 0.2s ease;
+              cursor: pointer;
+            "
+            title="剪下選中項目"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6-4h8m-1 0V5a2 2 0 00-2-2H9a2 2 0 00-2 2v1M12 16l2-2 2 2"/>
+            </svg>
+            剪下
+          </button>
+          
+          <button
+            v-if="hasSelection"
+            @click="handleBatchDelete"
+            class="batch-action-btn"
+            style="
+              background: var(--color-danger);
+              border: none;
+              border-radius: 8px;
+              padding: 8px 16px;
+              color: white;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              font-size: 14px;
+              font-weight: 500;
+              transition: all 0.2s ease;
+              cursor: pointer;
+            "
+            title="刪除選中項目"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            刪除
+          </button>
+          
+          <div class="divider w-px h-6 bg-white opacity-30"></div>
+          
+          <button
+            @click="toggleSelectionMode"
+            class="batch-action-btn"
+            style="
+              background: rgba(255, 255, 255, 0.15);
+              border: none;
+              border-radius: 8px;
+              padding: 8px 12px;
+              color: white;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              transition: all 0.2s ease;
+              cursor: pointer;
+            "
+            title="退出選擇模式"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
     </header>
     
     <!-- 檔案內容區 -->
-    <main class="files-content flex-1 overflow-auto" 
+    <main class="files-content flex-1 overflow-auto glass-light backdrop-blur-glass-md rounded-t-2xl transition-all duration-300" 
           :style="{
             padding: isMobile ? '16px' : 'var(--space-6)',
             paddingBottom: isMobile ? '100px' : 'var(--space-6)',
-            background: 'var(--bg-primary)',
             maxWidth: isMobile ? '100%' : 'none',
-            margin: '0 auto'
+            margin: isMobile ? '8px' : '16px',
+            marginTop: isMobile ? '0' : '8px',
+            border: '1px solid var(--glass-border-primary)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
           }">
       <!-- 空狀態 -->
       <div v-if="!isLoading && filteredFiles.length === 0" class="empty-state flex flex-col items-center justify-center h-64">
         <div class="empty-icon mb-4" style="color: var(--text-tertiary);">
-          <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg v-if="!isSearchMode" class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z"/>
           </svg>
+          <svg v-else class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
         </div>
-        <p class="text-lg" style="color: var(--text-secondary);">{{ searchQuery ? '找不到符合的檔案' : '此資料夾是空的' }}</p>
-        <p class="text-sm mt-1" style="color: var(--text-tertiary);">{{ searchQuery ? '試試其他關鍵字' : '開始上傳一些檔案吧' }}</p>
+        
+        <template v-if="isSearchMode && isGlobalSearch">
+          <p class="text-lg" style="color: var(--text-secondary);">
+            找不到包含 "{{ searchQuery }}" 的檔案
+          </p>
+          <p class="text-sm mt-1" style="color: var(--text-tertiary);">
+            在 {{ currentFolder?.name || '根目錄' }} 及子目錄中沒有找到符合的結果
+          </p>
+          <div class="mt-4 flex gap-2">
+            <button 
+              @click="clearSearch"
+              class="px-4 py-2 rounded-lg text-sm glass-button glass-heavy hover:glass-extra-heavy backdrop-blur-glass-md text-white border-0 transition-all duration-200"
+              style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(99, 102, 241, 0.8)); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);"
+            >
+              清除搜尋
+            </button>
+            <button 
+              @click="toggleSearchMode"
+              class="px-4 py-2 rounded-lg text-sm glass-medium hover:glass-heavy backdrop-blur-glass-sm transition-all duration-200"
+              style="color: var(--text-primary); border: 1px solid var(--glass-border-primary);"
+            >
+              切換到本地搜尋
+            </button>
+          </div>
+        </template>
+        
+        <template v-else-if="searchQuery">
+          <p class="text-lg" style="color: var(--text-secondary);">
+            在當前頁面找不到符合的檔案
+          </p>
+          <p class="text-sm mt-1" style="color: var(--text-tertiary);">
+            試試全域搜尋或其他關鍵字
+          </p>
+          <div class="mt-4 flex gap-2">
+            <button 
+              @click="clearSearch"
+              class="px-4 py-2 rounded-lg text-sm"
+              style="background: var(--color-primary); color: white;"
+            >
+              清除搜尋
+            </button>
+            <button 
+              @click="toggleSearchMode"
+              class="px-4 py-2 rounded-lg text-sm"
+              style="background: var(--bg-tertiary); color: var(--text-primary);"
+            >
+              使用全域搜尋
+            </button>
+          </div>
+        </template>
+        
+        <template v-else>
+          <p class="text-lg" style="color: var(--text-secondary);">此資料夾是空的</p>
+          <p class="text-sm mt-1" style="color: var(--text-tertiary);">開始上傳一些檔案吧</p>
+        </template>
       </div>
       
       <!-- 網格視圖 - 統一桌面檔案管理器風格 -->
@@ -1647,10 +2433,13 @@ onUnmounted(() => {
             :file="file"
             mode="files"
             :hovered-file="hoveredFile"
+            :is-selection-mode="isSelectionMode"
+            :is-selected="selectedFiles.some(selected => selected.id === file.id)"
             @click="openFile"
             @hover="hoveredFile = $event"
             @download="downloadFile"
             @delete="deleteFile"
+            @select="handleFileSelect"
             :style="{
               borderRadius: isMobile ? '16px' : '12px',
               overflow: 'hidden',
@@ -1665,11 +2454,16 @@ onUnmounted(() => {
         <div
           v-for="(file, index) in filteredFiles"
           :key="file.id"
-          @click="openFile(file)"
+          @click="isSelectionMode ? handleFileSelect(file) : openFile(file)"
           class="file-row flex items-center cursor-pointer touch-target mobile-tap-effect"
           :class="{ 'hover:bg-gray-50 dark:hover:bg-gray-800': !isMobile }"
           :style="{
-            background: 'var(--bg-elevated)',
+            background: isSelectionMode && selectedFiles.some(selected => selected.id === file.id) 
+              ? 'rgba(59, 130, 246, 0.1)' 
+              : 'var(--bg-elevated)',
+            border: isSelectionMode && selectedFiles.some(selected => selected.id === file.id)
+              ? '2px solid var(--color-primary)'
+              : '2px solid transparent',
             transition: 'all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)',
             minHeight: isMobile ? '72px' : '60px',
             padding: isMobile ? '16px 12px' : 'var(--space-3)',
@@ -1678,6 +2472,29 @@ onUnmounted(() => {
             boxShadow: isMobile ? '0 1px 3px rgba(0, 0, 0, 0.06)' : 'none'
           }"
         >
+          <!-- 選擇框 - 僅在選擇模式下顯示 -->
+          <div 
+            v-if="isSelectionMode" 
+            class="selection-checkbox mr-3"
+          >
+            <div
+              class="checkbox-wrapper flex items-center justify-center w-5 h-5 rounded border-2 transition-all duration-200"
+              :style="{
+                background: selectedFiles.some(selected => selected.id === file.id) ? 'var(--color-primary)' : 'transparent',
+                borderColor: selectedFiles.some(selected => selected.id === file.id) ? 'var(--color-primary)' : 'var(--border-light)'
+              }"
+            >
+              <svg 
+                v-if="selectedFiles.some(selected => selected.id === file.id)"
+                class="w-3 h-3 text-white" 
+                fill="currentColor" 
+                viewBox="0 0 20 20"
+              >
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+          </div>
+          
           <div class="file-icon mr-4">
             <AppFileIcon 
               :mime-type="file.mimeType"
@@ -1693,7 +2510,7 @@ onUnmounted(() => {
               {{ formatDate(file.updatedAt) }} · {{ file.isDirectory ? '資料夾' : formatFileSize(file.size) }}
             </p>
           </div>
-          <div class="file-actions flex" :style="{ gap: isMobile ? '4px' : '8px' }">
+          <div v-if="!isSelectionMode" class="file-actions flex" :style="{ gap: isMobile ? '4px' : '8px' }">
             <button
               v-if="!file.isDirectory"
               @click.stop="downloadFile(file)"
@@ -1743,8 +2560,8 @@ onUnmounted(() => {
         </div>
       </div>
       
-      <!-- 分頁控制 -->
-      <div v-if="!isLoading && filteredFiles.length > 0 && totalPages > 1" 
+      <!-- 分頁控制 - 支援搜尋和檔案列表 -->
+      <div v-if="!isLoading && filteredFiles.length > 0 && ((isSearchMode && searchTotalPages > 1) || (!isSearchMode && totalPages > 1))" 
            class="pagination-container flex items-center justify-between mt-6 px-4"
            :style="{
              padding: isMobile ? '16px' : '24px',
@@ -1754,24 +2571,30 @@ onUnmounted(() => {
            }">
         <!-- 分頁資訊 -->
         <div class="pagination-info text-sm" style="color: var(--text-secondary);">
-          顯示第 {{ ((currentPage - 1) * pageSize) + 1 }} - {{ Math.min(currentPage * pageSize, filesStore.totalFiles) }} 項，
-          共 {{ filesStore.totalFiles }} 項
+          <template v-if="isSearchMode && isGlobalSearch">
+            搜尋結果第 {{ ((searchCurrentPage - 1) * pageSize) + 1 }} - {{ Math.min(searchCurrentPage * pageSize, searchTotalResults) }} 項，
+            共 {{ searchTotalResults }} 個結果
+          </template>
+          <template v-else>
+            顯示第 {{ ((currentPage - 1) * pageSize) + 1 }} - {{ Math.min(currentPage * pageSize, filesStore.totalFiles) }} 項，
+            共 {{ filesStore.totalFiles }} 項
+          </template>
         </div>
         
         <!-- 分頁按鈕 -->
         <div class="pagination-buttons flex items-center gap-2">
           <!-- 上一頁 -->
           <button
-            @click="changePage(currentPage - 1)"
-            :disabled="currentPage <= 1"
+            @click="isSearchMode ? changeSearchPage(searchCurrentPage - 1) : changePage(currentPage - 1)"
+            :disabled="isSearchMode ? searchCurrentPage <= 1 : currentPage <= 1"
             class="pagination-btn"
             :style="{
               padding: '8px 12px',
               borderRadius: '8px',
-              background: currentPage <= 1 ? 'var(--bg-tertiary)' : 'var(--color-primary)',
-              color: currentPage <= 1 ? 'var(--text-tertiary)' : 'white',
+              background: (isSearchMode ? searchCurrentPage <= 1 : currentPage <= 1) ? 'var(--bg-tertiary)' : 'var(--color-primary)',
+              color: (isSearchMode ? searchCurrentPage <= 1 : currentPage <= 1) ? 'var(--text-tertiary)' : 'white',
               border: 'none',
-              cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
+              cursor: (isSearchMode ? searchCurrentPage <= 1 : currentPage <= 1) ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s ease'
             }"
           >
@@ -1779,17 +2602,17 @@ onUnmounted(() => {
           </button>
           
           <!-- 頁碼 -->
-          <template v-for="page in getVisiblePages()" :key="page">
+          <template v-for="page in isSearchMode ? getVisibleSearchPages() : getVisiblePages()" :key="page">
             <button
               v-if="page !== '...'"
-              @click="changePage(Number(page))"
-              :class="{ 'active': page === currentPage }"
+              @click="isSearchMode ? changeSearchPage(Number(page)) : changePage(Number(page))"
+              :class="{ 'active': page === (isSearchMode ? searchCurrentPage : currentPage) }"
               class="page-number-btn"
               :style="{
                 padding: '8px 12px',
                 borderRadius: '8px',
-                background: page === currentPage ? 'var(--color-primary)' : 'var(--bg-tertiary)',
-                color: page === currentPage ? 'white' : 'var(--text-primary)',
+                background: page === (isSearchMode ? searchCurrentPage : currentPage) ? 'var(--color-primary)' : 'var(--bg-tertiary)',
+                color: page === (isSearchMode ? searchCurrentPage : currentPage) ? 'white' : 'var(--text-primary)',
                 border: 'none',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
@@ -1803,16 +2626,16 @@ onUnmounted(() => {
           
           <!-- 下一頁 -->
           <button
-            @click="changePage(currentPage + 1)"
-            :disabled="currentPage >= totalPages"
+            @click="isSearchMode ? changeSearchPage(searchCurrentPage + 1) : changePage(currentPage + 1)"
+            :disabled="isSearchMode ? searchCurrentPage >= searchTotalPages : currentPage >= totalPages"
             class="pagination-btn"
             :style="{
               padding: '8px 12px',
               borderRadius: '8px',
-              background: currentPage >= totalPages ? 'var(--bg-tertiary)' : 'var(--color-primary)',
-              color: currentPage >= totalPages ? 'var(--text-tertiary)' : 'white',
+              background: (isSearchMode ? searchCurrentPage >= searchTotalPages : currentPage >= totalPages) ? 'var(--bg-tertiary)' : 'var(--color-primary)',
+              color: (isSearchMode ? searchCurrentPage >= searchTotalPages : currentPage >= totalPages) ? 'var(--text-tertiary)' : 'white',
               border: 'none',
-              cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
+              cursor: (isSearchMode ? searchCurrentPage >= searchTotalPages : currentPage >= totalPages) ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s ease'
             }"
           >
@@ -1954,6 +2777,45 @@ onUnmounted(() => {
       </div>
     </div>
   </div>
+
+  <!-- 上傳對話框 -->
+  <UploadModal
+    v-if="showUploadModal"
+    :is-visible="showUploadModal"
+    :current-folder-id="filesStore.currentFolderId"
+    @close="showUploadModal = false"
+    @success="handleUploadSuccess"
+  />
+
+  <!-- 新增資料夾對話框 -->
+  <CreateFolderModal
+    v-if="showCreateFolderModal"
+    :is-visible="showCreateFolderModal"
+    :current-folder-id="filesStore.currentFolderId"
+    @close="showCreateFolderModal = false"
+    @success="handleCreateFolderSuccess"
+  />
+
+  <!-- 檔案操作對話框（複製/移動） -->
+  <FileOperationModal
+    v-if="showFileOperationModal"
+    :is-visible="showFileOperationModal"
+    :operation-type="operationType"
+    :selected-files="selectedFiles"
+    :current-parent-id="filesStore.currentFolderId"
+    @close="closeFileOperationModal"
+    @success="handleFileOperationSuccess"
+  />
+
+  <!-- 檔案預覽 -->
+  <AppFilePreview
+    v-if="showFilePreview && selectedFile"
+    :file="selectedFile"
+    :files="filteredFiles"
+    :current-index="currentPreviewIndex"
+    @close="showFilePreview = false"
+    @navigate="handlePreviewNavigate"
+  />
 </template>
 
 <style scoped>
@@ -2015,6 +2877,44 @@ onUnmounted(() => {
 /* 麵包屑切換動畫 */
 .breadcrumb-item {
   transition: all 0.2s ease-out;
+}
+
+/* 選擇模式相關樣式 */
+.selection-active {
+  background: var(--color-primary) !important;
+  color: white !important;
+}
+
+.selection-toolbar {
+  animation: slideInDown 0.3s ease-out;
+}
+
+.desktop-selection-toolbar {
+  animation: slideInDown 0.3s ease-out;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.batch-action-btn:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+  transform: translateY(-1px);
+}
+
+.select-all-btn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.selection-checkbox .checkbox-wrapper {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* 手機版特殊效果 */

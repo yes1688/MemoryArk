@@ -148,16 +148,13 @@ const hapticFeedback = () => {
 
 <template>
   <nav 
-    class="mobile-navigation"
+    class="mobile-navigation glass-heavy"
     style="
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      background: var(--bg-elevated);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-top: 1px solid var(--border-light);
+      border-top: 1px solid var(--glass-border-primary);
       padding: env(safe-area-inset-bottom) 0 0 0;
       z-index: 1000;
     "
@@ -178,7 +175,7 @@ const hapticFeedback = () => {
         v-for="item in mobileNavItems"
         :key="item.id"
         @click="navigateTo(item.path); hapticFeedback()"
-        class="nav-item"
+        class="nav-item hover:glass-light"
         :class="{ 'active': isActive(item.path) }"
         style="
           display: flex;
@@ -200,14 +197,13 @@ const hapticFeedback = () => {
         <!-- 活躍狀態背景 -->
         <div 
           v-if="isActive(item.path)"
-          class="active-bg"
+          class="active-bg glass-medium"
           :style="{
             position: 'absolute',
             top: '0',
             left: '0',
             right: '0',
             bottom: '0',
-            background: item.color + '15',
             borderRadius: '12px',
             transform: 'scale(0.95)',
             transition: 'all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1)'
@@ -324,10 +320,22 @@ const hapticFeedback = () => {
   }
 }
 
+/* 玻璃反光效果 */
+.mobile-navigation::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  pointer-events: none;
+}
+
 /* 深色模式適配 */
 @media (prefers-color-scheme: dark) {
   .mobile-navigation {
-    border-top-color: rgba(255, 255, 255, 0.1);
+    border-top-color: var(--glass-border-primary);
   }
 }
 

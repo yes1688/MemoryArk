@@ -53,9 +53,9 @@ onMounted(() => {
 </style>
 
 <template>
-  <div class="h-full flex flex-col">
+  <div class="h-full flex flex-col min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
     <!-- 頁面標題 -->
-    <div class="p-6" style="background: var(--bg-elevated); border-bottom: 1px solid var(--border-light);">
+    <div class="p-6 glass-medium backdrop-blur-glass-md border-b border-glass-primary transition-all duration-300" style="margin: 16px; margin-bottom: 0; border-radius: 16px 16px 0 0; box-shadow: 0 4px 16px rgba(0,0,0,0.05);">
       <div>
         <h1 class="text-2xl font-bold" style="color: var(--text-primary);">系統管理</h1>
         <p class="text-sm" style="color: var(--text-secondary);">管理用戶、檔案和系統設定</p>
@@ -63,7 +63,7 @@ onMounted(() => {
     </div>
 
     <!-- 標籤導航 -->
-    <div style="background: var(--bg-elevated); border-bottom: 1px solid var(--border-light);">
+    <div class="glass-light backdrop-blur-glass-sm border-b border-glass-primary transition-all duration-300" style="margin: 0 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
       <nav class="px-6">
         <div class="flex space-x-8">
           <button
@@ -71,8 +71,8 @@ onMounted(() => {
             :key="tab.id"
             @click="switchTab(tab.id)"
             :class="[
-              'py-4 px-1 border-b-2 font-medium text-sm transition-colors admin-tab',
-              activeTab === tab.id ? 'admin-tab-active' : 'admin-tab-inactive'
+              'py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200 admin-tab hover:glass-light rounded-t-lg',
+              activeTab === tab.id ? 'admin-tab-active glass-medium' : 'admin-tab-inactive'
             ]"
           >
             <span class="mr-2">{{ tab.icon }}</span>
@@ -83,7 +83,7 @@ onMounted(() => {
     </div>
 
     <!-- 標籤內容 -->
-    <div class="flex-1 overflow-auto">
+    <div class="flex-1 overflow-auto glass-light backdrop-blur-glass-md transition-all duration-300" style="margin: 0 16px 16px 16px; border-radius: 0 0 16px 16px; border: 1px solid var(--glass-border-primary); border-top: none; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
       <!-- 系統統計 -->
       <AdminStats v-if="activeTab === 'stats'" />
 

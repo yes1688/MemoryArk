@@ -1,6 +1,6 @@
 <template>
   <nav :class="breadcrumbClasses" aria-label="路徑導航">
-    <ol class="breadcrumb-list">
+    <ol class="breadcrumb-list rounded-lg px-3 py-2" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.2);">
       <!-- Home/Root item -->
       <li class="breadcrumb-item">
         <button
@@ -251,15 +251,25 @@ const vClickOutside = {
 }
 
 .breadcrumb-separator {
-  @apply mx-2 text-gray-400 select-none;
+  @apply mx-2 select-none;
+  color: var(--text-tertiary);
+  opacity: 0.5;
 }
 
 .breadcrumb-link {
-  @apply flex items-center space-x-1 px-2 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1;
+  @apply flex items-center space-x-1 px-2 py-1 text-gray-600 hover:text-gray-900 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
 }
 
 .breadcrumb-link-active {
   @apply text-gray-900 font-medium;
+  background: rgba(59, 130, 246, 0.2);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .breadcrumb-text {
@@ -271,7 +281,9 @@ const vClickOutside = {
 }
 
 .breadcrumb-collapse {
-  @apply px-2 py-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1;
+  @apply px-2 py-1 text-gray-500 hover:text-gray-700 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(4px);
 }
 
 /* Dropdown */
@@ -284,11 +296,17 @@ const vClickOutside = {
 }
 
 .breadcrumb-dropdown-menu {
-  @apply absolute top-full left-0 mt-1 py-1 bg-white border border-gray-200 rounded-win11 shadow-win11 z-10 min-w-[200px] max-h-[300px] overflow-y-auto;
+  @apply absolute top-full left-0 mt-1 py-1 rounded-lg z-10 min-w-[200px] max-h-[300px] overflow-y-auto;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .breadcrumb-dropdown-item {
-  @apply w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center space-x-2;
+  @apply w-full px-3 py-2 text-left text-gray-700 focus:outline-none flex items-center space-x-2 transition-all duration-150;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
 }
 
 /* Size variants */
@@ -312,11 +330,16 @@ const vClickOutside = {
 
 /* Variant styles */
 .breadcrumb-pills .breadcrumb-link {
-  @apply bg-gray-100 hover:bg-gray-200;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .breadcrumb-pills .breadcrumb-link-active {
-  @apply bg-primary-100 text-primary-900;
+  background: rgba(59, 130, 246, 0.2);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: var(--color-primary);
 }
 
 .breadcrumb-underline .breadcrumb-link {

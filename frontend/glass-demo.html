@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MemoryArk 玻璃效果演示</title>
+    <link rel="stylesheet" href="./dist/assets/index-BoUrO97-.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .demo-section {
+            padding: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-grid">
+        <!-- 基礎玻璃卡片 -->
+        <div class="glass-card demo-section">
+            <h3 class="text-lg font-bold text-white mb-4">基礎玻璃卡片</h3>
+            <p class="text-white/80">這是一個使用 <code class="bg-white/20 px-1 rounded">glass-card</code> 類別的基礎玻璃效果卡片。</p>
+        </div>
+
+        <!-- 玻璃按鈕 -->
+        <div class="glass-light demo-section">
+            <h3 class="text-lg font-bold text-white mb-4">玻璃按鈕</h3>
+            <div class="space-y-2">
+                <button class="glass-button text-white w-full">玻璃按鈕 - glass-button</button>
+                <div class="backdrop-blur-glass-md bg-glass-white border border-glass-border shadow-glass-md rounded-lg px-4 py-2 text-white cursor-pointer hover:bg-glass-white-strong transition-all">
+                    自定義玻璃按鈕
+                </div>
+            </div>
+        </div>
+
+        <!-- 玻璃強度變體 -->
+        <div class="glass-medium demo-section">
+            <h3 class="text-lg font-bold text-white mb-4">玻璃強度變體</h3>
+            <div class="space-y-3">
+                <div class="glass-light p-3 rounded-lg">
+                    <span class="text-white text-sm">glass-light</span>
+                </div>
+                <div class="glass-medium p-3 rounded-lg">
+                    <span class="text-white text-sm">glass-medium</span>
+                </div>
+                <div class="glass-heavy p-3 rounded-lg">
+                    <span class="text-white text-sm">glass-heavy</span>
+                </div>
+                <div class="glass-extra-heavy p-3 rounded-lg">
+                    <span class="text-white text-sm">glass-extra-heavy</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模糊等級演示 -->
+        <div class="glass-heavy demo-section">
+            <h3 class="text-lg font-bold text-white mb-4">模糊等級演示</h3>
+            <div class="space-y-2">
+                <div class="backdrop-blur-glass-sm bg-glass-white border border-glass-border p-2 rounded text-white text-sm">backdrop-blur-glass-sm</div>
+                <div class="backdrop-blur-glass-md bg-glass-white border border-glass-border p-2 rounded text-white text-sm">backdrop-blur-glass-md</div>
+                <div class="backdrop-blur-glass-lg bg-glass-white border border-glass-border p-2 rounded text-white text-sm">backdrop-blur-glass-lg</div>
+                <div class="backdrop-blur-glass-xl bg-glass-white border border-glass-border p-2 rounded text-white text-sm">backdrop-blur-glass-xl</div>
+                <div class="backdrop-blur-glass-2xl bg-glass-white border border-glass-border p-2 rounded text-white text-sm">backdrop-blur-glass-2xl</div>
+            </div>
+        </div>
+
+        <!-- 玻璃陰影演示 -->
+        <div class="glass-light demo-section">
+            <h3 class="text-lg font-bold text-white mb-4">玻璃陰影演示</h3>
+            <div class="space-y-3">
+                <div class="backdrop-blur-glass-md bg-glass-white border border-glass-border shadow-glass-sm p-3 rounded-lg">
+                    <span class="text-white text-sm">shadow-glass-sm</span>
+                </div>
+                <div class="backdrop-blur-glass-md bg-glass-white border border-glass-border shadow-glass-md p-3 rounded-lg">
+                    <span class="text-white text-sm">shadow-glass-md</span>
+                </div>
+                <div class="backdrop-blur-glass-md bg-glass-white border border-glass-border shadow-glass-lg p-3 rounded-lg">
+                    <span class="text-white text-sm">shadow-glass-lg</span>
+                </div>
+                <div class="backdrop-blur-glass-md bg-glass-white border border-glass-border shadow-glass-xl p-3 rounded-lg">
+                    <span class="text-white text-sm">shadow-glass-xl</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 動畫效果演示 -->
+        <div class="glass-medium demo-section">
+            <h3 class="text-lg font-bold text-white mb-4">動畫效果演示</h3>
+            <div class="space-y-3">
+                <div class="glass-card animate-glass-fade-in p-3">
+                    <span class="text-white text-sm">animate-glass-fade-in</span>
+                </div>
+                <div class="glass-card animate-glass-scale-in p-3">
+                    <span class="text-white text-sm">animate-glass-scale-in</span>
+                </div>
+                <div class="glass-card glass-shimmer p-3">
+                    <span class="text-white text-sm">glass-shimmer 效果</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 互動狀態演示 -->
+        <div class="glass-card demo-section">
+            <h3 class="text-lg font-bold text-white mb-4">互動狀態演示</h3>
+            <div class="space-y-3">
+                <div class="glass-light glass-hover-medium p-3 rounded-lg cursor-pointer">
+                    <span class="text-white text-sm">hover:glass-medium (懸停試試)</span>
+                </div>
+                <div class="glass-light hover:glass-heavy transition-all duration-300 p-3 rounded-lg cursor-pointer">
+                    <span class="text-white text-sm">hover:glass-heavy (懸停試試)</span>
+                </div>
+                <div class="glass-active p-3 rounded-lg">
+                    <span class="text-white text-sm">glass-active 激活狀態</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 表單元素演示 -->
+        <div class="glass-heavy demo-section">
+            <h3 class="text-lg font-bold text-white mb-4">表單元素演示</h3>
+            <div class="space-y-3">
+                <input type="text" placeholder="glass-input 輸入框" class="glass-input w-full text-white placeholder-white/60">
+                <div class="glass-nav p-3 text-center">
+                    <span class="text-white text-sm">glass-nav 導航列樣式</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 簡單的主題切換演示
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 't' || e.key === 'T') {
+                document.documentElement.classList.toggle('dark');
+            }
+        });
+        
+        console.log('🔍 MemoryArk 玻璃效果演示');
+        console.log('按 "T" 鍵切換深色/淺色模式');
+        console.log('所有玻璃效果工具類已成功整合到 Tailwind CSS！');
+    </script>
+</body>
+</html>

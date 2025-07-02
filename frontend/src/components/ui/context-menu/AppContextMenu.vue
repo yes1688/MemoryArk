@@ -138,15 +138,14 @@ const menuStyle = computed(() => {
 // Menu classes
 const menuClasses = computed(() => [
   'context-menu',
+  'glass-heavy',
   'fixed',
   'z-50',
-  'bg-white',
-  'border',
-  'border-gray-200',
-  'rounded-win11',
-  'shadow-win11',
+  'rounded-lg',
+  'shadow-glass-lg',
   'py-1',
-  'focus:outline-none'
+  'focus:outline-none',
+  'overflow-hidden'
 ])
 
 // Get flattened items for keyboard navigation
@@ -315,7 +314,9 @@ export default {
 }
 
 .context-menu-separator {
-  @apply h-px bg-gray-200 my-1 mx-2;
+  @apply h-px my-1 mx-2;
+  background: var(--glass-border-primary);
+  opacity: 0.3;
 }
 
 .context-menu-group {
@@ -323,19 +324,22 @@ export default {
 }
 
 .context-menu-group-label {
-  @apply px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider;
+  @apply px-3 py-1 text-xs font-semibold uppercase tracking-wider;
+  color: var(--text-tertiary);
+  opacity: 0.8;
 }
 
 /* Transition styles */
 .context-menu-enter-active,
 .context-menu-leave-active {
-  transition: all 0.15s ease;
+  transition: all 0.15s var(--ease-glass);
 }
 
 .context-menu-enter-from,
 .context-menu-leave-to {
   opacity: 0;
   transform: scale(0.95);
+  backdrop-filter: blur(0px);
 }
 
 /* Scrollbar styling */
@@ -348,11 +352,11 @@ export default {
 }
 
 .context-menu::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: rgba(0, 0, 0, 0.2);
   border-radius: 3px;
 }
 
 .context-menu::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: rgba(0, 0, 0, 0.3);
 }
 </style>

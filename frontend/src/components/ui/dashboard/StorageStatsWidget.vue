@@ -1,5 +1,5 @@
 <template>
-  <div class="widget storage-widget rounded-win11 shadow-win11 border" :style="{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border-light)' }">
+  <div class="widget storage-widget glass-card backdrop-blur-glass-md border border-glass-primary hover:glass-medium transition-all duration-300" style="border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
     <!-- 小工具標題 -->
     <div class="widget-header flex items-center justify-between p-4 border-b" :style="{ borderColor: 'var(--border-light)' }">
       <h3 class="flex items-center space-x-2 text-lg font-semibold" :style="{ color: 'var(--text-primary)' }">

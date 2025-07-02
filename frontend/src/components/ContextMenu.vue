@@ -4,24 +4,24 @@
       v-if="isVisible"
       ref="contextMenu"
       :style="{ top: `${position.y}px`, left: `${position.x}px` }"
-      class="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-48"
+      class="fixed z-50 glass-heavy rounded-lg shadow-glass-lg py-1 min-w-48 overflow-hidden"
       @contextmenu.prevent
     >
       <template v-for="item in menuItems" :key="item.id">
         <!-- 分隔線 -->
-        <div v-if="item.type === 'divider'" class="border-t border-gray-200 my-1"></div>
+        <div v-if="item.type === 'divider'" class="h-px my-1 mx-2" style="background: var(--glass-border-primary); opacity: 0.3;"></div>
         
         <!-- 選單項目 -->
         <button
           v-else
           :disabled="item.disabled"
           :class="[
-            'w-full px-4 py-2 text-left text-sm transition-colors flex items-center',
+            'w-full px-4 py-2 text-left text-sm transition-all duration-150 flex items-center relative overflow-hidden',
             item.disabled 
-              ? 'text-gray-400 cursor-not-allowed' 
+              ? 'text-gray-400 cursor-not-allowed opacity-50' 
               : item.danger 
-                ? 'text-red-600 hover:bg-red-50' 
-                : 'text-gray-700 hover:bg-gray-100'
+                ? 'text-red-600 hover:glass-light hover:text-red-700' 
+                : 'text-gray-700 hover:glass-light hover:text-gray-900'
           ]"
           @click="handleItemClick(item)"
         >

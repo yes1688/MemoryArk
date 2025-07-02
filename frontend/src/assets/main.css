@@ -1,7 +1,10 @@
-/* 匯入設計系統 */
+/* 所有 @import 必須在其他語句之前 */
 @import '../styles/design-system.scss';
 @import '../styles/animations.scss';
+@import '../styles/glassmorphism/liquid-glass.scss';
+@import '../styles/glass-animations.scss';
 
+/* Tailwind CSS 核心樣式 */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

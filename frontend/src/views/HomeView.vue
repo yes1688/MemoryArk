@@ -214,9 +214,9 @@ const formatRelativeTime = (dateString: string): string => {
 </script>
 
 <template>
-  <div class="home-view" style="background-color: var(--bg-secondary); min-height: 100vh;">
+  <div class="home-view min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
     <!-- 極簡主義頭部 -->
-    <header class="hero-section relative overflow-hidden" style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-info) 100%); min-height: 320px; display: flex; align-items: center;">
+    <header class="hero-section relative overflow-hidden glass-heavy backdrop-blur-glass-lg" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.8) 0%, rgba(99, 102, 241, 0.8) 100%); min-height: 320px; display: flex; align-items: center; margin: 16px; border-radius: 24px; border: 1px solid var(--glass-border-primary); box-shadow: 0 8px 32px rgba(59, 130, 246, 0.2);">
       <!-- 背景裝飾 -->
       <div class="absolute inset-0 opacity-10">
         <div class="absolute -top-24 -right-24 w-96 h-96 bg-white rounded-full blur-3xl"></div>
@@ -233,8 +233,8 @@ const formatRelativeTime = (dateString: string): string => {
             <!-- 手機版登出按鈕 -->
             <button
               @click="handleLogout"
-              class="sm:hidden ml-3 p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors duration-200 backdrop-blur-sm flex-shrink-0"
-              style="min-width: 32px; height: 32px;"
+              class="sm:hidden ml-3 p-1.5 rounded-full glass-medium hover:glass-heavy backdrop-blur-glass-sm flex-shrink-0 transition-all duration-200"
+              style="min-width: 32px; height: 32px; border: 1px solid rgba(255, 255, 255, 0.2);"
               title="登出"
             >
               <svg class="w-4 h-4 text-white mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -280,8 +280,8 @@ const formatRelativeTime = (dateString: string): string => {
           <!-- 上傳檔案 -->
           <button
             @click="handleQuickAction('upload')"
-            class="action-card group"
-            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-4) var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth); border: none; cursor: pointer; width: 100%; max-width: 320px;"
+            class="action-card group glass-card backdrop-blur-glass-md border border-glass-primary hover:glass-medium transition-all duration-300"
+            style="border-radius: var(--radius-xl); padding: var(--space-4) var(--space-6); box-shadow: 0 8px 32px rgba(0,0,0,0.1); cursor: pointer; width: 100%; max-width: 320px;"
           >
             <div class="flex flex-col items-center text-center">
               <div class="icon-wrapper mb-3" style="width: 48px; height: 48px; background: var(--color-primary); background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; transition: transform var(--duration-normal) var(--ease-bounce);">
@@ -331,8 +331,8 @@ const formatRelativeTime = (dateString: string): string => {
           <!-- 所有檔案 -->
           <button
             @click="handleQuickAction('files')"
-            class="action-card group"
-            style="background: var(--bg-elevated); border-radius: var(--radius-xl); padding: var(--space-4) var(--space-6); box-shadow: var(--shadow-md); transition: all var(--duration-normal) var(--ease-smooth); border: none; cursor: pointer; width: 100%; max-width: 320px;"
+            class="action-card group glass-card backdrop-blur-glass-md border border-glass-primary hover:glass-medium transition-all duration-300"
+            style="border-radius: var(--radius-xl); padding: var(--space-4) var(--space-6); box-shadow: 0 8px 32px rgba(0,0,0,0.1); cursor: pointer; width: 100%; max-width: 320px;"
           >
             <div class="flex flex-col items-center text-center">
               <div class="icon-wrapper mb-3" style="width: 48px; height: 48px; background: var(--color-warning); background: linear-gradient(135deg, var(--color-warning) 0%, #FFAC33 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; transition: transform var(--duration-normal) var(--ease-bounce);">
@@ -362,8 +362,8 @@ const formatRelativeTime = (dateString: string): string => {
           <div class="files-grid grid gap-4">
             <div 
               v-if="recentFiles.length === 0"
-              class="empty-state text-center py-12"
-              style="background: var(--bg-elevated); border-radius: var(--radius-lg);"
+              class="empty-state text-center py-12 glass-light backdrop-blur-glass-sm border border-glass-primary transition-all duration-300"
+              style="border-radius: var(--radius-lg);"
             >
               <p style="color: var(--text-tertiary);">尚無最近檔案</p>
             </div>
@@ -371,8 +371,8 @@ const formatRelativeTime = (dateString: string): string => {
             <div
               v-for="file in recentFiles"
               :key="file.id"
-              class="file-item flex items-center p-4 hover-lift cursor-pointer"
-              style="background: var(--bg-elevated); border-radius: var(--radius-lg); transition: all var(--duration-normal) var(--ease-smooth);"
+              class="file-item flex items-center p-4 hover-lift cursor-pointer glass-light backdrop-blur-glass-sm border border-glass-primary hover:glass-medium transition-all duration-300"
+              style="border-radius: var(--radius-lg); box-shadow: 0 4px 16px rgba(0,0,0,0.05);"
               @click="handleFileClick(file)"
             >
               <div class="file-icon mr-4">

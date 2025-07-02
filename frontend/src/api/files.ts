@@ -10,7 +10,8 @@ import type {
   FileRenameRequest,
   FileShareRequest,
   FileShare,
-  FileUploadRequest
+  FileUploadRequest,
+  FileOperationResponse
 } from '@/types/files'
 
 export const fileApi = {
@@ -166,5 +167,41 @@ export const fileApi = {
   // 獲取分塊上傳狀態
   getChunkUploadStatus: (sessionId: string) => {
     return apiRequest.get(`/files/chunk-status/${sessionId}`)
+  },
+
+  // 複製檔案
+  copyFiles: (fileIds: number[], targetFolderId?: number) => {
+    return apiRequest.post<FileOperationResponse>('/files/copy', {
+      file_ids: fileIds,
+      target_folder_id: targetFolderId || null,
+      operation_type: 'copy'
+    })
+  },
+
+  // 移動檔案
+  moveFiles: (fileIds: number[], targetFolderId?: number) => {
+    return apiRequest.post<FileOperationResponse>('/files/move', {
+      file_ids: fileIds,
+      target_folder_id: targetFolderId || null,
+      operation_type: 'move'
+    })
+  },
+
+  // 全域搜尋檔案
+  searchFiles: (searchParams: {
+    q: string                          // 搜尋關鍵字
+    folder_id?: number                 // 搜尋範圍資料夾ID
+    recursive?: boolean                // 是否遞迴搜尋子目錄
+    page?: number                      // 分頁頁碼
+    limit?: number                     // 每頁數量
+    sort_by?: 'name' | 'created_at' | 'file_size'  // 排序欄位
+    sort_order?: 'asc' | 'desc'        // 排序方向
+    file_types?: string[]              // 檔案類型篩選
+    min_size?: number                  // 最小檔案大小
+    max_size?: number                  // 最大檔案大小
+    from_line?: boolean                // 是否為LINE上傳檔案
+    line_group_id?: string             // LINE群組ID
+  }) => {
+    return apiRequest.get<FileListResponse>('/files/search', searchParams)
   },
 }

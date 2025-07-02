@@ -24,6 +24,7 @@ export const useFilesStore = defineStore('files', () => {
   const currentFolderIdValue = ref<number | null>(null) // 直接存儲當前資料夾ID
   const breadcrumbs = ref<BreadcrumbItem[]>([])
   const selectedFiles = ref<FileInfo[]>([])
+  const isSelectionMode = ref(false)
   const clipboard = ref<{ files: FileInfo[], operation: 'copy' | 'cut' } | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
@@ -63,6 +64,14 @@ export const useFilesStore = defineStore('files', () => {
   // 計算屬性
   const canPaste = computed(() => clipboard.value !== null)
   const hasSelection = computed(() => selectedFiles.value.length > 0)
+  const isAllSelected = computed(() => {
+    if (!files.value.length || !isSelectionMode.value) return false
+    return files.value.every(file => selectedFiles.value.some(selected => selected.id === file.id))
+  })
+  const isSomeSelected = computed(() => {
+    if (!isSelectionMode.value) return false
+    return selectedFiles.value.length > 0 && selectedFiles.value.length < files.value.length
+  })
   const currentFolderId = computed(() => {
     // 優先使用直接存儲的值，回退到 currentFolder 的ID
     const id = currentFolderIdValue.value ?? currentFolder.value?.id
@@ -550,6 +559,153 @@ export const useFilesStore = defineStore('files', () => {
   // 清除選擇
   const clearSelection = (): void => {
     selectedFiles.value = []
+  }
+
+  // 進入選擇模式
+  const enterSelectionMode = (): void => {
+    isSelectionMode.value = true
+    selectedFiles.value = []
+  }
+
+  // 退出選擇模式
+  const exitSelectionMode = (): void => {
+    isSelectionMode.value = false
+    selectedFiles.value = []
+  }
+
+  // 切換選擇模式
+  const toggleSelectionMode = (): void => {
+    if (isSelectionMode.value) {
+      exitSelectionMode()
+    } else {
+      enterSelectionMode()
+    }
+  }
+
+  // 全選/取消全選
+  const toggleSelectAll = (): void => {
+    if (isAllSelected.value) {
+      // 取消全選
+      selectedFiles.value = []
+    } else {
+      // 全選當前頁面的檔案
+      selectedFiles.value = [...files.value]
+    }
+  }
+
+  // 選擇/取消選擇檔案（在選擇模式下）
+  const toggleSelectFile = (file: FileInfo): void => {
+    const index = selectedFiles.value.findIndex(f => f.id === file.id)
+    if (index >= 0) {
+      selectedFiles.value.splice(index, 1)
+    } else {
+      selectedFiles.value.push(file)
+    }
+  }
+
+  // 檢查檔案是否被選中
+  const isFileSelected = (file: FileInfo): boolean => {
+    return selectedFiles.value.some(selected => selected.id === file.id)
+  }
+
+  // 批次刪除選中的檔案
+  const deleteSelectedFiles = async (): Promise<void> => {
+    if (selectedFiles.value.length === 0) {
+      throw new Error('沒有選中的檔案')
+    }
+
+    const fileIds = selectedFiles.value.map(file => file.id)
+    await deleteFiles(fileIds)
+    
+    // 清除選擇
+    selectedFiles.value = []
+  }
+
+  // 批次複製選中的檔案到剪貼簿
+  const copySelectedFiles = (): void => {
+    if (selectedFiles.value.length === 0) {
+      throw new Error('沒有選中的檔案')
+    }
+    copyFiles(selectedFiles.value)
+  }
+
+  // 批次剪下選中的檔案到剪貼簿
+  const cutSelectedFiles = (): void => {
+    if (selectedFiles.value.length === 0) {
+      throw new Error('沒有選中的檔案')
+    }
+    cutFiles(selectedFiles.value)
+  }
+
+  // 批次複製檔案到目標資料夾（API 操作）
+  const batchCopyFiles = async (fileIds: number[], targetFolderId?: number): Promise<any> => {
+    try {
+      const response = await filesApi.copyFiles(fileIds, targetFolderId)
+      
+      if (response.success) {
+        // 清空相關快取
+        clearRelatedCache(currentFolderId.value)
+        clearRelatedCache(targetFolderId || null)
+        
+        // 重新獲取當前資料夾檔案列表
+        await fetchFiles(currentFolderId.value || null, true)
+        
+        return response.data
+      } else {
+        throw new Error(response.message || '複製失敗')
+      }
+    } catch (error) {
+      console.error('批次複製檔案失敗:', error)
+      throw error
+    }
+  }
+
+  // 批次移動檔案到目標資料夾（API 操作）
+  const batchMoveFiles = async (fileIds: number[], targetFolderId?: number): Promise<any> => {
+    try {
+      const response = await filesApi.moveFiles(fileIds, targetFolderId)
+      
+      if (response.success) {
+        // 清空相關快取
+        clearRelatedCache(currentFolderId.value)
+        clearRelatedCache(targetFolderId || null)
+        
+        // 重新獲取當前資料夾檔案列表
+        await fetchFiles(currentFolderId.value || null, true)
+        
+        return response.data
+      } else {
+        throw new Error(response.message || '移動失敗')
+      }
+    } catch (error) {
+      console.error('批次移動檔案失敗:', error)
+      throw error
+    }
+  }
+
+  // 批次複製選中的檔案到目標資料夾
+  const copySelectedFilesTo = async (targetFolderId?: number): Promise<any> => {
+    if (selectedFiles.value.length === 0) {
+      throw new Error('沒有選中的檔案')
+    }
+    
+    const fileIds = selectedFiles.value.map(file => file.id)
+    return await batchCopyFiles(fileIds, targetFolderId)
+  }
+
+  // 批次移動選中的檔案到目標資料夾
+  const moveSelectedFilesTo = async (targetFolderId?: number): Promise<any> => {
+    if (selectedFiles.value.length === 0) {
+      throw new Error('沒有選中的檔案')
+    }
+    
+    const fileIds = selectedFiles.value.map(file => file.id)
+    const result = await batchMoveFiles(fileIds, targetFolderId)
+    
+    // 移動後清除選擇
+    selectedFiles.value = []
+    
+    return result
   }
 
   // 🚀 ID 驅動導航到資料夾
@@ -1331,6 +1487,7 @@ export const useFilesStore = defineStore('files', () => {
     currentFolderIdValue,
     breadcrumbs,
     selectedFiles,
+    isSelectionMode,
     clipboard,
     isLoading,
     error,
@@ -1348,6 +1505,8 @@ export const useFilesStore = defineStore('files', () => {
     // 計算屬性
     canPaste,
     hasSelection,
+    isAllSelected,
+    isSomeSelected,
     currentFolderId,
     
     // 檔案管理方法
@@ -1367,6 +1526,19 @@ export const useFilesStore = defineStore('files', () => {
     selectFile,
     selectFiles,
     clearSelection,
+    enterSelectionMode,
+    exitSelectionMode,
+    toggleSelectionMode,
+    toggleSelectAll,
+    toggleSelectFile,
+    isFileSelected,
+    deleteSelectedFiles,
+    copySelectedFiles,
+    cutSelectedFiles,
+    batchCopyFiles,
+    batchMoveFiles,
+    copySelectedFilesTo,
+    moveSelectedFilesTo,
     navigateToFolder,
     navigateUp,
     clearError,

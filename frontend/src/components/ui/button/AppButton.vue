@@ -4,6 +4,7 @@
     :disabled="disabled || loading"
     :class="buttonClasses"
     @click="handleClick"
+    @mousedown="handleRippleEffect"
     v-bind="$attrs"
   >
     <!-- Loading spinner -->
@@ -166,6 +167,46 @@ const handleClick = (event: MouseEvent) => {
     (event.target as HTMLElement).blur()
     emit('click', event)
   }
+}
+
+// 水波紋效果處理
+const handleRippleEffect = (event: MouseEvent) => {
+  if (props.disabled || props.loading) return
+  
+  const target = event.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+  const ripple = document.createElement('div')
+  const size = Math.max(rect.width, rect.height)
+  const x = event.clientX - rect.left - size / 2
+  const y = event.clientY - rect.top - size / 2
+  
+  ripple.classList.add('glass-ripple-effect')
+  ripple.style.width = ripple.style.height = size + 'px'
+  ripple.style.left = x + 'px'
+  ripple.style.top = y + 'px'
+  ripple.style.position = 'absolute'
+  ripple.style.borderRadius = '50%'
+  ripple.style.background = 'rgba(255, 255, 255, 0.6)'
+  ripple.style.transform = 'scale(0)'
+  ripple.style.animation = 'glass-ripple 0.6s ease-out'
+  ripple.style.pointerEvents = 'none'
+  ripple.style.zIndex = '1'
+  
+  // 確保按鈕具有 relative positioning
+  const computedStyle = window.getComputedStyle(target)
+  if (computedStyle.position === 'static') {
+    target.style.position = 'relative'
+  }
+  target.style.overflow = 'hidden'
+  
+  target.appendChild(ripple)
+  
+  // 動畫結束後移除元素
+  setTimeout(() => {
+    if (ripple.parentNode) {
+      ripple.parentNode.removeChild(ripple)
+    }
+  }, 600)
 }
 </script>
 

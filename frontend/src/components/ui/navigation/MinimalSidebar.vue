@@ -164,18 +164,15 @@ const getIconSvg = (icon: string) => {
 
 <template>
   <aside 
-    class="sidebar flex flex-col"
+    class="sidebar glass-light flex flex-col transition-all duration-300"
     style="
       width: 240px;
       height: 100vh;
-      background: var(--bg-elevated);
-      border-right: 1px solid var(--border-light);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      border-right: 1px solid var(--glass-border-primary);
     "
   >
     <!-- Logo 區域 -->
-    <div class="logo-section px-6 py-8">
+    <div class="logo-section px-6 py-8 relative overflow-hidden">
       <h1 
         class="text-2xl font-light"
         style="color: var(--text-primary); letter-spacing: var(--tracking-tight);"
@@ -194,9 +191,11 @@ const getIconSvg = (icon: string) => {
           <button
             @click="navigateTo(item.path)"
             class="nav-item w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-200"
-            :class="{ 'active': isActive(item.path) }"
+            :class="{ 
+              'glass-medium': isActive(item.path),
+              'hover:glass-light': !isActive(item.path)
+            }"
             :style="{
-              background: isActive(item.path) ? item.color + '10' : 'transparent',
               color: isActive(item.path) ? item.color : 'var(--text-secondary)'
             }"
           >
@@ -224,9 +223,11 @@ const getIconSvg = (icon: string) => {
           <button
             @click="navigateTo(item.path)"
             class="nav-item w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-200"
-            :class="{ 'active': isActive(item.path) }"
+            :class="{ 
+              'glass-medium': isActive(item.path),
+              'hover:glass-light': !isActive(item.path)
+            }"
             :style="{
-              background: isActive(item.path) ? item.color + '10' : 'transparent',
               color: isActive(item.path) ? item.color : 'var(--text-secondary)'
             }"
           >
@@ -253,15 +254,17 @@ const getIconSvg = (icon: string) => {
 
     <!-- 底部功能 -->
     <div class="bottom-section px-3 pb-6">
-      <div class="border-t pt-6 mb-6" style="border-color: var(--border-light);">
+      <div class="border-t pt-6 mb-6" style="border-color: var(--glass-border-primary);">
         <ul class="space-y-1">
           <li v-for="item in bottomItems" :key="item.id">
             <button
               @click="navigateTo(item.path)"
               class="nav-item w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-200"
-              :class="{ 'active': isActive(item.path) }"
+              :class="{ 
+                'glass-medium': isActive(item.path),
+                'hover:glass-light': !isActive(item.path)
+              }"
               :style="{
-                background: isActive(item.path) ? item.color + '10' : 'transparent',
                 color: isActive(item.path) ? item.color : 'var(--text-secondary)'
               }"
             >
@@ -279,8 +282,7 @@ const getIconSvg = (icon: string) => {
       <!-- 用戶資訊 -->
       <div class="user-section">
         <div 
-          class="user-info flex items-center p-3 rounded-lg"
-          style="background: var(--bg-tertiary);"
+          class="user-info glass-medium flex items-center p-3 rounded-lg transition-all duration-200 hover:glass-heavy"
         >
           <div 
             class="avatar"
@@ -308,7 +310,7 @@ const getIconSvg = (icon: string) => {
           </div>
           <button
             @click="handleLogout"
-            class="logout-btn p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            class="logout-btn p-1.5 rounded glass-button hover:glass-medium transition-all duration-200"
             title="登出"
           >
             <svg class="w-4 h-4" style="color: var(--text-secondary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -326,33 +328,45 @@ const getIconSvg = (icon: string) => {
 .nav-item {
   position: relative;
   overflow: hidden;
-}
-
-.nav-item::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: currentColor;
-  opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease-smooth);
-}
-
-.nav-item:hover::before {
-  opacity: 0.05;
+  will-change: transform;
 }
 
 .nav-item:active {
   transform: scale(0.98);
 }
 
+/* 玻璃反光效果 */
+.nav-item.glass-medium::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Logo 區域玻璃裝飾 */
+.logo-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, var(--glass-accent-primary) 0%, transparent 70%);
+  opacity: 0.3;
+  filter: blur(40px);
+  pointer-events: none;
+}
+
 /* 平滑過渡 */
 .nav-item,
 .user-info,
 .logout-btn {
-  transition: all var(--duration-fast) var(--ease-smooth);
+  transition: all var(--duration-fast) var(--ease-glass);
 }
 
 /* 響應式調整 */

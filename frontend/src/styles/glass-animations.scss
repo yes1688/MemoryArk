@@ -1,0 +1,583 @@
+// MemoryArk Glass Animations System
+// 玻璃效果動畫系統 - 提供精緻的玻璃動畫和互動效果
+
+// ===========================
+// Glass Animation Variables - 玻璃動畫變數
+// ===========================
+:root {
+  // Animation Durations - 動畫持續時間
+  --glass-duration-fast: 150ms;
+  --glass-duration-normal: 300ms;
+  --glass-duration-slow: 500ms;
+  --glass-duration-slower: 800ms;
+  
+  // Animation Easing - 動畫緩動函數
+  --ease-glass: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-glass-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-glass-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-glass-elastic: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  
+  // Animation Delays - 動畫延遲
+  --glass-delay-short: 50ms;
+  --glass-delay-normal: 100ms;
+  --glass-delay-long: 200ms;
+  
+  // Shimmer Colors - 反光顏色
+  --shimmer-light: rgba(255, 255, 255, 0.6);
+  --shimmer-medium: rgba(255, 255, 255, 0.4);
+  --shimmer-subtle: rgba(255, 255, 255, 0.2);
+  
+  // Breathing Colors - 呼吸顏色
+  --breath-light: rgba(59, 130, 246, 0.1);
+  --breath-medium: rgba(59, 130, 246, 0.2);
+  --breath-heavy: rgba(59, 130, 246, 0.3);
+}
+
+// Dark mode adjustments - 深色模式調整
+.dark {
+  --shimmer-light: rgba(255, 255, 255, 0.3);
+  --shimmer-medium: rgba(255, 255, 255, 0.2);
+  --shimmer-subtle: rgba(255, 255, 255, 0.1);
+  
+  --breath-light: rgba(96, 165, 250, 0.15);
+  --breath-medium: rgba(96, 165, 250, 0.25);
+  --breath-heavy: rgba(96, 165, 250, 0.35);
+}
+
+// ===========================
+// Glass Shimmer Effects - 玻璃反光效果
+// ===========================
+
+// Basic Shimmer Animation - 基礎反光動畫
+@keyframes glass-shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-15deg);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(200%) skewX(-15deg);
+    opacity: 0;
+  }
+}
+
+// Subtle Shimmer - 微妙反光
+@keyframes glass-shimmer-subtle {
+  0% {
+    transform: translateX(-100%) skewX(-10deg);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateX(150%) skewX(-10deg);
+    opacity: 0;
+  }
+}
+
+// Pulse Shimmer - 脈沖反光
+@keyframes glass-shimmer-pulse {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
+// Glass Shimmer Classes - 玻璃反光類別
+.glass-shimmer {
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 25%,
+      var(--shimmer-medium) 50%,
+      transparent 75%
+    );
+    background-size: 200% 100%;
+    animation: glass-shimmer 3s infinite;
+    pointer-events: none;
+    z-index: 1;
+  }
+  
+  > * {
+    position: relative;
+    z-index: 2;
+  }
+}
+
+.glass-shimmer-hover {
+  position: relative;
+  overflow: hidden;
+  
+  &:hover::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      135deg,
+      transparent 0%,
+      var(--shimmer-light) 40%,
+      var(--shimmer-medium) 50%,
+      var(--shimmer-light) 60%,
+      transparent 100%
+    );
+    animation: glass-shimmer 0.8s ease-out;
+    pointer-events: none;
+    z-index: 1;
+  }
+  
+  > * {
+    position: relative;
+    z-index: 2;
+  }
+}
+
+.glass-shimmer-subtle {
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 30%,
+      var(--shimmer-subtle) 50%,
+      transparent 70%
+    );
+    background-size: 300% 100%;
+    animation: glass-shimmer-subtle 4s infinite;
+    pointer-events: none;
+    z-index: 1;
+  }
+  
+  > * {
+    position: relative;
+    z-index: 2;
+  }
+}
+
+// ===========================
+// Glass Breathing Effects - 玻璃呼吸效果
+// ===========================
+
+// Breathing Animation - 呼吸動畫
+@keyframes glass-breathe {
+  0%, 100% {
+    backdrop-filter: blur(8px);
+    background-color: var(--glass-bg-primary);
+    transform: scale(1);
+    box-shadow: var(--glass-shadow-md);
+  }
+  50% {
+    backdrop-filter: blur(12px);
+    background-color: var(--glass-bg-primary-strong);
+    transform: scale(1.02);
+    box-shadow: var(--glass-shadow-lg);
+  }
+}
+
+// Gentle Breathing - 輕柔呼吸
+@keyframes glass-breathe-gentle {
+  0%, 100% {
+    backdrop-filter: blur(6px);
+    opacity: 0.8;
+  }
+  50% {
+    backdrop-filter: blur(10px);
+    opacity: 0.95;
+  }
+}
+
+// Glow Breathing - 光暈呼吸
+@keyframes glass-breathe-glow {
+  0%, 100% {
+    box-shadow: 
+      var(--glass-shadow-md),
+      0 0 0 0 var(--breath-light);
+  }
+  50% {
+    box-shadow: 
+      var(--glass-shadow-lg),
+      0 0 20px 5px var(--breath-medium);
+  }
+}
+
+// Glass Breathing Classes - 玻璃呼吸類別
+.glass-breathe {
+  animation: glass-breathe 4s ease-in-out infinite;
+}
+
+.glass-breathe-gentle {
+  animation: glass-breathe-gentle 3s ease-in-out infinite;
+}
+
+.glass-breathe-glow {
+  animation: glass-breathe-glow 2.5s ease-in-out infinite;
+}
+
+.glass-breathe-hover:hover {
+  animation: glass-breathe-gentle 2s ease-in-out infinite;
+}
+
+// ===========================
+// Glass Ripple Effects - 玻璃水波紋效果
+// ===========================
+
+// Ripple Animation - 水波紋動畫
+@keyframes glass-ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+// Glass Ripple Container - 水波紋容器
+.glass-ripple {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+// Ripple Effect Element - 水波紋效果元素
+.glass-ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--shimmer-medium);
+  transform: scale(0);
+  animation: glass-ripple 0.6s ease-out;
+  pointer-events: none;
+  z-index: 1;
+}
+
+// Glass Ripple on Click - 點擊水波紋
+.glass-ripple-click {
+  position: relative;
+  overflow: hidden;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: var(--shimmer-light);
+    transform: translate(-50%, -50%);
+    animation: glass-ripple 0.6s ease-out;
+    pointer-events: none;
+    z-index: 1;
+  }
+}
+
+// ===========================
+// Glass Fade and Scale Effects - 玻璃淡入縮放效果
+// ===========================
+
+// Glass Fade In - 玻璃淡入
+@keyframes glass-fade-in {
+  0% {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    backdrop-filter: blur(var(--glass-blur-md));
+    -webkit-backdrop-filter: blur(var(--glass-blur-md));
+    transform: translateY(0);
+  }
+}
+
+// Glass Scale In - 玻璃縮放進入
+@keyframes glass-scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+    backdrop-filter: blur(var(--glass-blur-sm));
+    -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    backdrop-filter: blur(var(--glass-blur-md));
+    -webkit-backdrop-filter: blur(var(--glass-blur-md));
+  }
+}
+
+// Glass Bounce In - 玻璃彈跳進入
+@keyframes glass-bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.1);
+    backdrop-filter: blur(var(--glass-blur-lg));
+    -webkit-backdrop-filter: blur(var(--glass-blur-lg));
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    backdrop-filter: blur(var(--glass-blur-md));
+    -webkit-backdrop-filter: blur(var(--glass-blur-md));
+  }
+}
+
+// Glass Animation Classes - 玻璃動畫類別
+.glass-fade-in {
+  animation: glass-fade-in var(--glass-duration-slow) var(--ease-glass);
+}
+
+.glass-scale-in {
+  animation: glass-scale-in var(--glass-duration-slow) var(--ease-glass-bounce);
+}
+
+.glass-bounce-in {
+  animation: glass-bounce-in var(--glass-duration-slower) var(--ease-glass-elastic);
+}
+
+// ===========================
+// Glass Hover and Focus Effects - 玻璃懸停和焦點效果
+// ===========================
+
+// Enhanced Hover Effects - 增強懸停效果
+.glass-hover-lift {
+  transition: 
+    transform var(--glass-duration-normal) var(--ease-glass),
+    backdrop-filter var(--glass-duration-normal) var(--ease-glass),
+    box-shadow var(--glass-duration-normal) var(--ease-glass);
+  
+  &:hover {
+    transform: translateY(-4px) scale(1.02);
+    backdrop-filter: blur(var(--glass-blur-lg));
+    -webkit-backdrop-filter: blur(var(--glass-blur-lg));
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.15),
+      var(--glass-inner-shadow-primary);
+  }
+}
+
+.glass-hover-glow {
+  transition: 
+    box-shadow var(--glass-duration-normal) var(--ease-glass),
+    backdrop-filter var(--glass-duration-normal) var(--ease-glass);
+  
+  &:hover {
+    backdrop-filter: blur(var(--glass-blur-lg));
+    -webkit-backdrop-filter: blur(var(--glass-blur-lg));
+    box-shadow: 
+      0 0 30px var(--breath-medium),
+      var(--glass-shadow-lg),
+      var(--glass-inner-shadow-primary);
+  }
+}
+
+.glass-hover-enhance {
+  transition: 
+    all var(--glass-duration-normal) var(--ease-glass);
+  
+  &:hover {
+    backdrop-filter: blur(var(--glass-blur-xl));
+    -webkit-backdrop-filter: blur(var(--glass-blur-xl));
+    background: var(--glass-bg-primary-strong);
+    border-color: var(--glass-border-primary-strong);
+    transform: translateY(-2px);
+  }
+}
+
+// Focus Effects - 焦點效果
+.glass-focus {
+  transition: 
+    all var(--glass-duration-fast) var(--ease-glass);
+  
+  &:focus {
+    outline: none;
+    backdrop-filter: blur(var(--glass-blur-lg));
+    -webkit-backdrop-filter: blur(var(--glass-blur-lg));
+    box-shadow: 
+      0 0 0 3px var(--breath-medium),
+      var(--glass-shadow-lg),
+      var(--glass-inner-shadow-primary);
+    border-color: var(--color-primary);
+  }
+}
+
+// ===========================
+// Glass Loading Effects - 玻璃載入效果
+// ===========================
+
+// Loading Pulse - 載入脈沖
+@keyframes glass-loading-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    backdrop-filter: blur(var(--glass-blur-sm));
+    -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+  }
+  50% {
+    opacity: 1;
+    backdrop-filter: blur(var(--glass-blur-lg));
+    -webkit-backdrop-filter: blur(var(--glass-blur-lg));
+  }
+}
+
+// Loading Spin with Glass - 玻璃旋轉載入
+@keyframes glass-loading-spin {
+  0% {
+    transform: rotate(0deg);
+    backdrop-filter: blur(var(--glass-blur-md));
+    -webkit-backdrop-filter: blur(var(--glass-blur-md));
+  }
+  50% {
+    backdrop-filter: blur(var(--glass-blur-lg));
+    -webkit-backdrop-filter: blur(var(--glass-blur-lg));
+  }
+  100% {
+    transform: rotate(360deg);
+    backdrop-filter: blur(var(--glass-blur-md));
+    -webkit-backdrop-filter: blur(var(--glass-blur-md));
+  }
+}
+
+// Glass Loading Classes - 玻璃載入類別
+.glass-loading-pulse {
+  animation: glass-loading-pulse 1.5s ease-in-out infinite;
+}
+
+.glass-loading-spin {
+  animation: glass-loading-spin 1s linear infinite;
+}
+
+// ===========================
+// Performance Optimizations - 性能優化
+// ===========================
+
+// High Performance Glass - 高性能玻璃效果
+.glass-optimized {
+  will-change: transform, opacity, backdrop-filter;
+  contain: layout style paint;
+}
+
+// Reduce motion for accessibility - 無障礙減少動畫
+@media (prefers-reduced-motion: reduce) {
+  .glass-shimmer::before,
+  .glass-shimmer-hover:hover::before,
+  .glass-shimmer-subtle::before {
+    animation: none !important;
+  }
+  
+  .glass-breathe,
+  .glass-breathe-gentle,
+  .glass-breathe-glow,
+  .glass-breathe-hover:hover {
+    animation: none !important;
+  }
+  
+  .glass-fade-in,
+  .glass-scale-in,
+  .glass-bounce-in {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+    backdrop-filter: blur(var(--glass-blur-md));
+    -webkit-backdrop-filter: blur(var(--glass-blur-md));
+  }
+  
+  .glass-hover-lift:hover,
+  .glass-hover-glow:hover,
+  .glass-hover-enhance:hover {
+    transform: none !important;
+    backdrop-filter: blur(var(--glass-blur-md)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur-md)) !important;
+  }
+  
+  .glass-loading-pulse,
+  .glass-loading-spin {
+    animation: none !important;
+  }
+}
+
+// Mobile Performance Optimizations - 移動端性能優化
+@media (max-width: 768px) {
+  .glass-shimmer::before,
+  .glass-shimmer-hover:hover::before,
+  .glass-shimmer-subtle::before {
+    display: none;
+  }
+  
+  .glass-breathe,
+  .glass-breathe-gentle,
+  .glass-breathe-glow {
+    animation: none;
+  }
+  
+  .glass-hover-lift:hover,
+  .glass-hover-glow:hover {
+    transform: none;
+    backdrop-filter: blur(var(--glass-blur-sm));
+    -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+  }
+}
+
+// ===========================
+// Utility Classes - 工具類別
+// ===========================
+
+// Animation Delays - 動畫延遲
+.glass-delay-short { animation-delay: var(--glass-delay-short); }
+.glass-delay-normal { animation-delay: var(--glass-delay-normal); }
+.glass-delay-long { animation-delay: var(--glass-delay-long); }
+
+// Animation Durations - 動畫持續時間
+.glass-duration-fast { animation-duration: var(--glass-duration-fast); }
+.glass-duration-normal { animation-duration: var(--glass-duration-normal); }
+.glass-duration-slow { animation-duration: var(--glass-duration-slow); }
+.glass-duration-slower { animation-duration: var(--glass-duration-slower); }
+
+// Staggered Animations - 交錯動畫
+.glass-stagger-1 { animation-delay: calc(var(--glass-delay-short) * 1); }
+.glass-stagger-2 { animation-delay: calc(var(--glass-delay-short) * 2); }
+.glass-stagger-3 { animation-delay: calc(var(--glass-delay-short) * 3); }
+.glass-stagger-4 { animation-delay: calc(var(--glass-delay-short) * 4); }
+.glass-stagger-5 { animation-delay: calc(var(--glass-delay-short) * 5); }
+.glass-stagger-6 { animation-delay: calc(var(--glass-delay-short) * 6); }

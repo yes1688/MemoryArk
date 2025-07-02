@@ -58,6 +58,7 @@ const hasSubmenu = computed(() =>
 // Item classes
 const itemClasses = computed(() => {
   const baseClasses = [
+    'context-menu-item',
     'w-full',
     'flex',
     'items-center',
@@ -65,10 +66,11 @@ const itemClasses = computed(() => {
     'py-2',
     'text-left',
     'text-sm',
-    'text-gray-700',
-    'transition-colors',
+    'transition-all',
     'duration-150',
-    'focus:outline-none'
+    'focus:outline-none',
+    'relative',
+    'overflow-hidden'
   ]
   
   const stateClasses = []
@@ -76,20 +78,21 @@ const itemClasses = computed(() => {
   if (props.item.disabled) {
     stateClasses.push(
       'text-gray-400',
-      'cursor-not-allowed'
+      'cursor-not-allowed',
+      'opacity-50'
     )
   } else {
     stateClasses.push(
-      'hover:bg-gray-100',
-      'hover:text-gray-900',
-      'focus:bg-gray-100',
-      'focus:text-gray-900'
+      'hover:glass-light',
+      'focus:glass-light',
+      'text-gray-700',
+      'hover:text-gray-900'
     )
   }
   
   if (props.active) {
     stateClasses.push(
-      'bg-primary-50',
+      'glass-light',
       'text-primary-900'
     )
   }
@@ -114,17 +117,56 @@ const handleMouseover = () => {
 <style scoped>
 .context-menu-item-icon {
   @apply flex-shrink-0 mr-3;
+  position: relative;
+  z-index: 1;
 }
 
 .context-menu-item-label {
   @apply flex-1 truncate;
+  position: relative;
+  z-index: 1;
 }
 
 .context-menu-item-shortcut {
-  @apply flex-shrink-0 ml-3 text-xs text-gray-500;
+  @apply flex-shrink-0 ml-3 text-xs;
+  color: var(--text-tertiary);
+  opacity: 0.7;
+  position: relative;
+  z-index: 1;
 }
 
 .context-menu-item-arrow {
-  @apply flex-shrink-0 ml-2 text-gray-400;
+  @apply flex-shrink-0 ml-2;
+  color: var(--text-tertiary);
+  position: relative;
+  z-index: 1;
+}
+
+/* 玻璃反光效果 */
+.context-menu-item:not([disabled]):hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  pointer-events: none;
+  opacity: 0;
+  animation: shimmer 0.8s ease;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
 }
 </style>
